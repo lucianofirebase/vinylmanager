@@ -257,32 +257,31 @@ header {
     align-items: center;
     padding: 1rem;
     gap: 1rem;
+    height: auto !important; /* Quitamos altura fija */
+    min-height: 100px;
+}
+
+.view-list .card-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0; /* Que no se achiquen */
+    margin-left: auto; /* Los empujamos a la derecha */
 }
 
 @media (max-width: 600px) {
     .view-list .card {
         flex-direction: column;
-        align-items: flex-start;
+        align-items: stretch;
         padding: 1.5rem;
     }
     
-    .view-list .card-image {
-        width: 100% !important;
-        height: 200px !important;
-    }
-
-    .btn-action {
-        padding: 12px 20px !important; /* Botones más grandes para dedos */
-        font-size: 1rem !important;
-        flex: 1;
-    }
-    
-    .card-actions {
+    .view-list .card-actions {
+        margin-left: 0;
+        margin-top: 1rem;
         width: 100%;
         display: flex;
         flex-wrap: wrap; /* Permitimos que bajen si no entran */
         gap: 0.4rem;
-        margin-top: 1rem;
     }
     
     .btn-action {
