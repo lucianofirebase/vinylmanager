@@ -163,9 +163,6 @@ onAuthStateChanged(auth, async (user) => {
 
         loginScreen.classList.add('hidden');
         mainApp.classList.remove('hidden');
-
-        if (typeof window.loadStock === 'function') window.loadStock();
-        if (typeof window.initReservationLogic === 'function') window.initReservationLogic();
         
         // Despachamos evento para app.js
         document.dispatchEvent(new CustomEvent('authStateChanged', { detail: { user } }));
