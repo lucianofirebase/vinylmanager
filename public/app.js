@@ -43,6 +43,15 @@ const btnSyncDiscogs = document.getElementById('btn-sync-discogs');
 const syncModal = document.getElementById('sync-modal');
 const closeSync = document.getElementById('close-sync');
 
+const filterText = document.getElementById('filter-text');
+const filterStatus = document.getElementById('filter-status');
+const filterSort = document.getElementById('filter-sort');
+const filterFormat = document.getElementById('filter-format');
+
+[filterText, filterStatus, filterSort, filterFormat].forEach(el => {
+    if (el) el.addEventListener('input', () => renderStock());
+});
+
 let currentUser = null;
 let discogsUser = '';
 
