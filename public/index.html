@@ -79,7 +79,7 @@
                     <div id="import-step-2" class="hidden">
                         <p style="margin-bottom:1rem;font-size:0.9rem;">Asigna cada columna a un dato del disco:</p>
                         <div style="overflow-x:auto;"><table id="import-preview-table" style="width:100%;border-collapse:collapse;font-size:0.8rem;"></table></div>
-                        <button class="btn-primary" id="btn-start-import" style="margin-top:1rem;width:100%;background:#22c55e!important;">Iniciar Importación</button>
+                        <button class="btn-primary" id="btn-start-import" style="margin-top:1rem;width:100%;background:var(--success);">Iniciar Importación</button>
                     </div>
                     <div id="import-progress" class="hidden" style="margin-top:2rem;">
                         <div style="background:rgba(255,255,255,0.1);height:10px;border-radius:10px;overflow:hidden;">
@@ -138,7 +138,7 @@
                     <div id="bulk-actions-bar" class="bulk-bar hidden">
                         <span id="bulk-count">0 seleccionados</span>
                         <div style="display:flex; gap:0.5rem;">
-                            <button onclick="bulkWhatsApp()" class="btn-action btn-wa" style="background:#25d366!important;">📱 Catálogo WA</button>
+                            <button onclick="bulkWhatsApp()" class="btn-action btn-wa" style="background:#25d366; color:white;">📱 Catálogo WA</button>
                             <button onclick="bulkSell()" class="btn-action btn-sell">💰 Vender</button>
                             <button onclick="bulkDelete()" class="btn-action btn-delete">🗑️ Borrar</button>
                             <button onclick="clearSelection()" class="btn-secondary">❌</button>
@@ -316,7 +316,7 @@
                 <p id="confirm-msg" style="margin-bottom: 2rem; opacity: 0.8;">Esta acción no se puede deshacer.</p>
                 <div style="display: flex; gap: 1rem; justify-content: center;">
                     <button id="btn-confirm-no" class="btn-secondary" style="flex:1;">Cancelar</button>
-                    <button id="btn-confirm-yes" class="btn-action btn-delete" style="flex:1; background:#ef4444!important;">Sí, Borrar</button>
+                    <button id="btn-confirm-yes" class="btn-action btn-delete" style="flex:1;">Sí, Borrar</button>
                 </div>
             </div>
         </div>
