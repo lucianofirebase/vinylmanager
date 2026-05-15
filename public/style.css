@@ -3,14 +3,24 @@
    Aquí definimos los colores, fuentes y estilos base de la aplicación.
 */
 :root {
-    --bg: #0f172a;           /* Fondo principal oscuro */
-    --sidebar-bg: #1e293b;   /* Fondo de la barra lateral y modales */
-    --accent: #38bdf8;       /* Color de énfasis (Celeste Discogs) */
-    --text-main: #f8fafc;    /* Color de texto principal (blanco roto) */
-    --text-secondary: #94a3b8; /* Color de texto secundario (gris) */
-    --card-bg: rgba(255, 255, 255, 0.05); /* Fondo de tarjetas con transparencia */
-    --glass-border: rgba(255, 255, 255, 0.1); /* Bordes estilo "cristal" */
+    --bg: #081225;           
+    --sidebar-bg: #182235;   
+    --primary: rgba(20, 28, 48, 0.92); /* Primary Surface */
+    --secondary: rgba(255, 255, 255, 0.04); /* Secondary Surface */
+    --accent: #38bdf8;       
+    --text-primary: #f8fafc;    
+    --text-secondary: #94a3b8; 
     --success: #22c55e;
+    --danger: #ef4444;
+    --warning: #facc15;
+    --border: rgba(255, 255, 255, 0.06);
+    
+    /* Design System Tokens */
+    --radius-card: 18px;
+    --radius-btn: 8px;
+    --hover-transition: 150ms ease-out;
+    --card-bg: var(--primary);
+    --glass-border: var(--border);
 }
 
 /* RESET Y ESTILOS BASE */
@@ -23,8 +33,10 @@
 
 body {
     background-color: var(--bg);
-    color: var(--text-main);
+    color: var(--text-primary);
     overflow-x: hidden;
+    font-size: 14px;
+    font-weight: 400;
 }
 
 .app-container {
@@ -36,22 +48,22 @@ body {
 .sidebar {
     width: 260px;
     background-color: var(--sidebar-bg);
-    padding: 2rem;
+    padding: 24px;
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-    border-right: 1px solid var(--glass-border);
+    gap: 32px;
+    border-right: 1px solid var(--border);
 }
 
 .logo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
 }
 
 .logo h1 {
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-size: 20px;
+    font-weight: 600;
 }
 
 .logo span {
@@ -61,7 +73,7 @@ body {
 nav {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 4px;
 }
 
 .nav-item {
@@ -69,70 +81,85 @@ nav {
     border: none;
     color: var(--text-secondary);
     text-align: left;
-    padding: 1rem;
-    border-radius: 12px;
+    padding: 12px 16px;
+    border-radius: var(--radius-btn);
     cursor: pointer;
-    font-size: 1rem;
-    transition: all 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all var(--hover-transition);
 }
 
 .nav-item.active {
     background: var(--accent);
-    color: white;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.2);
 }
 
 .nav-item:hover:not(.active) {
-    background: var(--card-bg);
+    background: var(--secondary);
     color: var(--text-primary);
 }
 
 /* Content Area */
 .content {
     flex: 1;
-    padding: 2rem;
+    padding: 32px;
     max-width: 1200px;
     margin: 0 auto;
 }
 
 header {
-    margin-bottom: 3rem;
+    margin-bottom: 32px;
 }
 
 /* Token Config */
 .credentials-group {
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
     align-items: center;
 }
 
 .credentials-group input {
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: white;
-    padding: 0.5rem 0.8rem;
-    border-radius: 8px;
-    font-size: 0.75rem;
+    background: var(--secondary);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: var(--radius-btn);
+    font-size: 12px;
     width: 150px;
+    transition: border var(--hover-transition);
+}
+
+.credentials-group input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    outline: none;
 }
 
 #btn-save-credentials {
-    background: var(--primary);
+    background: var(--accent);
     color: white;
     border: none;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
+    padding: 8px 16px;
+    border-radius: var(--radius-btn);
     cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 12px;
     font-weight: 600;
+    transition: all var(--hover-transition);
+}
+
+#btn-save-credentials:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
 }
 
 .format-badge {
     background: rgba(56, 189, 248, 0.15);
     color: var(--accent);
-    padding: 2px 8px;
+    padding: 4px 8px;
     border-radius: 6px;
-    font-size: 0.65rem;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
     border: 1px solid rgba(56, 189, 248, 0.2);
     display: flex;
     align-items: center;
@@ -249,22 +276,32 @@ header {
 .stock-grid.view-list {
     display: flex;
     flex-direction: column;
-    gap: 0.8rem; /* Más espacio entre filas */
+    gap: 4px;
+    margin-top: 16px;
 }
 
 .view-list .card {
     flex-direction: row;
     align-items: center;
-    padding: 0.8rem 1.5rem;
-    gap: 1.5rem;
+    padding: 8px 16px;
+    gap: 16px;
     height: auto !important;
+    border-radius: var(--radius-btn);
+    box-shadow: none;
+}
+
+.view-list .card:hover {
+    transform: none;
+    background: var(--secondary);
+    border-color: var(--border);
+    box-shadow: none;
 }
 
 .view-list .card-image {
-    width: 100px;
-    height: 100px;
+    width: 48px;
+    height: 48px;
     flex-shrink: 0;
-    border-radius: 8px;
+    border-radius: 6px;
     object-fit: cover;
 }
 
@@ -273,14 +310,16 @@ header {
     flex-direction: row;
     align-items: center;
     flex: 1;
-    gap: 1.5rem;
+    gap: 24px;
     overflow: hidden;
+    padding: 0;
 }
 
 .view-list .card-info h3 {
-    flex: 0 0 35%; /* Título ocupa el 35% */
+    flex: 0 0 35%;
     margin: 0;
-    font-size: 1rem;
+    font-size: 14px;
+    font-weight: 500;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -289,43 +328,55 @@ header {
 .view-list .card-info .artist {
     flex: 1;
     margin: 0;
+    font-size: 14px;
     opacity: 0.7;
 }
 
 .view-list .card-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: 8px;
     flex-shrink: 0;
-    width: auto;
+    margin-top: 0;
 }
 
 .view-list .btn-action {
-    padding: 8px 12px !important;
-    font-size: 0.8rem !important;
+    padding: 6px 12px !important;
+    font-size: 12px !important;
     white-space: nowrap;
+    height: 32px;
 }
 
 @media (max-width: 600px) {
     .view-list .card {
         flex-direction: column;
         align-items: stretch;
-        padding: 1.5rem;
+        padding: 16px;
     }
     
+    .view-list .card-image {
+        width: 100%;
+        height: 120px;
+        border-radius: var(--radius-btn);
+    }
+    
+    .view-list .card-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+        margin-top: 12px;
+    }
+
     .view-list .card-actions {
-        margin-left: 0;
-        margin-top: 1rem;
         width: 100%;
         display: flex;
-        flex-wrap: wrap; /* Permitimos que bajen si no entran */
-        gap: 0.4rem;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 16px;
     }
     
-    .btn-action {
-        padding: 10px 15px !important;
-        font-size: 0.9rem !important;
-        flex: 1 1 45%; /* Ocupan casi la mitad cada uno */
-        justify-content: center;
+    .view-list .btn-action {
+        flex: 1 1 45%;
+        height: 44px; /* Touch target */
     }
 }
 
@@ -381,47 +432,54 @@ header {
 
 .search-container {
     display: flex;
-    gap: 1rem;
-    background: var(--card-bg);
-    padding: 0.5rem;
-    border-radius: 16px;
-    border: 1px solid var(--glass-border);
-    backdrop-filter: blur(10px);
+    gap: 16px;
+    background: var(--secondary);
+    padding: 8px 16px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border);
+    transition: all var(--hover-transition);
+}
+
+.search-container:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
 }
 
 .search-container input {
     flex: 1;
     background: none;
     border: none;
-    padding: 0.8rem 1rem;
-    color: white;
-    font-size: 1rem;
+    padding: 8px 0;
+    color: var(--text-primary);
+    font-size: 14px;
     outline: none;
 }
 
 .btn-primary {
-    background: linear-gradient(135deg, var(--accent), #0ea5e9);
+    background: var(--accent);
     color: white;
     border: none;
-    padding: 0.8rem 1.8rem;
-    border-radius: 12px;
-    font-weight: 700;
+    padding: 12px 24px;
+    border-radius: var(--radius-btn);
+    font-weight: 600;
+    font-size: 14px;
     cursor: pointer;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+    transition: all var(--hover-transition);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 8px;
+    justify-content: center;
 }
 
 .btn-primary:hover {
-    transform: translateY(-2px) scale(1.02);
-    box-shadow: 0 8px 25px rgba(56, 189, 248, 0.4);
+    transform: translateY(-1px);
     filter: brightness(1.1);
+    box-shadow: 0 6px 16px rgba(56, 189, 248, 0.25);
 }
 
 .btn-primary:active {
-    transform: translateY(0) scale(0.98);
+    transform: translateY(0);
 }
 
 .suggestions-dropdown {
@@ -482,27 +540,27 @@ header {
 /* Stock Grid */
 .stock-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-top: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    margin-top: 32px;
 }
 
 .card {
     position: relative;
     background: var(--card-bg);
-    border-radius: 12px;
+    border-radius: var(--radius-card);
     overflow: hidden;
-    transition: all 0.3s ease;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: all var(--hover-transition);
+    border: 1px solid var(--border);
     display: flex;
     flex-direction: column;
     height: 100%;
 }
 
 .card:hover {
-    transform: translateY(-5px);
-    border-color: var(--accent);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 
 .card-image {
@@ -510,33 +568,37 @@ header {
     width: 100%;
     aspect-ratio: 1 / 1;
     overflow: hidden;
+    background: var(--sidebar-bg); /* Placeholder bg */
 }
 
 .card-info {
-    padding: 1rem;
+    padding: 20px;
     display: flex;
     flex-direction: column;
     flex: 1;
 }
 
 .card-info h3 {
-    font-size: 0.9rem;
-    font-weight: 700;
-    margin-bottom: 0.2rem;
-    line-height: 1.2;
-    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+    line-height: 1.3;
+    color: var(--text-primary);
 }
 
 .card-info .artist {
-    font-size: 0.85rem;
+    font-size: 14px;
+    font-weight: 500;
     color: var(--text-secondary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 12px;
 }
 
 .card-info .meta {
-    font-size: 0.75rem;
-    opacity: 0.5;
-    margin-bottom: 0.8rem;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    opacity: 0.7;
+    margin-bottom: 16px;
 }
 
 /* Modo Expandible */
@@ -606,47 +668,53 @@ header {
 
 .card-actions {
     display: flex;
-    gap: 0.3rem;
-    margin-top: 1rem;
+    gap: 8px;
+    margin-top: 16px;
 }
 
 .btn-action {
     flex: 1;
-    padding: 0.4rem;
-    border-radius: 6px;
-    border: none;
-    font-size: 0.65rem;
-    font-weight: 700;
+    padding: 8px;
+    border-radius: var(--radius-btn);
+    border: 1px solid transparent;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    transition: 0.2s;
+    transition: all var(--hover-transition);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 36px;
 }
 
 .btn-sell {
-    background: rgba(34, 197, 94, 0.15);
-    color: #22c55e;
+    background: rgba(34, 197, 94, 0.1);
+    color: var(--success);
 }
 
 .btn-sell:hover {
-    background: rgba(34, 197, 94, 0.25);
-    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+    background: rgba(34, 197, 94, 0.15);
+    transform: translateY(-1px);
 }
 
 .btn-edit {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: var(--secondary);
+    color: var(--text-primary);
 }
 
 .btn-edit:hover {
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-1px);
 }
 
 .btn-delete {
     background: rgba(239, 68, 68, 0.1);
-    color: #ef4444;
+    color: var(--danger);
 }
 
 .btn-delete:hover {
-    background: rgba(239, 68, 68, 0.2);
+    background: rgba(239, 68, 68, 0.15);
+    transform: translateY(-1px);
 }
 
 /* Modal */
@@ -664,36 +732,36 @@ header {
 }
 
 .modal-content {
-    background-color: #111827 !important; /* GRIS OSCURO 100% SÓLIDO */
+    background-color: var(--sidebar-bg) !important;
     width: 600px;
     max-width: 90vw;
     max-height: 90vh;
     overflow-y: auto;
     position: relative;
-    padding: 2rem;
+    padding: 32px;
     border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
-    backdrop-filter: none !important; /* Quitamos el desenfoque para que sea sólido */
+    border: 1px solid var(--border);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
 }
 
 #btn-confirm-add {
-    background: #22c55e !important;
-    background-color: #22c55e !important;
+    background: var(--success) !important;
     color: white !important;
-    font-weight: 800 !important;
-    padding: 1rem !important;
-    border-radius: 12px !important;
+    font-weight: 600 !important;
+    padding: 12px 24px !important;
+    border-radius: var(--radius-btn) !important;
     border: none !important;
-    margin-top: 1.5rem !important;
+    margin-top: 24px !important;
     width: 100% !important;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(34, 197, 94, 0.4);
+    transition: all var(--hover-transition);
+    height: 44px;
 }
 
 #btn-confirm-add:hover {
-    background: #16a34a !important;
-    transform: translateY(-2px);
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(34, 197, 94, 0.2);
 }
 
 .close-modal {
@@ -720,18 +788,25 @@ header {
 
 .form-group input, .form-group select {
     width: 100%;
-    background: #1a1a2e; /* Fondo oscuro sólido para evitar transparencias raras */
-    border: 1px solid var(--glass-border);
-    padding: 0.8rem;
-    border-radius: 8px;
-    color: white;
-    appearance: none; /* Quitamos el estilo default del browser */
-    cursor: pointer;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px 16px;
+    border-radius: var(--radius-btn);
+    color: var(--text-primary);
+    font-size: 14px;
+    appearance: none;
+    transition: all var(--hover-transition);
+}
+
+.form-group input:focus, .form-group select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.15);
+    outline: none;
 }
 
 .form-group select option {
-    background: #1a1a2e;
-    color: white;
+    background: var(--bg);
+    color: var(--text-primary);
 }
 
 .photos-preview-grid {
