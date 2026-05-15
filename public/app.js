@@ -31,7 +31,7 @@ const closeModal = document.querySelector('.close-modal');
 const btnConfirmAdd = document.getElementById('btn-confirm-add');
 const waPreview = document.getElementById('wa-preview');
 
-let currentViewMode = 'grid'; // grid, list, details
+let currentViewMode = 'list'; // grid, list, details
 
 // Elementos de Filtro
 const btnSaveProfile = document.getElementById('btn-save-profile');
@@ -56,6 +56,11 @@ const filterText = document.getElementById('filter-text');
 const filterStatus = document.getElementById('filter-status');
 const filterSort = document.getElementById('filter-sort');
 const filterFormat = document.getElementById('filter-format');
+
+let selectedIds = new Set();
+const bulkBar = document.getElementById('bulk-actions-bar');
+const bulkCountText = document.getElementById('bulk-count');
+const btnSelectAll = document.getElementById('btn-select-all');
 
 [filterText, filterStatus, filterSort, filterFormat].forEach(el => {
     if (el) el.addEventListener('input', () => renderStock());
@@ -639,7 +644,12 @@ function renderStock() {
     stockList.className = `stock-grid view-${currentViewMode}`;
 
     stockList.innerHTML = filtered.map(item => `
-        <div class="card">
+        <div class="card ${selectedIds.has(item.id) ? 'selected' : ''}" id="card-${item.id}">
+            ${currentViewMode === 'list' ? `
+                <div class="card-selection" onclick="toggleSelect('${item.id}', event)">
+                    <div class="checkbox ${selectedIds.has(item.id) ? 'checked' : ''}"></div>
+                </div>
+            ` : ''}
             <div class="card-image">
                 <div class="carousel-container main-card-carousel">
                     <button class="carousel-btn prev" onclick="scrollCarousel('carousel-${item.id}', -1)">❮</button>
@@ -800,6 +810,115 @@ window.deleteItem = async (id) => {
             console.error("Error al borrar:", err);
             loadStock(true); 
         }
+    }
+};
+
+// --- ACCIONES MASIVAS ---
+
+window.toggleSelect = (id, event) => {
+    if (event) event.stopPropagation();
+    if (selectedIds.has(id)) {
+        selectedIds.delete(id);
+    } else {
+        selectedIds.add(id);
+    }
+    updateBulkBar();
+    renderStock(); // Para refrescar visualmente los checkboxes
+};
+
+function updateBulkBar() {
+    if (selectedIds.size > 0) {
+        bulkBar.classList.remove('hidden');
+        bulkCountText.textContent = `${selectedIds.size} seleccionados`;
+    } else {
+        bulkBar.classList.add('hidden');
+    }
+}
+
+window.clearSelection = () => {
+    selectedIds.clear();
+    updateBulkBar();
+    renderStock();
+};
+
+btnSelectAll.addEventListener('click', () => {
+    // Si todos los que estamos viendo ya están seleccionados, deseleccionamos.
+    // Si no, seleccionamos todos los que estamos viendo.
+    const currentlyVisible = currentStock.filter(item => {
+        const text = filterText.value.toLowerCase();
+        const status = filterStatus.value;
+        const format = filterFormat.value;
+        const matchText = (item.title + item.artist).toLowerCase().includes(text);
+        const matchStatus = status === 'todos' || item.status === status;
+        const matchFormat = format === 'todos' || item.format === format;
+        return matchText && matchStatus && matchFormat;
+    });
+
+    const allSelected = currentlyVisible.every(i => selectedIds.has(i.id));
+
+    if (allSelected) {
+        currentlyVisible.forEach(i => selectedIds.delete(i.id));
+    } else {
+        currentlyVisible.forEach(i => selectedIds.add(i.id));
+    }
+    
+    updateBulkBar();
+    renderStock();
+});
+
+window.bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (confirm(`¿Estás seguro de que querés borrar ${selectedIds.size} discos?`)) {
+        const ids = Array.from(selectedIds);
+        logger(`Borrando ${ids.length} discos...`, 'action');
+        
+        // Optimista
+        currentStock = currentStock.filter(i => !selectedIds.has(i.id));
+        selectedIds.clear();
+        updateBulkBar();
+        renderStock();
+
+        try {
+            for (const id of ids) {
+                await fetch(`${API_URL}/stock/${id}`, { method: 'DELETE' });
+            }
+            logger("Borrado masivo completado", 'success');
+        } catch (err) {
+            console.error("Fallo el borrado masivo:", err);
+            loadStock(true);
+        }
+    }
+};
+
+window.bulkSell = async () => {
+    if (selectedIds.size === 0) return;
+    const ids = Array.from(selectedIds);
+    logger(`Vendiendo ${ids.length} discos...`, 'action');
+
+    // Optimista
+    currentStock.forEach(item => {
+        if (selectedIds.has(item.id)) {
+            item.status = 'vendido';
+            item.qty = 0;
+        }
+    });
+    const itemsToUpdate = currentStock.filter(i => selectedIds.has(i.id));
+    selectedIds.clear();
+    updateBulkBar();
+    renderStock();
+
+    try {
+        for (const item of itemsToUpdate) {
+            await fetch(`${API_URL}/stock/${item.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(item)
+            });
+        }
+        logger("Venta masiva completada", 'success');
+    } catch (err) {
+        console.error("Fallo la venta masiva:", err);
+        loadStock(true);
     }
 };
 

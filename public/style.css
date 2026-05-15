@@ -997,6 +997,121 @@ header {
     box-shadow: 0 0 60px rgba(56,189,248,0.3);
 }
 
+/* Perfil - Foto Clickable */
+.profile-pic-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+}
+
+.profile-pic-label {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    overflow: hidden;
+    cursor: pointer;
+    border: 3px solid var(--accent);
+    position: relative;
+    transition: transform 0.2s ease;
+}
+
+.profile-pic-label:hover {
+    transform: scale(1.05);
+}
+
+.profile-pic-label img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.profile-pic-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    text-align: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 10px;
+}
+
+.profile-pic-label:hover .profile-pic-overlay {
+    opacity: 1;
+}
+
+/* Acciones Masivas */
+.bulk-bar {
+    position: fixed;
+    bottom: 80px; /* Sobre la nav bar */
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--card-bg);
+    border: 1px solid var(--accent);
+    padding: 1rem 2rem;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    z-index: 1000;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    backdrop-filter: blur(10px);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from { transform: translate(-50%, 100px); opacity: 0; }
+    to { transform: translate(-50%, 0); opacity: 1; }
+}
+
+.card-selection {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 10;
+    cursor: pointer;
+}
+
+.checkbox {
+    width: 24px;
+    height: 24px;
+    border: 2px solid white;
+    border-radius: 6px;
+    background: rgba(0,0,0,0.3);
+    transition: 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkbox.checked {
+    background: var(--accent);
+    border-color: var(--accent);
+}
+
+.checkbox.checked::after {
+    content: '✓';
+    color: white;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.card.selected {
+    border: 2px solid var(--accent);
+    transform: scale(0.98);
+}
+
+.avatar-option:hover {
+    background: rgba(124, 58, 237, 0.2) !important;
+    transform: translateY(-3px);
+}
+
 .vinyl-label {
     width: 100px; height: 100px;
     background: linear-gradient(135deg, #38bdf8, #818cf8);
