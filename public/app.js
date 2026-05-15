@@ -920,7 +920,7 @@ window.bulkDelete = async () => {
         logger(`Borrando ${ids.length} discos...`, 'action');
         
         // Optimista
-        currentStock = currentStock.filter(i => !selectedIds.has(i.id));
+        currentStock = currentStock.filter(i => !selectedIds.has(i.id.toString()));
         selectedIds.clear();
         updateBulkBar();
         renderStock();
@@ -961,12 +961,12 @@ window.bulkSell = async () => {
 
     // Optimista
     currentStock.forEach(item => {
-        if (selectedIds.has(item.id)) {
+        if (selectedIds.has(item.id.toString())) {
             item.status = 'vendido';
             item.qty = 0;
         }
     });
-    const itemsToUpdate = currentStock.filter(i => selectedIds.has(i.id));
+    const itemsToUpdate = currentStock.filter(i => selectedIds.has(i.id.toString()));
     selectedIds.clear();
     updateBulkBar();
     renderStock();
@@ -991,7 +991,7 @@ window.bulkSell = async () => {
 
 window.bulkWhatsApp = () => {
     if (selectedIds.size === 0) return;
-    const selectedItems = currentStock.filter(i => selectedIds.has(i.id));
+    const selectedItems = currentStock.filter(i => selectedIds.has(i.id.toString()));
     renderWhatsAppPreview(selectedItems);
     switchSection('whatsapp');
     logger(`Generando catálogo para ${selectedItems.length} discos`, 'action');
