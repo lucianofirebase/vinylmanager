@@ -252,11 +252,20 @@ async function loadStock() {
     logger("Cargando inventario desde el servidor...", 'info');
     try {
         const res = await fetch(`${API_URL}/stock`);
+        if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+        
         currentStock = await res.json();
         logger(`Inventario cargado: ${currentStock.length} discos`, 'success');
-        renderStock();
+        
+        try {
+            renderStock();
+        } catch (renderError) {
+            console.error("Error al renderizar los discos:", renderError);
+            logger("Error visual al mostrar los discos. Revisá la consola (F12).", 'error');
+        }
     } catch (err) {
-        logger("No se pudo conectar con el servidor local", 'error');
+        console.error("Error de conexión/carga:", err);
+        logger(`No se pudo cargar el inventario: ${err.message}`, 'error');
     }
 }
 
@@ -529,7 +538,10 @@ function renderStock() {
 
     // Aplicamos los filtros de búsqueda y estado
     let filtered = currentStock.filter(item => {
-        const matchText = item.title.toLowerCase().includes(text) || item.artist.toLowerCase().includes(text);
+        const title = (item.title || '').toString().toLowerCase();
+        const artist = (item.artist || '').toString().toLowerCase();
+        
+        const matchText = title.includes(text) || artist.includes(text);
         const matchStatus = status === 'todos' || item.status === status;
         const matchFormat = filterFormat.value === 'todos' || item.format === filterFormat.value;
         return matchText && matchStatus && matchFormat;
