@@ -245,7 +245,10 @@ function initReservationLogic() {
 
 // --- FUNCIÓN DE CARGA INICIAL ---
 // Trae los datos desde nuestra base de datos local (db.json)
+let isInitialLoadDone = false;
 async function loadStock() {
+    if (isInitialLoadDone) return;
+    isInitialLoadDone = true;
     logger("Cargando inventario desde el servidor...", 'info');
     try {
         const res = await fetch(`${API_URL}/stock`);
