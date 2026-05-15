@@ -325,14 +325,27 @@ header {
     text-overflow: ellipsis;
 }
 
-.view-list .card-info .artist {
+.stock-grid.view-list .card-info .artist {
     flex: 1;
     margin: 0;
     font-size: 14px;
     opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.view-list .card-actions {
+.stock-grid.view-list .card-footer {
+    flex: 0 0 160px; /* Ancho fijo para que los precios formen una columna perfecta */
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
+    align-items: center;
+    justify-content: space-between; /* El precio se pega a la izq del bloque, la etiqueta a la der */
+    gap: 8px;
+}
+
+.stock-grid.view-list .card-actions {
     display: flex;
     gap: 8px;
     flex-shrink: 0;
