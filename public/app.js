@@ -36,7 +36,6 @@ let currentViewMode = 'grid'; // grid, list, details
 // Elementos de Filtro
 const btnSaveProfile = document.getElementById('btn-save-profile');
 const profileNameInput = document.getElementById('profile-name-input');
-const profilePicInput = document.getElementById('profile-pic-input');
 const profileEmail = document.getElementById('profile-email');
 const profilePicLarge = document.getElementById('profile-pic-large');
 const profileDiscogsUser = document.getElementById('profile-discogs-user');
