@@ -45,6 +45,14 @@ const btnSyncDiscogs = document.getElementById('btn-sync-discogs');
 const syncModal = document.getElementById('sync-modal');
 const closeSync = document.getElementById('close-sync');
 
+const profilePicInput = document.getElementById('input-profile-file');
+const avatarSelector = document.getElementById('avatar-selector');
+let selectedProfilePic = '';
+
+const PREDEFINED_AVATARS = [
+    '💿', '🎧', '🎸', '🎹', '📻', '🎙️', '🎶', '🎷'
+];
+
 const filterText = document.getElementById('filter-text');
 const filterStatus = document.getElementById('filter-status');
 const filterSort = document.getElementById('filter-sort');
@@ -64,12 +72,22 @@ async function loadUserSettings() {
     // Datos de Firebase Auth
     profileEmail.value = currentUser.email;
     profileNameInput.value = currentUser.displayName || '';
-    profilePicInput.value = currentUser.photoURL || '';
-    profilePicLarge.src = currentUser.photoURL || 'https://via.placeholder.com/150';
+    
+    // Inicializar Avatares
+    renderAvatarSelector();
 
     try {
         const res = await fetch(`${API_URL}/settings`);
         const settings = await res.json();
+        
+        if (settings.profilePic) {
+            selectedProfilePic = settings.profilePic;
+            profilePicLarge.src = settings.profilePic;
+        } else {
+            selectedProfilePic = currentUser.photoURL || '';
+            profilePicLarge.src = selectedProfilePic || 'https://via.placeholder.com/150';
+        }
+
         if (settings.discogsUser) {
             discogsUser = settings.discogsUser;
             profileDiscogsUser.value = discogsUser;
@@ -79,7 +97,6 @@ async function loadUserSettings() {
 
 btnSaveProfile.addEventListener('click', async () => {
     const newName = profileNameInput.value.trim();
-    const newPic = profilePicInput.value.trim();
     const newDiscogs = profileDiscogsUser.value.trim();
 
     if (!newName) return alert("El nombre no puede estar vacío");
@@ -92,7 +109,7 @@ btnSaveProfile.addEventListener('click', async () => {
             body: JSON.stringify({ 
                 discogsUser: newDiscogs,
                 displayName: newName,
-                photoURL: newPic
+                photoURL: selectedProfilePic
             })
         });
 
@@ -100,14 +117,56 @@ btnSaveProfile.addEventListener('click', async () => {
         
         // 2. Actualizar UI local inmediatamente
         document.getElementById('user-name').textContent = newName;
-        document.getElementById('user-avatar').src = newPic;
-        profilePicLarge.src = newPic;
+        if (selectedProfilePic) {
+            document.getElementById('user-avatar').src = selectedProfilePic;
+            profilePicLarge.src = selectedProfilePic;
+        }
 
         alert("¡Perfil actualizado con éxito!");
     } catch (e) {
         alert("Error al guardar: " + e.message);
     }
 });
+
+function renderAvatarSelector() {
+    if (!avatarSelector) return;
+    avatarSelector.innerHTML = PREDEFINED_AVATARS.map(emoji => `
+        <div class="avatar-option" onclick="selectAvatarEmoji('${emoji}')" style="cursor:pointer; font-size:1.8rem; background:rgba(255,255,255,0.05); padding:8px; border-radius:12px; min-width:50px; text-align:center;">
+            ${emoji}
+        </div>
+    `).join('');
+}
+
+window.selectAvatarEmoji = (emoji) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#7c3aed';
+    ctx.beginPath();
+    ctx.arc(64, 64, 64, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.font = '70px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, 64, 70);
+    selectedProfilePic = canvas.toDataURL('image/png');
+    profilePicLarge.src = selectedProfilePic;
+};
+
+if (profilePicInput) {
+    profilePicInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            try {
+                const base64 = await compressImage(file, 200);
+                selectedProfilePic = base64;
+                profilePicLarge.src = base64;
+                logger("Foto subida correctamente", 'success');
+            } catch (err) { logger("Error al procesar foto", 'error'); }
+        }
+    });
+}
 
 // Lógica de Sincronización
 btnSyncDiscogs.addEventListener('click', () => {

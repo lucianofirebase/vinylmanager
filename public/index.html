@@ -187,8 +187,20 @@
                                     <input type="text" id="profile-name-input" placeholder="Tu nombre">
                                 </div>
                                 <div class="form-group">
-                                    <label>URL de Foto de Perfil</label>
-                                    <input type="text" id="profile-pic-input" placeholder="URL de la imagen">
+                                    <label>Foto de Perfil</label>
+                                    <div style="display:flex; gap:1rem; align-items:center; margin-bottom:1rem;">
+                                        <div class="profile-pic-container">
+                                            <img id="profile-pic-large" src="https://via.placeholder.com/150" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:3px solid var(--accent);">
+                                            <label for="input-profile-file" class="btn-action" style="position:absolute; bottom:0; right:0; padding:8px; border-radius:50%; cursor:pointer; background:var(--accent); color:white;">📸</label>
+                                            <input type="file" id="input-profile-file" accept="image/*" style="display:none;">
+                                        </div>
+                                        <div style="flex:1;">
+                                            <p style="font-size:0.8rem; opacity:0.7; margin-bottom:0.5rem;">Elegí un avatar o subí tu foto:</p>
+                                            <div id="avatar-selector" class="avatar-carousel" style="display:flex; gap:0.5rem; overflow-x:auto; padding-bottom:10px;">
+                                                <!-- Los avatares se cargan por JS -->
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                                 <hr style="border:none; border-top:1px solid rgba(255,255,255,0.1); margin:1rem 0;">
                                 <div class="form-group">
