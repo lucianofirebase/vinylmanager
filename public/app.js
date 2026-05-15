@@ -865,13 +865,14 @@ window.deleteItem = async (id) => {
 
 window.toggleSelect = (id, event) => {
     if (event) event.stopPropagation();
-    if (selectedIds.has(id)) {
-        selectedIds.delete(id);
+    const stringId = id.toString();
+    if (selectedIds.has(stringId)) {
+        selectedIds.delete(stringId);
     } else {
-        selectedIds.add(id);
+        selectedIds.add(stringId);
     }
     updateBulkBar();
-    renderStock(); // Para refrescar visualmente los checkboxes
+    renderStock();
 };
 
 function updateBulkBar() {
@@ -890,24 +891,22 @@ window.clearSelection = () => {
 };
 
 btnSelectAll.addEventListener('click', () => {
-    // Si todos los que estamos viendo ya están seleccionados, deseleccionamos.
-    // Si no, seleccionamos todos los que estamos viendo.
     const currentlyVisible = currentStock.filter(item => {
         const text = filterText.value.toLowerCase();
         const status = filterStatus.value;
         const format = filterFormat.value;
-        const matchText = (item.title + item.artist).toLowerCase().includes(text);
+        const matchText = ((item.title || '') + (item.artist || '')).toLowerCase().includes(text);
         const matchStatus = status === 'todos' || item.status === status;
         const matchFormat = format === 'todos' || item.format === format;
         return matchText && matchStatus && matchFormat;
     });
 
-    const allSelected = currentlyVisible.every(i => selectedIds.has(i.id));
+    const allSelected = currentlyVisible.every(i => selectedIds.has(i.id.toString()));
 
     if (allSelected) {
-        currentlyVisible.forEach(i => selectedIds.delete(i.id));
+        currentlyVisible.forEach(i => selectedIds.delete(i.id.toString()));
     } else {
-        currentlyVisible.forEach(i => selectedIds.add(i.id));
+        currentlyVisible.forEach(i => selectedIds.add(i.id.toString()));
     }
     
     updateBulkBar();
@@ -928,13 +927,27 @@ window.bulkDelete = async () => {
 
         try {
             setSyncStatus('syncing');
+            let successCount = 0;
+            let failCount = 0;
+
             for (const id of ids) {
-                await fetch(`${API_URL}/stock/${id}`, { method: 'DELETE' });
+                try {
+                    const res = await fetch(`${API_URL}/stock/${id}`, { method: 'DELETE' });
+                    if (res.ok) successCount++;
+                    else failCount++;
+                } catch (e) {
+                    failCount++;
+                }
             }
-            logger("Borrado masivo completado", 'success');
+
+            if (failCount > 0) {
+                logger(`Borrado parcial: ${successCount} ok, ${failCount} fallaron.`, 'error');
+            } else {
+                logger(`¡${successCount} discos borrados con éxito!`, 'success');
+            }
             setSyncStatus('synced');
         } catch (err) {
-            console.error("Fallo el borrado masivo:", err);
+            console.error("Fallo crítico en borrado masivo:", err);
             setSyncStatus('synced');
             loadStock(true);
         }
