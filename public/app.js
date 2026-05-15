@@ -255,8 +255,8 @@ function initReservationLogic() {
 // --- FUNCIÓN DE CARGA INICIAL ---
 // Trae los datos desde nuestra base de datos local (db.json)
 let isInitialLoadDone = false;
-async function loadStock() {
-    if (isInitialLoadDone) return;
+async function loadStock(force = false) {
+    if (isInitialLoadDone && !force) return;
     isInitialLoadDone = true;
     logger("Cargando inventario desde el servidor...", 'info');
     try {
@@ -710,7 +710,7 @@ window.sellItem = async (id) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item)
         });
-        if (res.ok) loadStock();
+        if (res.ok) loadStock(true);
     } catch (err) { console.error("Error al vender:", err); }
 };
 
@@ -725,7 +725,7 @@ window.deleteItem = async (id) => {
             const res = await fetch(`${API_URL}/stock/${id}`, {
                 method: 'DELETE'
             });
-            if (res.ok) loadStock();
+            if (res.ok) loadStock(true);
         } catch (err) { console.error("Error al borrar:", err); }
     }
 };
@@ -788,7 +788,7 @@ btnConfirmAdd.addEventListener('click', async () => {
         if(res.ok) {
             modal.classList.add('hidden');
             editingId = null;
-            loadStock();
+            loadStock(true);
             // Resetear UI
             inputSearch.value = '';
             document.getElementById('input-photos').value = '';
