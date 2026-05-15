@@ -454,6 +454,7 @@ header {
 }
 
 .card {
+    position: relative;
     background: var(--card-bg);
     border-radius: 12px;
     overflow: hidden;
