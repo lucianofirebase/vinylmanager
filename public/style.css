@@ -255,17 +255,54 @@ header {
 .view-list .card {
     flex-direction: row;
     align-items: center;
-    padding: 1rem;
-    gap: 1rem;
-    height: auto !important; /* Quitamos altura fija */
-    min-height: 100px;
+    padding: 0.8rem 1.5rem;
+    gap: 1.5rem;
+    height: auto !important;
+}
+
+.view-list .card-image {
+    width: 100px;
+    height: 100px;
+    flex-shrink: 0;
+    border-radius: 8px;
+    object-fit: cover;
+}
+
+.view-list .card-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex: 1;
+    gap: 1.5rem;
+    overflow: hidden;
+}
+
+.view-list .card-info h3 {
+    flex: 0 0 35%; /* Título ocupa el 35% */
+    margin: 0;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.view-list .card-info .artist {
+    flex: 1;
+    margin: 0;
+    opacity: 0.7;
 }
 
 .view-list .card-actions {
     display: flex;
     gap: 0.5rem;
-    flex-shrink: 0; /* Que no se achiquen */
-    margin-left: auto; /* Los empujamos a la derecha */
+    flex-shrink: 0;
+    width: auto;
+}
+
+.view-list .btn-action {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap;
 }
 
 @media (max-width: 600px) {
@@ -293,53 +330,8 @@ header {
 }
 
 /* Checkbox más grande para móviles */
-.checkbox {
-    width: 32px;
-    height: 32px;
-    border: 2px solid rgba(255,255,255,0.4);
-}
 
-.card-selection {
-    top: 15px;
-    left: 15px;
-    padding: 10px; /* Área de toque extendida */
-}
-
-/* Estilos eliminados aquí y movidos al final para consistencia */
-
-.stock-grid.view-list .card-info {
-    flex-direction: row;
-    align-items: center;
-    padding: 0 2rem; /* Más margen interno */
-    flex: 1;
-    gap: 2rem; /* Más espacio entre columnas */
-}
-
-.stock-grid.view-list .card-info h3 { 
-    flex: 0 0 30%;
-    font-size: 1rem;
-}
-
-.stock-grid.view-list .artist { 
-    flex: 0 0 20%;
-    font-size: 0.9rem;
-}
-
-.stock-grid.view-list .card-footer { 
-    flex: 0 0 15%;
-    border: none;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.stock-grid.view-list .card-actions { 
-    flex: 1;
-    justify-content: flex-end;
-    margin: 0;
-    gap: 0.8rem; /* Más espacio entre botones */
-}
+/* End cleanup */
 
 .stock-grid.view-list .btn-toggle-details,
 .stock-grid.view-list .expanded-info,
