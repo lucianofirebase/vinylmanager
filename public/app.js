@@ -820,7 +820,10 @@ function updateWAPreview() {
         waPreview.innerHTML = '<p style="opacity:0.5">No hay discos disponibles para la venta.</p>';
         return;
     }
-
+    availableStock.forEach(item => {
+        const title = (item.title || 'Título Desconocido').toString().toUpperCase();
+        const artist = (item.artist || 'Artista Desconocido').toString();
+        const price = item.price || 0;
         const format = item.format || 'Vinyl';
         const formatIcon = getFormatIcon(format);
         
@@ -835,6 +838,7 @@ function updateWAPreview() {
         text += `*$${price}*${photoInfo}\n\n`;
         text += `--------------------------\n\n`;
     });
+
     text += "✨ ¡Escríbeme para reservar el tuyo!";
     
     waPreview.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${text}</pre>`;
