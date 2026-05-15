@@ -626,9 +626,9 @@ function renderStock() {
                     </div>
                 </div>
                 <div class="card-actions">
-                    ${item.status !== 'vendido' ? `<button class="btn-action btn-sell" onclick="sellItem(${item.id})">💰 Vender</button>` : ''}
-                    <button class="btn-action btn-edit" onclick="editItem(${item.id})">✍️ Editar</button>
-                    <button class="btn-action btn-delete" onclick="deleteItem(${item.id})">🗑️ Borrar</button>
+                    ${item.status !== 'vendido' ? `<button class="btn-action btn-sell" onclick="sellItem('${item.id}')">💰 Vender</button>` : ''}
+                    <button class="btn-action btn-edit" onclick="editItem('${item.id}')">✍️ Editar</button>
+                    <button class="btn-action btn-delete" onclick="deleteItem('${item.id}')">🗑️ Borrar</button>
                 </div>
             </div>
         </div>
