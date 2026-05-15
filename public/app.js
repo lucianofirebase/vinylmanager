@@ -43,6 +43,7 @@ const btnSyncDiscogs = document.getElementById('btn-sync-discogs');
 const syncModal = document.getElementById('sync-modal');
 const closeSync = document.getElementById('close-sync');
 
+let currentUser = null;
 let discogsUser = '';
 
 // Cargar ajustes y datos de perfil
@@ -1091,7 +1092,8 @@ if (!document.getElementById('login-screen')) {
 } else {
     // Si hay Firebase, esperamos al login
     document.addEventListener('authStateChanged', (e) => {
-        if (e.detail.user) {
+        currentUser = e.detail.user;
+        if (currentUser) {
             loadStock();
             loadUserSettings();
             initReservationLogic();
