@@ -280,8 +280,16 @@ header {
     .card-actions {
         width: 100%;
         display: flex;
-        gap: 0.5rem;
+        flex-wrap: wrap; /* Permitimos que bajen si no entran */
+        gap: 0.4rem;
         margin-top: 1rem;
+    }
+    
+    .btn-action {
+        padding: 10px 15px !important;
+        font-size: 0.9rem !important;
+        flex: 1 1 45%; /* Ocupan casi la mitad cada uno */
+        justify-content: center;
     }
 }
 
@@ -1096,10 +1104,8 @@ header {
     bottom: 90px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: #1e293b; /* Fondo sólido para que no transparente */
+    border: 1px solid var(--accent);
     padding: 0.8rem 1.5rem;
     border-radius: 100px;
     display: flex;
