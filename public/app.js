@@ -331,7 +331,18 @@ async function startDiscogsSync() {
         }
 
         status.innerText = `¡Listo! ${addedCount} nuevos, ${skippedCount} saltados.`;
-        loadStock();
+        
+        // Forzamos la recarga real desde el servidor
+        loadStock(true);
+        
+        // Cerramos el modal automáticamente después de 2 segundos para dar tiempo a leer el resumen
+        setTimeout(() => {
+            syncModal.classList.add('hidden');
+            if (addedCount > 0) {
+                logger(`Sincronización completa: ${addedCount} discos añadidos a tu colección`, 'success');
+            }
+        }, 2000);
+        
     } catch (e) {
         status.innerText = "Error: " + e.message;
     }
