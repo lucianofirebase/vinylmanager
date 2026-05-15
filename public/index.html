@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vinyl Stock Manager | Pro Edition</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-bg">
+            <div class="login-orb orb-1"></div>
+            <div class="login-orb orb-2"></div>
+            <div class="login-orb orb-3"></div>
+        </div>
+        <div class="vinyl-decoration">
+            <div class="vinyl-outer"><div class="vinyl-label"><span>💿</span></div></div>
+        </div>
+        <div class="login-card">
+            <div class="login-logo">
+                <span class="login-icon">💿</span>
+                <h1>Vinyl<span>Stock</span></h1>
+                <p class="login-subtitle">Pro Edition</p>
+            </div>
+            <p class="login-desc">Tu inventario de vinilos en la nube.<br>Accedé con tu cuenta de Google.</p>
+            <button id="btn-google-login" class="btn-google">
+                <svg width="20" height="20" viewBox="0 0 48 48"><path d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24c0,11.045,8.955,20,20,20c11.045,0,20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" fill="#FFC107"/><path d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z" fill="#FF3D00"/><path d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z" fill="#4CAF50"/><path d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C36.971,39.205,44,34,44,24C44,22.659,43.862,21.35,43.611,20.083z" fill="#1976D2"/></svg>
+                Entrar con Google
+            </button>
+            <p id="login-error" class="login-error hidden"></p>
+            <div class="login-footer">
+                <span>🔒 Sesión segura</span> · <span>📦 Inventario privado</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP PRINCIPAL -->
+    <div id="main-app" class="hidden">
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="logo">
+                    <span class="icon">💿</span>
+                    <h1>Vinyl<span>Stock</span></h1>
+                </div>
+                <div class="user-badge" id="user-badge">
+                    <img id="user-avatar" src="" alt="Avatar" class="user-avatar">
+                    <div class="user-info">
+                        <span id="user-name" class="user-name">...</span>
+                        <span id="user-role" class="user-role">Vendedor</span>
+                    </div>
+                </div>
+                <nav>
+                    <button class="nav-item active" id="nav-inventory" data-section="inventory">📦 Inventario</button>
+                    <button class="nav-item" id="nav-whatsapp" data-section="whatsapp">💬 WhatsApp</button>
+                    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.05);margin:1rem 0;">
+                    <div class="sidebar-settings" style="padding:0 1rem; margin-bottom:1rem;">
+                        <label style="font-size:0.7rem; color:var(--text-secondary); display:block; margin-bottom:5px;">USUARIO DISCOGS</label>
+                        <div style="display:flex; gap:5px;">
+                            <input type="text" id="discogs-user-input" placeholder="Tu usuario..." style="width:100%; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:4px; color:white; font-size:0.75rem; padding:4px 8px;">
+                            <button id="btn-save-discogs-user" style="background:var(--accent); border:none; color:white; border-radius:4px; padding:0 8px; cursor:pointer; font-size:0.7rem;">💾</button>
+                        </div>
+                    </div>
+                    <button class="nav-item" id="btn-sync-discogs" style="background:rgba(56, 189, 248, 0.1); border:1px dashed var(--accent); color:var(--accent); font-weight:bold;">🔄 Sincronizar Discogs</button>
+                    <button class="nav-item" id="btn-open-import">📥 Importar Excel</button>
+                    <button class="nav-item nav-logout" id="btn-logout">🚪 Cerrar Sesión</button>
+                </nav>
+            </aside>
+
+            <!-- Modal Importación -->
+            <div id="import-modal" class="modal hidden">
+                <div class="modal-content" style="max-width:900px;">
+                    <span class="close-modal" id="close-import">&times;</span>
+                    <div class="section-header">
+                        <div><h2>Importador Inteligente</h2><p>Pegá tus filas de Excel aquí abajo.</p></div>
+                    </div>
+                    <div id="import-step-1">
+                        <textarea id="import-paste-area" placeholder="Pega aquí tus celdas de Excel (Artista, Título, Precio...)" style="width:100%;height:200px;background:rgba(0,0,0,0.3);border:1px solid var(--glass-border);border-radius:12px;color:white;padding:1rem;"></textarea>
+                        <button class="btn-primary" id="btn-process-paste" style="margin-top:1rem;width:100%;">Analizar Datos</button>
+                    </div>
+                    <div id="import-step-2" class="hidden">
+                        <p style="margin-bottom:1rem;font-size:0.9rem;">Asigna cada columna a un dato del disco:</p>
+                        <div style="overflow-x:auto;"><table id="import-preview-table" style="width:100%;border-collapse:collapse;font-size:0.8rem;"></table></div>
+                        <button class="btn-primary" id="btn-start-import" style="margin-top:1rem;width:100%;background:#22c55e!important;">Iniciar Importación</button>
+                    </div>
+                    <div id="import-progress" class="hidden" style="margin-top:2rem;">
+                        <div style="background:rgba(255,255,255,0.1);height:10px;border-radius:10px;overflow:hidden;">
+                            <div id="import-progress-bar" style="background:var(--accent);width:0%;height:100%;transition:0.3s;"></div>
+                        </div>
+                        <p id="import-status-text" style="text-align:center;margin-top:1rem;font-size:0.9rem;"></p>
+                        <div id="import-log" style="max-height:200px;overflow-y:auto;font-family:monospace;font-size:0.7rem;margin-top:1rem;background:rgba(0,0,0,0.2);padding:1rem;border-radius:8px;"></div>
+                    </div>
+                </div>
+            </div>
+                    <!-- Modal Sincronización Discogs -->
+                    <div id="sync-modal" class="modal hidden">
+                        <div class="modal-content" style="max-width:500px;">
+                            <span class="close-modal" id="close-sync">&times;</span>
+                            <h2>Sincronizando Colección</h2>
+                            <p id="sync-status" style="margin:1rem 0; font-size:0.9rem; opacity:0.8;">Iniciando...</p>
+                            <div style="background:rgba(255,255,255,0.1); height:10px; border-radius:10px; overflow:hidden;">
+                                <div id="sync-progress-bar" style="background:var(--accent); width:0%; height:100%; transition:0.3s;"></div>
+                            </div>
+                            <div id="sync-log" style="max-height:200px; overflow-y:auto; margin-top:1rem; font-size:0.75rem; background:rgba(0,0,0,0.2); padding:1rem; border-radius:8px;"></div>
+                        </div>
+                    </div>
+
+            <main class="content">
+                <header>
+                    <div class="search-wrapper">
+                        <div class="search-container">
+                            <input type="text" id="discogs-search" placeholder="Buscar en Discogs..." autocomplete="off">
+                            <button id="btn-search">Buscar</button>
+                        </div>
+                        <div id="search-suggestions" class="suggestions-dropdown hidden"></div>
+                    </div>
+                </header>
+
+                <section id="inventory-section" class="active-section">
+                    <div class="section-header">
+                        <div><h2>Mi Inventario</h2><p>Gestiona tus discos disponibles y precios.</p></div>
+                        <div id="stock-counter" class="stock-counter">
+                            <span id="count-filtered">0</span>
+                            <span class="count-label">discos</span>
+                            <span id="count-total-badge"></span>
+                        </div>
+                    </div>
+                    <div class="filters-bar">
+                        <div class="filter-group"><input type="text" id="filter-text" placeholder="🔍 Artista o título..."></div>
+                        <div class="filter-group">
+                            <select id="filter-status">
+                                <option value="todos">🏷️ Todos los estados</option>
+                                <option value="disponible">Solo Disponibles</option>
+                                <option value="reservado">Solo Reservados</option>
+                                <option value="vendido">Solo Vendidos</option>
+                                <option value="borrador">Solo Borradores</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <select id="filter-sort">
+                                <option value="recent">⚡ Más recientes</option>
+                                <option value="price-asc">Precio: Menor a Mayor</option>
+                                <option value="price-desc">Precio: Mayor a Menor</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <select id="filter-format">
+                                <option value="todos">📻 Todos los formatos</option>
+                                <option value="Vinyl">Vinilos</option>
+                                <option value="CD">CDs</option>
+                                <option value="Cassette">Cassettes</option>
+                            </select>
+                        </div>
+                        <div class="view-controls">
+                            <button class="btn-view active" data-view="grid">🔲</button>
+                            <button class="btn-view" data-view="list">📑</button>
+                        </div>
+                    </div>
+                    <div class="stock-grid" id="stock-list"></div>
+                </section>
+
+                <section id="whatsapp-section" class="hidden">
+                    <div class="section-header"><h2>WhatsApp Marketing</h2><p>Genera mensajes para tus grupos de venta.</p></div>
+                    <div class="wa-config card">
+                        <h3>Vista Previa del Mensaje</h3>
+                        <div id="wa-preview" class="preview-box"></div>
+                        <button id="btn-send-wa" class="btn-primary">Enviar a WhatsApp</button>
+                    </div>
+                </section>
+            </main>
+        </div>
+
+        <!-- Modal Disco -->
+        <div id="disc-modal" class="modal hidden">
+            <div class="modal-content card">
+                <span class="close-modal">&times;</span>
+                <h2 id="modal-title">Añadir al Stock</h2>
+                <div id="manual-fields" class="hidden">
+                    <div class="form-group"><label>Título del Disco</label><input type="text" id="input-title" placeholder="Ej: Artaud"></div>
+                    <div class="form-group"><label>Artista</label><input type="text" id="input-artist" placeholder="Ej: Pescado Rabioso"></div>
+                    <div class="form-group"><label>Sello (Label)</label><input type="text" id="input-label" placeholder="Ej: Odeon"></div>
+                    <div class="form-group"><label>Año / Catálogo</label>
+                        <div style="display:flex;gap:0.5rem;">
+                            <input type="text" id="input-year" placeholder="Año">
+                            <input type="text" id="input-catno" placeholder="Catálogo">
+                        </div>
+                    </div>
+                    <div class="form-group"><label>Formato</label>
+                        <select id="input-format">
+                            <option value="Vinyl">💿 Vinilo</option>
+                            <option value="CD">💿 CD</option>
+                            <option value="Cassette">📼 Cassette</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="disc-details"></div>
+                <div class="form-group"><label>Cantidad en Stock</label><input type="number" id="input-qty" value="1" min="1"></div>
+                <div class="form-group"><label>Precio de Venta ($)</label><input type="number" id="input-price" placeholder="Ej: 1200"></div>
+                <div class="form-row" style="display:flex;gap:1rem;">
+                    <div class="form-group" style="flex:1;"><label>Estado del Disco</label>
+                        <select id="input-grade">
+                            <option value="MINT">Sellado (MINT)</option><option value="NM">Como Nuevo (NM)</option>
+                            <option value="VG+">Muy Bueno Plus (VG+)</option><option value="VG">Muy Bueno (VG)</option>
+                            <option value="G+">Bueno Plus (G+)</option><option value="G">Bueno (G)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;"><label>Estado de la Funda</label>
+                        <select id="input-grade-cover">
+                            <option value="MINT">Sellado (MINT)</option><option value="NM">Como Nuevo (NM)</option>
+                            <option value="VG+">Muy Bueno Plus (VG+)</option><option value="VG">Muy Bueno (VG)</option>
+                            <option value="G+">Bueno Plus (G+)</option><option value="G">Bueno (G)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group"><label>Estado de Venta</label>
+                    <select id="input-status">
+                        <option value="disponible">Disponible (Para WhatsApp)</option>
+                        <option value="borrador">Borrador (Oculto)</option>
+                        <option value="reservado">Reservado</option>
+                        <option value="vendido">Vendido / Entregado</option>
+                    </select>
+                </div>
+                <div id="reservation-fields" class="hidden">
+                    <div class="form-group"><label>Reservado por</label><input type="text" id="input-reserved-by" placeholder="Nombre del cliente"></div>
+                    <div style="display:flex;gap:1rem;">
+                        <div class="form-group" style="flex:1;"><label>Fecha Reserva</label><input type="date" id="input-reserve-date"></div>
+                        <div class="form-group" style="flex:1;"><label>Fecha Entrega</label><input type="date" id="input-pickup-date"></div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Fotos Reales (Opcional)</label>
+                    <input type="file" id="input-photos" accept="image/*" multiple style="margin-bottom:1rem;">
+                    <div id="photos-preview" class="photos-preview-grid"></div>
+                </div>
+                <button id="btn-confirm-add" class="btn-primary">Guardar en Inventario</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="firebase-config.js"></script>
+    <script type="module" src="firebase-init.js"></script>
+    <script src="app.js" defer></script>
+</body>
+</html>
