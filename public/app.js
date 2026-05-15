@@ -17,6 +17,8 @@ const logger = (msg, type = 'info') => {
     console.log(`%c${emoji[type] || '🔔'} ${msg}`, styles[type] || styles.info);
 };
 
+logger("Vinyl Manager v1.2 - OPTIMISTIC - Iniciando...", 'info');
+
 let currentStock = [];
 let searchResults = [];
 
@@ -721,18 +723,24 @@ window.deleteItem = async (id) => {
     if (!item) return;
 
     if (confirm(`¿Estás seguro de que querés borrar "${item.title}"?`)) {
-        // Actualización optimista: lo borramos de la lista local ya mismo
-        currentStock = currentStock.filter(i => i.id !== id);
+        logger(`Borrando disco (ID: ${id}): ${item.title}`, 'action');
+        
+        // Actualización ultra-optimista: buscamos el índice y lo arrancamos del array
+        const index = currentStock.findIndex(i => i.id === id);
+        if (index > -1) {
+            currentStock.splice(index, 1);
+            logger(`Disco quitado de la memoria local. Quedan ${currentStock.length}`, 'success');
+        }
+        
         renderStock();
         
-        logger(`Borrando disco: ${item.title}`, 'action');
         try {
             await fetch(`${API_URL}/stock/${id}`, {
                 method: 'DELETE'
             });
         } catch (err) { 
             console.error("Error al borrar:", err);
-            loadStock(true); // Si falla, recargamos
+            loadStock(true); 
         }
     }
 };
