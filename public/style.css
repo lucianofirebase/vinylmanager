@@ -989,7 +989,9 @@ header {
 
 .hidden,
 .card.hidden,
-.modal.hidden {
+.modal.hidden,
+.login-screen.hidden,
+#main-app.hidden {
     display: none;
 }
 
