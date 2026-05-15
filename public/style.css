@@ -911,7 +911,15 @@ header {
     border: 1px solid rgba(255,255,255,0.1);
 }
 
-.status-disponible { background: rgba(34, 197, 94, 0.8); color: white; }
+.status-coleccion {
+    background: rgba(124, 58, 237, 0.15) !important;
+    color: #a78bfa !important;
+    border: 1px solid rgba(124, 58, 237, 0.3) !important;
+}
+
+.status-disponible { 
+    background: rgba(34, 197, 94, 0.15);
+ color: white; }
 .status-borrador { background: rgba(100, 116, 139, 0.8); color: white; }
 .status-reservado { background: rgba(234, 179, 8, 0.8); color: black; }
 .status-vendido { background: rgba(59, 130, 246, 0.8); color: white; }

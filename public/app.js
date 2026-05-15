@@ -280,7 +280,7 @@ async function startDiscogsSync() {
                     qty: 1,
                     grade: 'VG+',
                     gradeCover: 'VG+',
-                    status: 'borrador',
+                    status: 'coleccion',
                     dateAdded: new Date().toISOString(),
                     discogsId: rel.id
                 };
