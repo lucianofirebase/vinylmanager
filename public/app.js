@@ -32,37 +32,69 @@ const waPreview = document.getElementById('wa-preview');
 let currentViewMode = 'grid'; // grid, list, details
 
 // Elementos de Filtro
-const btnSaveDiscogsUser = document.getElementById('btn-save-discogs-user');
-const discogsUserInput = document.getElementById('discogs-user-input');
+const btnSaveProfile = document.getElementById('btn-save-profile');
+const profileNameInput = document.getElementById('profile-name-input');
+const profilePicInput = document.getElementById('profile-pic-input');
+const profileEmail = document.getElementById('profile-email');
+const profilePicLarge = document.getElementById('profile-pic-large');
+const profileDiscogsUser = document.getElementById('profile-discogs-user');
+
 const btnSyncDiscogs = document.getElementById('btn-sync-discogs');
 const syncModal = document.getElementById('sync-modal');
 const closeSync = document.getElementById('close-sync');
 
 let discogsUser = '';
 
-// Cargar ajustes del usuario desde Firestore
+// Cargar ajustes y datos de perfil
 async function loadUserSettings() {
     if (!currentUser) return;
+    
+    // Datos de Firebase Auth
+    profileEmail.value = currentUser.email;
+    profileNameInput.value = currentUser.displayName || '';
+    profilePicInput.value = currentUser.photoURL || '';
+    profilePicLarge.src = currentUser.photoURL || 'https://via.placeholder.com/150';
+
     try {
-        const res = await fetch(`${API_URL}/settings`); // firebase-init.js intercepta esto
+        const res = await fetch(`${API_URL}/settings`);
         const settings = await res.json();
         if (settings.discogsUser) {
             discogsUser = settings.discogsUser;
-            discogsUserInput.value = discogsUser;
+            profileDiscogsUser.value = discogsUser;
         }
     } catch (e) { console.log("Error cargando ajustes", e); }
 }
 
-btnSaveDiscogsUser.addEventListener('click', async () => {
-    discogsUser = discogsUserInput.value.trim();
-    if (!discogsUser) return alert("Poné un usuario");
-    
-    await fetch(`${API_URL}/settings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ discogsUser })
-    });
-    alert("Usuario guardado!");
+btnSaveProfile.addEventListener('click', async () => {
+    const newName = profileNameInput.value.trim();
+    const newPic = profilePicInput.value.trim();
+    const newDiscogs = profileDiscogsUser.value.trim();
+
+    if (!newName) return alert("El nombre no puede estar vacío");
+
+    try {
+        // 1. Guardar en Firestore (Ajustes)
+        await fetch(`${API_URL}/settings`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                discogsUser: newDiscogs,
+                displayName: newName,
+                photoURL: newPic
+            })
+        });
+
+        discogsUser = newDiscogs;
+        
+        // 2. Actualizar UI local inmediatamente
+        document.getElementById('user-name').textContent = newName;
+        document.getElementById('user-avatar').src = newPic;
+        profilePicLarge.src = newPic;
+
+        alert("¡Perfil actualizado con éxito!");
+    } catch (e) {
+        alert("Error al guardar: " + e.message);
+    }
 });
 
 // Lógica de Sincronización
