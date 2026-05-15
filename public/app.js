@@ -668,13 +668,14 @@ window.editItem = (id) => {
     }
     
     // Si estaba reservado, poblar datos
+    const resFields = document.getElementById('reservation-fields');
     if (item.status === 'reservado') {
-        reservationFields.classList.remove('hidden');
+        if (resFields) resFields.classList.remove('hidden');
         document.getElementById('input-reserved-by').value = item.reservedBy || '';
         document.getElementById('input-reserve-date').value = item.reserveDate || '';
         document.getElementById('input-pickup-date').value = item.pickupDate || '';
     } else {
-        reservationFields.classList.add('hidden');
+        if (resFields) resFields.classList.add('hidden');
     }
     
     document.getElementById('disc-details').innerHTML = `<p style="font-size:0.8rem; opacity:0.6; margin-bottom:1rem;">Editando: <strong>${item.title}</strong></p>`;
@@ -688,7 +689,7 @@ window.editItem = (id) => {
 
 // --- REGISTRO DE VENTA ---
 // Gestiona la venta de un disco, restando stock o cambiando estado
-async function sellItem(id) {
+window.sellItem = async (id) => {
     const item = currentStock.find(i => i.id === id);
     if (!item) return;
 
@@ -711,7 +712,23 @@ async function sellItem(id) {
         });
         if (res.ok) loadStock();
     } catch (err) { console.error("Error al vender:", err); }
-}
+};
+
+// Borrar disco
+window.deleteItem = async (id) => {
+    const item = currentStock.find(i => i.id === id);
+    if (!item) return;
+
+    if (confirm(`¿Estás seguro de que querés borrar "${item.title}"?`)) {
+        logger(`Borrando disco: ${item.title}`, 'action');
+        try {
+            const res = await fetch(`${API_URL}/stock/${id}`, {
+                method: 'DELETE'
+            });
+            if (res.ok) loadStock();
+        } catch (err) { console.error("Error al borrar:", err); }
+    }
+};
 
 // Añadir al Inventario (REPARADO)
 btnConfirmAdd.addEventListener('click', async () => {

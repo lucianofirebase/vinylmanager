@@ -210,16 +210,16 @@
                 <span class="close-modal">&times;</span>
                 <h2 id="modal-title">Añadir al Stock</h2>
                 <div id="manual-fields" class="hidden">
-                    <div class="form-group"><label>Título del Disco</label><input type="text" id="input-title" placeholder="Ej: Artaud"></div>
-                    <div class="form-group"><label>Artista</label><input type="text" id="input-artist" placeholder="Ej: Pescado Rabioso"></div>
-                    <div class="form-group"><label>Sello (Label)</label><input type="text" id="input-label" placeholder="Ej: Odeon"></div>
+                    <div class="form-group"><label for="input-title">Título del Disco</label><input type="text" id="input-title" placeholder="Ej: Artaud"></div>
+                    <div class="form-group"><label for="input-artist">Artista</label><input type="text" id="input-artist" placeholder="Ej: Pescado Rabioso"></div>
+                    <div class="form-group"><label for="input-label">Sello (Label)</label><input type="text" id="input-label" placeholder="Ej: Odeon"></div>
                     <div class="form-group"><label>Año / Catálogo</label>
                         <div style="display:flex;gap:0.5rem;">
-                            <input type="text" id="input-year" placeholder="Año">
-                            <input type="text" id="input-catno" placeholder="Catálogo">
+                            <input type="text" id="input-year" placeholder="Año" aria-label="Año">
+                            <input type="text" id="input-catno" placeholder="Catálogo" aria-label="Catálogo">
                         </div>
                     </div>
-                    <div class="form-group"><label>Formato</label>
+                    <div class="form-group"><label for="input-format">Formato</label>
                         <select id="input-format">
                             <option value="Vinyl">💿 Vinilo</option>
                             <option value="CD">💿 CD</option>
@@ -229,17 +229,17 @@
                 </div>
 
                 <div id="disc-details"></div>
-                <div class="form-group"><label>Cantidad en Stock</label><input type="number" id="input-qty" value="1" min="1"></div>
-                <div class="form-group"><label>Precio de Venta ($)</label><input type="number" id="input-price" placeholder="Ej: 1200"></div>
+                <div class="form-group"><label for="input-qty">Cantidad en Stock</label><input type="number" id="input-qty" value="1" min="1"></div>
+                <div class="form-group"><label for="input-price">Precio de Venta ($)</label><input type="number" id="input-price" placeholder="Ej: 1200"></div>
                 <div class="form-row" style="display:flex;gap:1rem;">
-                    <div class="form-group" style="flex:1;"><label>Estado del Disco</label>
+                    <div class="form-group" style="flex:1;"><label for="input-grade">Estado del Disco</label>
                         <select id="input-grade">
                             <option value="MINT">Sellado (MINT)</option><option value="NM">Como Nuevo (NM)</option>
                             <option value="VG+">Muy Bueno Plus (VG+)</option><option value="VG">Muy Bueno (VG)</option>
                             <option value="G+">Bueno Plus (G+)</option><option value="G">Bueno (G)</option>
                         </select>
                     </div>
-                    <div class="form-group" style="flex:1;"><label>Estado de la Funda</label>
+                    <div class="form-group" style="flex:1;"><label for="input-grade-cover">Estado de la Funda</label>
                         <select id="input-grade-cover">
                             <option value="MINT">Sellado (MINT)</option><option value="NM">Como Nuevo (NM)</option>
                             <option value="VG+">Muy Bueno Plus (VG+)</option><option value="VG">Muy Bueno (VG)</option>
@@ -247,7 +247,7 @@
                         </select>
                     </div>
                 </div>
-                <div class="form-group"><label>Estado de Venta</label>
+                <div class="form-group"><label for="input-status">Estado de Venta</label>
                     <select id="input-status">
                         <option value="disponible">Disponible (Para WhatsApp)</option>
                         <option value="borrador">Borrador (Oculto)</option>
@@ -256,10 +256,10 @@
                     </select>
                 </div>
                 <div id="reservation-fields" class="hidden">
-                    <div class="form-group"><label>Reservado por</label><input type="text" id="input-reserved-by" placeholder="Nombre del cliente"></div>
+                    <div class="form-group"><label for="input-reserved-by">Reservado por</label><input type="text" id="input-reserved-by" placeholder="Nombre del cliente"></div>
                     <div style="display:flex;gap:1rem;">
-                        <div class="form-group" style="flex:1;"><label>Fecha Reserva</label><input type="date" id="input-reserve-date"></div>
-                        <div class="form-group" style="flex:1;"><label>Fecha Entrega</label><input type="date" id="input-pickup-date"></div>
+                        <div class="form-group" style="flex:1;"><label for="input-reserve-date">Fecha Reserva</label><input type="date" id="input-reserve-date"></div>
+                        <div class="form-group" style="flex:1;"><label for="input-pickup-date">Fecha Entrega</label><input type="date" id="input-pickup-date"></div>
                     </div>
                 </div>
                 <div class="form-group">
