@@ -693,16 +693,14 @@ window.sellItem = async (id) => {
     const item = currentStock.find(i => i.id === id);
     if (!item) return;
 
+    // Actualización optimista: lo marcamos como vendido localmente
     if (item.qty > 1) {
-        // Si hay varias unidades, solo restamos una
         item.qty -= 1;
-        logger(`Vendida 1 unidad de "${item.title}". Quedan ${item.qty}`, 'success');
     } else {
-        // Si era la última, el disco queda marcado como vendido
         item.status = 'vendido';
         item.qty = 0;
-        logger(`"${item.title}" se ha marcado como VENDIDO`, 'success');
     }
+    renderStock();
 
     try {
         const res = await fetch(`${API_URL}/stock/${id}`, {
@@ -710,8 +708,11 @@ window.sellItem = async (id) => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(item)
         });
-        if (res.ok) loadStock(true);
-    } catch (err) { console.error("Error al vender:", err); }
+        // No hace falta loadStock(true) porque ya actualizamos localmente
+    } catch (err) { 
+        console.error("Error al vender:", err);
+        loadStock(true); // Si falla, recargamos para restaurar estado
+    }
 };
 
 // Borrar disco
@@ -720,13 +721,19 @@ window.deleteItem = async (id) => {
     if (!item) return;
 
     if (confirm(`¿Estás seguro de que querés borrar "${item.title}"?`)) {
+        // Actualización optimista: lo borramos de la lista local ya mismo
+        currentStock = currentStock.filter(i => i.id !== id);
+        renderStock();
+        
         logger(`Borrando disco: ${item.title}`, 'action');
         try {
-            const res = await fetch(`${API_URL}/stock/${id}`, {
+            await fetch(`${API_URL}/stock/${id}`, {
                 method: 'DELETE'
             });
-            if (res.ok) loadStock(true);
-        } catch (err) { console.error("Error al borrar:", err); }
+        } catch (err) { 
+            console.error("Error al borrar:", err);
+            loadStock(true); // Si falla, recargamos
+        }
     }
 };
 
