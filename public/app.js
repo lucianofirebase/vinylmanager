@@ -57,6 +57,8 @@ const filterStatus = document.getElementById('filter-status');
 const filterSort = document.getElementById('filter-sort');
 const filterFormat = document.getElementById('filter-format');
 
+const DEFAULT_COVER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23334155'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z'/%3E%3C/svg%3E";
+
 let selectedIds = new Set();
 const bulkBar = document.getElementById('bulk-actions-bar');
 const bulkCountText = document.getElementById('bulk-count');
@@ -89,7 +91,7 @@ async function loadUserSettings() {
             profilePicLarge.src = settings.profilePic;
         } else {
             selectedProfilePic = currentUser.photoURL || '';
-            profilePicLarge.src = selectedProfilePic || 'https://images.discogs.com/images/default-release.png';
+            profilePicLarge.src = selectedProfilePic || DEFAULT_COVER;
         }
 
         if (settings.discogsUser) {
@@ -654,7 +656,7 @@ function renderStock() {
                 <div class="carousel-container main-card-carousel">
                     <button class="carousel-btn prev" onclick="scrollCarousel('carousel-${item.id}', -1)">❮</button>
                     <div class="real-photos-strip" id="carousel-${item.id}">
-                        <img src="${item.cover || 'https://images.discogs.com/images/default-release.png'}" alt="${item.title}" loading="lazy" onerror="this.src='https://images.discogs.com/images/default-release.png'">
+                        <img src="${item.cover || DEFAULT_COVER}" alt="${item.title}" loading="lazy" onerror="this.src='${DEFAULT_COVER}'">
                         ${(item.photos || []).map(p => `<img src="${p}" onclick="window.open('${p}', '_blank')" title="Ver foto real">`).join('')}
                         ${(item.discogsPhotos || []).slice(0, 10).map(p => `<img src="${p}" onclick="window.open('${p}', '_blank')" title="Ver foto Discogs" style="opacity:0.8;">`).join('')}
                     </div>
