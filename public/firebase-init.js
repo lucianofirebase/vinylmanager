@@ -2,7 +2,7 @@
 // Inicializa Firebase Auth para el login, pero usa fetch estándar para los datos.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
@@ -150,7 +150,7 @@ const mainApp = document.getElementById('main-app');
 const btnLogin = document.getElementById('btn-google-login');
 const btnLogout = document.getElementById('btn-logout');
 
-btnLogin.addEventListener('click', () => signInWithPopup(auth, provider));
+btnLogin.addEventListener('click', () => signInWithRedirect(auth, provider));
 btnLogout.addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
