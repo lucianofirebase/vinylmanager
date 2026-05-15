@@ -96,6 +96,33 @@ const filterFormat = document.getElementById('filter-format');
 
 const DEFAULT_COVER = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23334155'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z'/%3E%3C/svg%3E";
 
+// --- SISTEMA DE CONFIRMACIÓN CUSTOM ---
+function customConfirm(title, message, buttonText = "Confirmar") {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-title');
+        const msgEl = document.getElementById('confirm-msg');
+        const btnYes = document.getElementById('confirm-yes') || document.getElementById('btn-confirm-yes');
+        const btnNo = document.getElementById('confirm-no') || document.getElementById('btn-confirm-no');
+        
+        titleEl.textContent = title;
+        msgEl.textContent = message;
+        btnYes.textContent = buttonText;
+        
+        modal.classList.remove('hidden');
+        
+        const cleanup = (result) => {
+            modal.classList.add('hidden');
+            btnYes.onclick = null;
+            btnNo.onclick = null;
+            resolve(result);
+        };
+        
+        btnYes.onclick = () => cleanup(true);
+        btnNo.onclick = () => cleanup(false);
+    });
+}
+
 let selectedIds = new Set();
 const bulkBar = document.getElementById('bulk-actions-bar');
 const bulkCountText = document.getElementById('bulk-count');
@@ -838,7 +865,8 @@ window.deleteItem = async (id) => {
     const item = currentStock.find(i => i.id === id);
     if (!item) return;
 
-    if (confirm(`¿Estás seguro de que querés borrar "${item.title}"?`)) {
+    const isConfirmed = await customConfirm("Borrar disco", `¿Estás seguro de que querés borrar "${item.title}"?`, "Sí, Borrar");
+    if (isConfirmed) {
         logger(`Borrando disco (ID: ${id}): ${item.title}`, 'action');
         
         // Actualización ultra-optimista: buscamos el índice y lo arrancamos del array
@@ -915,7 +943,8 @@ btnSelectAll.addEventListener('click', () => {
 
 window.bulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (confirm(`¿Estás seguro de que querés borrar ${selectedIds.size} discos?`)) {
+    const isConfirmed = await customConfirm("Borrado Masivo", `¿Estás seguro de que querés borrar ${selectedIds.size} discos permanentemente?`, "Borrar Todo");
+    if (isConfirmed) {
         const ids = Array.from(selectedIds);
         logger(`Borrando ${ids.length} discos...`, 'action');
         
@@ -1071,12 +1100,18 @@ btnConfirmAdd.addEventListener('click', async () => {
 });
 
 // Eliminar item
-async function deleteItem(id) {
-    if(!confirm("¿Borrar este disco?")) return;
-    const item = currentStock.find(i => i.id == id);
-    const docId = item._docId || id;
-    await fetch(`${API_URL}/stock/${docId}`, { method: 'DELETE' });
-    loadStock();
+window.deleteItem = async (id) => {
+    const isConfirmed = await customConfirm("¿Borrar disco?", "¿Estás seguro de que querés eliminar este disco permanentemente?", "Eliminar");
+    if (isConfirmed) {
+        // Optimista
+        currentStock = currentStock.filter(i => i.id != id);
+        renderStock();
+        
+        const item = currentStock.find(i => i.id == id);
+        const docId = item?._docId || id;
+        await fetch(`${API_URL}/stock/${docId}`, { method: 'DELETE' });
+        loadStock();
+    }
 }
 
 function getFormatIcon(format) {
