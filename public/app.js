@@ -3,8 +3,7 @@ let API_URL = `${window.location.origin}/api`;
 const DISCOGS_KEY = 'kTXBUunaWzBTXwJZlRga';
 const DISCOGS_SECRET = 'uZxBlMTEDrEMcPblPAoQChIrhlZivIwz';
 
-// --- SISTEMA DE LOGGER ---
-// Muestra mensajes elegantes en la consola del navegador (F12)
+// --- SISTEMA DE FEEDBACK PRO ---
 const logger = (msg, type = 'info') => {
     const emoji = { info: '💡', success: '✅', error: '❌', search: '🔍', action: '⚡' };
     const styles = {
@@ -15,9 +14,47 @@ const logger = (msg, type = 'info') => {
         action: 'color: #fbbf24'
     };
     console.log(`%c${emoji[type] || '🔔'} ${msg}`, styles[type] || styles.info);
+    
+    // Si es éxito o error importante, mostramos un Toast (burbuja flotante)
+    if (type === 'success' || type === 'error' || type === 'action') {
+        showToast(msg, type);
+    }
 };
 
-logger("Vinyl Manager v1.2 - OPTIMISTIC - Iniciando...", 'info');
+function showToast(msg, type) {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = msg;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.classList.add('show');
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 500);
+        }, 3000);
+    }, 100);
+}
+
+function setSyncStatus(status) {
+    const el = document.getElementById('sync-indicator');
+    if (!el) return;
+    const icon = el.querySelector('.sync-icon');
+    const text = el.querySelector('.sync-text');
+    
+    if (status === 'syncing') {
+        el.className = 'sync-status syncing';
+        icon.textContent = '⏳';
+        text.textContent = 'Sincronizando...';
+    } else {
+        el.className = 'sync-status synced';
+        icon.textContent = '☁️';
+        text.textContent = 'Sincronizado';
+    }
+}
+
+logger("Vinyl Manager v2.0 - PRO - Iniciando...", 'info');
 
 let currentStock = [];
 let searchResults = [];
@@ -64,8 +101,13 @@ const bulkBar = document.getElementById('bulk-actions-bar');
 const bulkCountText = document.getElementById('bulk-count');
 const btnSelectAll = document.getElementById('btn-select-all');
 
+// Debounce para filtros (Performance Pro)
+let filterTimeout;
 [filterText, filterStatus, filterSort, filterFormat].forEach(el => {
-    if (el) el.addEventListener('input', () => renderStock());
+    if (el) el.addEventListener('input', () => {
+        clearTimeout(filterTimeout);
+        filterTimeout = setTimeout(() => renderStock(), 300);
+    });
 });
 
 let currentUser = null;
@@ -108,6 +150,7 @@ btnSaveProfile.addEventListener('click', async () => {
     if (!newName) return alert("El nombre no puede estar vacío");
 
     try {
+        setSyncStatus('syncing');
         // 1. Guardar en Firestore (Ajustes)
         await fetch(`${API_URL}/settings`, {
             method: 'POST',
@@ -128,8 +171,10 @@ btnSaveProfile.addEventListener('click', async () => {
             profilePicLarge.src = selectedProfilePic;
         }
 
-        alert("¡Perfil actualizado con éxito!");
+        logger("¡Perfil actualizado con éxito!", 'success');
+        setSyncStatus('synced');
     } catch (e) {
+        setSyncStatus('synced');
         alert("Error al guardar: " + e.message);
     }
 });
@@ -881,12 +926,15 @@ window.bulkDelete = async () => {
         renderStock();
 
         try {
+            setSyncStatus('syncing');
             for (const id of ids) {
                 await fetch(`${API_URL}/stock/${id}`, { method: 'DELETE' });
             }
             logger("Borrado masivo completado", 'success');
+            setSyncStatus('synced');
         } catch (err) {
             console.error("Fallo el borrado masivo:", err);
+            setSyncStatus('synced');
             loadStock(true);
         }
     }
@@ -910,6 +958,7 @@ window.bulkSell = async () => {
     renderStock();
 
     try {
+        setSyncStatus('syncing');
         for (const item of itemsToUpdate) {
             await fetch(`${API_URL}/stock/${item.id}`, {
                 method: 'PUT',
@@ -918,10 +967,20 @@ window.bulkSell = async () => {
             });
         }
         logger("Venta masiva completada", 'success');
+        setSyncStatus('synced');
     } catch (err) {
         console.error("Fallo la venta masiva:", err);
+        setSyncStatus('synced');
         loadStock(true);
     }
+};
+
+window.bulkWhatsApp = () => {
+    if (selectedIds.size === 0) return;
+    const selectedItems = currentStock.filter(i => selectedIds.has(i.id));
+    renderWhatsAppPreview(selectedItems);
+    switchSection('whatsapp');
+    logger(`Generando catálogo para ${selectedItems.length} discos`, 'action');
 };
 
 // Añadir al Inventario (REPARADO)
@@ -1040,44 +1099,46 @@ function getGradeText(grade, isCover = false) {
 }
 
 // WhatsApp Logic (Formato Profesional)
-function updateWAPreview() {
+function renderWhatsAppPreview(customList = null) {
     const waPreview = document.getElementById('wa-preview');
-    if (!waPreview) { logger('wa-preview no encontrado en DOM', 'error'); return; }
+    if (!waPreview) return;
 
-    if(currentStock.length === 0) {
-        waPreview.innerHTML = '<p style="opacity:0.5">No hay stock para generar el mensaje.</p>';
-        return;
-    }
-
-    let text = "🔥 *DISPONIBLES DE HOY* 🔥\n\n";
-    const availableStock = currentStock.filter(i => (i.status || 'disponible') === 'disponible');
+    let text = "🔥 *NUEVA TANDA - DISPONIBLES* 🔥\n\n";
+    const items = customList || currentStock.filter(i => (i.status || 'disponible') === 'disponible');
     
-    if (availableStock.length === 0) {
-        waPreview.innerHTML = '<p style="opacity:0.5">No hay discos disponibles para la venta.</p>';
+    if (items.length === 0) {
+        waPreview.innerHTML = '<p style="opacity:0.5; text-align:center; padding:2rem;">No hay discos seleccionados o disponibles.</p>';
         return;
     }
-    availableStock.forEach(item => {
+
+    let totalBatch = 0;
+    items.forEach(item => {
         const title = (item.title || 'Título Desconocido').toString().toUpperCase();
         const artist = (item.artist || 'Artista Desconocido').toString();
         const price = item.price || 0;
         const format = item.format || 'Vinyl';
         const formatIcon = getFormatIcon(format);
+        totalBatch += Number(price);
         
         text += `${formatIcon} *${title}*\n`;
-        text += `${artist}\n`;
-        if (item.label) text += `${item.label}\n`;
+        text += `👤 ${artist}\n`;
+        if (item.label) text += `🏷️ ${item.label}\n`;
         
-        text += `${getGradeText(item.grade || 'VG+')}\n`;
-        text += `${getGradeText(item.gradeCover || item.grade || 'VG+', true)}\n`;
+        const gMedia = getGradeText(item.grade || 'VG+');
+        const gCover = getGradeText(item.gradeCover || item.grade || 'VG+', true);
+        text += `📀 Disco: ${gMedia} | 📁 Tapa: ${gCover}\n`;
         
         const photoInfo = (item.photos && item.photos.length > 0) || (item.discogsPhotos && item.discogsPhotos.length > 0) ? " 📸 *(Pide fotos)*" : "";
-        text += `*$${price}*${photoInfo}\n\n`;
+        text += `💰 *$${price}*${photoInfo}\n\n`;
         text += `--------------------------\n\n`;
     });
 
-    text += "✨ ¡Escríbeme para reservar el tuyo!";
+    text += "✨ ¡Escríbeme para reservar el tuyo!\n";
+    text += "🚚 Envíos a todo el país.";
     
-    waPreview.innerHTML = `<pre style="white-space: pre-wrap; font-family: inherit;">${text}</pre>`;
+    waPreview.innerHTML = `<div style="background:rgba(0,0,0,0.2); padding:1.5rem; border-radius:12px; border:1px solid rgba(255,255,255,0.05);">
+        <pre style="white-space: pre-wrap; font-family: 'Roboto Mono', monospace; font-size:0.9rem; color:#22c55e;">${text}</pre>
+    </div>`;
 }
 
 window.toggleDetails = (btn) => {

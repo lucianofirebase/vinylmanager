@@ -112,7 +112,14 @@
                         </div>
                         <div id="search-suggestions" class="suggestions-dropdown hidden"></div>
                     </div>
+                    <div id="sync-indicator" class="sync-status synced" title="Estado de sincronización">
+                        <span class="sync-icon">☁️</span>
+                        <span class="sync-text">Sincronizado</span>
+                    </div>
                 </header>
+
+                <!-- Toast Notifications -->
+                <div id="toast-container"></div>
 
                 <section id="inventory-section" class="active-section">
                     <div class="section-header">
@@ -131,9 +138,10 @@
                     <div id="bulk-actions-bar" class="bulk-bar hidden">
                         <span id="bulk-count">0 seleccionados</span>
                         <div style="display:flex; gap:0.5rem;">
+                            <button onclick="bulkWhatsApp()" class="btn-action btn-wa" style="background:#25d366!important;">📱 Catálogo WA</button>
                             <button onclick="bulkSell()" class="btn-action btn-sell">💰 Vender</button>
                             <button onclick="bulkDelete()" class="btn-action btn-delete">🗑️ Borrar</button>
-                            <button onclick="clearSelection()" class="btn-secondary">❌ Cancelar</button>
+                            <button onclick="clearSelection()" class="btn-secondary">❌</button>
                         </div>
                     </div>
                     <div class="filters-bar">
