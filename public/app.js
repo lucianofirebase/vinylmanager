@@ -89,7 +89,7 @@ async function loadUserSettings() {
             profilePicLarge.src = settings.profilePic;
         } else {
             selectedProfilePic = currentUser.photoURL || '';
-            profilePicLarge.src = selectedProfilePic || 'https://via.placeholder.com/150';
+            profilePicLarge.src = selectedProfilePic || 'https://images.discogs.com/images/default-release.png';
         }
 
         if (settings.discogsUser) {
@@ -608,7 +608,7 @@ function renderStock() {
     const status = filterStatus.value;
     const sort = filterSort.value;
 
-    logger("Actualizando vista del inventario...", 'info');
+    console.log("💡 Actualizando vista del inventario...");
 
     // Aplicamos los filtros de búsqueda y estado
     let filtered = currentStock.filter(item => {
@@ -654,7 +654,7 @@ function renderStock() {
                 <div class="carousel-container main-card-carousel">
                     <button class="carousel-btn prev" onclick="scrollCarousel('carousel-${item.id}', -1)">❮</button>
                     <div class="real-photos-strip" id="carousel-${item.id}">
-                        <img src="${item.cover || 'https://via.placeholder.com/300?text=No+Cover'}" alt="${item.title}" loading="lazy">
+                        <img src="${item.cover || 'https://images.discogs.com/images/default-release.png'}" alt="${item.title}" loading="lazy" onerror="this.src='https://images.discogs.com/images/default-release.png'">
                         ${(item.photos || []).map(p => `<img src="${p}" onclick="window.open('${p}', '_blank')" title="Ver foto real">`).join('')}
                         ${(item.discogsPhotos || []).slice(0, 10).map(p => `<img src="${p}" onclick="window.open('${p}', '_blank')" title="Ver foto Discogs" style="opacity:0.8;">`).join('')}
                     </div>
