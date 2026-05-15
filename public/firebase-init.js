@@ -49,7 +49,8 @@ function wrapFirestore(item) {
 }
 
 async function fsLoadStock(uid) {
-    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock?key=${FIREBASE_CONFIG.apiKey}`;
+    // Añadimos pageSize=1000 para traer todo y un timestamp para evitar la caché del navegador
+    const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock?pageSize=1000&key=${FIREBASE_CONFIG.apiKey}&t=${Date.now()}`;
     try {
         const res = await fetch(url);
         if (!res.ok) return [];
