@@ -7,3 +7,4 @@ migrate.ps1
 migrate_to_firebase.js
 backend.ps1
 package-lock.json
+.firebase/
