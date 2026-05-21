@@ -13,7 +13,8 @@ import {
   deleteDoc, 
   writeBatch 
 } from 'firebase/firestore';
-import { db } from '../../lib/firebase';
+import { db, storage } from '../../lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Music, 
@@ -39,7 +40,9 @@ import {
   Loader2,
   AlertCircle,
   Instagram,
-  ArrowLeft
+  ArrowLeft,
+  Camera,
+  Link as LinkIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
@@ -127,6 +130,9 @@ export default function DashboardPage() {
   const [photosList, setPhotosList] = useState<string[]>([]);
   const [photoUrlInput, setPhotoUrlInput] = useState('');
   const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoFileInputRef = useRef<HTMLInputElement>(null);
+  const photoCameraInputRef = useRef<HTMLInputElement>(null);
   const [formUrl, setFormUrl] = useState('');
   const [formDiscogsId, setFormDiscogsId] = useState<number | undefined>(undefined);
 
@@ -1761,10 +1767,95 @@ export default function DashboardPage() {
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
                               Fotos Reales del Vinilo
                             </label>
+
+                            {/* Upload buttons row */}
+                            <div className="flex gap-2">
+                              {/* Camera button */}
+                              <button
+                                type="button"
+                                disabled={isUploadingPhoto}
+                                onClick={() => photoCameraInputRef.current?.click()}
+                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Camera className="w-5 h-5" />
+                                <span className="text-[10px] font-semibold">Cámara</span>
+                              </button>
+
+                              {/* Gallery / file button */}
+                              <button
+                                type="button"
+                                disabled={isUploadingPhoto}
+                                onClick={() => photoFileInputRef.current?.click()}
+                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Plus className="w-5 h-5" />
+                                <span className="text-[10px] font-semibold">Galería</span>
+                              </button>
+
+                              {/* Hidden inputs */}
+                              <input
+                                ref={photoCameraInputRef}
+                                type="file"
+                                accept="image/*"
+                                capture="environment"
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (!files.length || !user) return;
+                                  setIsUploadingPhoto(true);
+                                  for (const file of files) {
+                                    try {
+                                      const storageRef = ref(storage, `users/${user.uid}/photos/${Date.now()}_${file.name}`);
+                                      await uploadBytes(storageRef, file);
+                                      const url = await getDownloadURL(storageRef);
+                                      setPhotosList(prev => [...prev, url]);
+                                    } catch (err) {
+                                      console.error('Error uploading photo:', err);
+                                    }
+                                  }
+                                  setIsUploadingPhoto(false);
+                                  e.target.value = '';
+                                }}
+                              />
+                              <input
+                                ref={photoFileInputRef}
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={async (e) => {
+                                  const files = Array.from(e.target.files || []);
+                                  if (!files.length || !user) return;
+                                  setIsUploadingPhoto(true);
+                                  for (const file of files) {
+                                    try {
+                                      const storageRef = ref(storage, `users/${user.uid}/photos/${Date.now()}_${file.name}`);
+                                      await uploadBytes(storageRef, file);
+                                      const url = await getDownloadURL(storageRef);
+                                      setPhotosList(prev => [...prev, url]);
+                                    } catch (err) {
+                                      console.error('Error uploading photo:', err);
+                                    }
+                                  }
+                                  setIsUploadingPhoto(false);
+                                  e.target.value = '';
+                                }}
+                              />
+                            </div>
+
+                            {/* Upload progress indicator */}
+                            {isUploadingPhoto && (
+                              <div className="flex items-center gap-2 text-xs text-indigo-400 py-1">
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                <span>Subiendo foto...</span>
+                              </div>
+                            )}
+
+                            {/* URL input (optional, collapsible) */}
                             <div className="flex gap-2">
                               <input
                                 type="url"
-                                placeholder="Pegar URL de foto (ej: Imgur, etc.)"
+                                placeholder="O pegar URL de foto (Imgur, etc.)"
                                 value={photoUrlInput}
                                 onChange={(e) => setPhotoUrlInput(e.target.value)}
                                 onKeyDown={(e) => {
@@ -1792,9 +1883,9 @@ export default function DashboardPage() {
                                     setPhotoUrlInput('');
                                   }
                                 }}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0"
+                                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0"
                               >
-                                Agregar
+                                <LinkIcon className="w-4 h-4" />
                               </button>
                             </div>
 
