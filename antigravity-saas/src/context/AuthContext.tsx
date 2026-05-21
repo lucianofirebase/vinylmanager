@@ -114,7 +114,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (loading) return;
 
     const isLoginPath = pathname === '/login';
-    const isPublicShowcasePath = pathname?.startsWith('/v/');
+    const isPublicShowcasePath = pathname === '/v' || pathname?.startsWith('/v/');
     const isOnboardingPath = pathname === '/onboarding';
 
     if (!user) {
