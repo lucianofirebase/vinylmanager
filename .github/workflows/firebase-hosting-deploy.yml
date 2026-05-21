@@ -1,3 +1,4 @@
+# Automatic deployment on merge - verified with new FIREBASE_TOKEN
 name: Build and Deploy to Firebase Hosting
 
 on:
