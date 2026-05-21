@@ -42,7 +42,7 @@ import {
   ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
-import { formatCurrency } from '../../lib/utils';
+import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
 import InstagramCardGenerator from '../../components/InstagramCardGenerator';
 import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
 
@@ -143,6 +143,160 @@ export default function DashboardPage() {
   const [syncLogs, setSyncLogs] = useState<{ msg: string; type: 'add' | 'skip' | 'error' }[]>([]);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Database Repair modal states
+  const [isRepairOpen, setIsRepairOpen] = useState(false);
+  interface RepairedItemProposal {
+    item: VinylItem;
+    originalArtist: string;
+    originalTitle: string;
+    originalLabel: string;
+    proposedArtist: string;
+    proposedTitle: string;
+    proposedLabel: string;
+    selected: boolean;
+    resolvedVia: 'discogs' | 'dictionary';
+    loading: boolean;
+  }
+  const [repairProposals, setRepairProposals] = useState<RepairedItemProposal[]>([]);
+  const [isApplyingRepairs, setIsApplyingRepairs] = useState(false);
+  const [repairLogs, setRepairLogs] = useState<string[]>([]);
+
+  const runNameRepairScan = async () => {
+    setIsRepairOpen(true);
+    setRepairLogs([]);
+    
+    // Initial scanning of items in stock
+    const proposals: RepairedItemProposal[] = [];
+    
+    for (const item of stock) {
+      const originalArtist = item.artist || '';
+      const originalTitle = item.title || '';
+      const originalLabel = item.label || '';
+      
+      const dictArtist = repairTextEncoding(originalArtist);
+      const dictTitle = repairTextEncoding(originalTitle);
+      const dictLabel = repairTextEncoding(originalLabel);
+      
+      const discogsId = item.discogsId || (item.cover ? getDiscogsIdFromCoverUrl(item.cover) : null);
+      
+      const needsRepair = 
+        dictArtist !== originalArtist || 
+        dictTitle !== originalTitle || 
+        dictLabel !== originalLabel ||
+        discogsId !== null;
+      
+      if (needsRepair) {
+        proposals.push({
+          item,
+          originalArtist,
+          originalTitle,
+          originalLabel,
+          proposedArtist: dictArtist,
+          proposedTitle: dictTitle,
+          proposedLabel: dictLabel,
+          selected: dictArtist !== originalArtist || dictTitle !== originalTitle || dictLabel !== originalLabel,
+          resolvedVia: 'dictionary',
+          loading: discogsId !== null
+        });
+      }
+    }
+    
+    setRepairProposals(proposals);
+    
+    // Run background Discogs fetch for proposals that have a Discogs ID
+    for (let i = 0; i < proposals.length; i++) {
+      const prop = proposals[i];
+      const discogsId = prop.item.discogsId || (prop.item.cover ? getDiscogsIdFromCoverUrl(prop.item.cover) : null);
+      
+      if (discogsId) {
+        try {
+          // Delay to respect Discogs rate limits (1000ms)
+          await new Promise(r => setTimeout(r, 1000));
+          
+          const res = await fetch(`https://api.discogs.com/releases/${discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+          if (res.ok) {
+            const details = await res.json();
+            const discogsArtist = details.artists ? details.artists[0].name.replace(/\s\(\d+\)$/, '') : prop.originalArtist;
+            const discogsTitle = details.title || prop.originalTitle;
+            const discogsLabel = details.labels && details.labels.length > 0 ? details.labels[0].name : prop.originalLabel;
+            
+            const hasDiff = 
+              discogsArtist !== prop.originalArtist || 
+              discogsTitle !== prop.originalTitle || 
+              discogsLabel !== prop.originalLabel;
+              
+            setRepairProposals(prev => prev.map((p, idx) => {
+              if (idx === i) {
+                return {
+                  ...p,
+                  proposedArtist: discogsArtist,
+                  proposedTitle: discogsTitle,
+                  proposedLabel: discogsLabel,
+                  resolvedVia: 'discogs',
+                  selected: hasDiff,
+                  loading: false
+                };
+              }
+              return p;
+            }));
+          } else {
+            setRepairProposals(prev => prev.map((p, idx) => {
+              if (idx === i) {
+                return { ...p, loading: false };
+              }
+              return p;
+            }));
+          }
+        } catch (e) {
+          console.error("Error fetching Discogs details for repair: ", e);
+          setRepairProposals(prev => prev.map((p, idx) => {
+            if (idx === i) {
+              return { ...p, loading: false };
+            }
+            return p;
+          }));
+        }
+      }
+    }
+  };
+
+  const applyNameRepairs = async () => {
+    if (!user) return;
+    setIsApplyingRepairs(true);
+    setRepairLogs(prev => [...prev, "Iniciando reparación de nombres..."]);
+    
+    let count = 0;
+    const selectedProposals = repairProposals.filter(p => p.selected && !p.loading);
+    
+    for (const prop of selectedProposals) {
+      try {
+        const docRef = doc(db, 'users', user.uid, 'stock', prop.item.id);
+        const updates: any = {
+          artist: prop.proposedArtist,
+          title: prop.proposedTitle
+        };
+        if (prop.proposedLabel) {
+          updates.label = prop.proposedLabel;
+        }
+        
+        const discogsId = prop.item.discogsId || (prop.item.cover ? getDiscogsIdFromCoverUrl(prop.item.cover) : null);
+        if (discogsId && !prop.item.discogsId) {
+          updates.discogsId = discogsId;
+        }
+        
+        await updateDoc(docRef, updates);
+        count++;
+        setRepairLogs(prev => [...prev, `✅ Reparándolo: "${prop.originalArtist} - ${prop.originalTitle}" ➔ "${prop.proposedArtist} - ${prop.proposedTitle}"`]);
+      } catch (err) {
+        console.error("Error repairing document: ", err);
+        setRepairLogs(prev => [...prev, `❌ Error en: "${prop.originalArtist} - ${prop.originalTitle}": ${(err as Error).message}`]);
+      }
+    }
+    
+    setRepairLogs(prev => [...prev, `¡Reparación finalizada! Se actualizaron ${count} discos.`]);
+    setIsApplyingRepairs(false);
+  };
 
   // Real-time listener for user stock
   useEffect(() => {
@@ -461,10 +615,17 @@ export default function DashboardPage() {
 
   // Excel Paste Import Logic
   const processImportPaste = () => {
-    const text = importPasteText.trim();
+    let text = importPasteText.trim();
     if (!text) {
       alert("Por favor, pega el contenido copiado de tu Excel primero.");
       return;
+    }
+
+    // Repair character encoding errors (like "Los Olimare os" or "M sica" or mojibake)
+    const repairedText = repairTextEncoding(text);
+    if (repairedText !== text) {
+      text = repairedText;
+      setImportPasteText(repairedText);
     }
 
     const lines = text.split('\n');
@@ -771,6 +932,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={runNameRepairScan}
+              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Reparar Nombres</span>
+            </button>
             <button 
               onClick={() => setIsSyncOpen(true)}
               className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
@@ -2014,6 +2182,246 @@ export default function DashboardPage() {
                   >
                     Cerrar Ventana
                   </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: DATABASE NAME REPAIR */}
+        <AnimatePresence>
+          {isRepairOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isApplyingRepairs && setIsRepairOpen(false)}
+                className="absolute inset-0 bg-black/90"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-[#0f172a] w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl relative border border-white/10 z-10 overflow-hidden shadow-2xl shadow-black/80"
+              >
+                {/* Background Floating Orbs */}
+                <div className="absolute top-0 left-0 w-60 h-60 rounded-full bg-indigo-500/10 blur-[60px] animate-orb-slow-1 pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-60 h-60 rounded-full bg-purple-500/10 blur-[60px] animate-orb-slow-2 pointer-events-none" />
+                
+                {/* Subtle top border illumination */}
+                <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+                
+                <div className="relative z-10 p-6 sm:p-8 space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2 select-none">
+                      <Sparkles className="w-5 h-5 text-indigo-400 animate-pulse" />
+                      <span>Reparación de Nombres y Codificación</span>
+                    </h3>
+                    <button 
+                      onClick={() => !isApplyingRepairs && setIsRepairOpen(false)}
+                      className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400 hover:text-white transition-all"
+                      disabled={isApplyingRepairs}
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* Intro Alert Box */}
+                    <div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-200 text-xs">
+                      <AlertCircle className="w-5 h-5 shrink-0 text-indigo-400" />
+                      <p className="leading-relaxed">
+                        Esta herramienta detecta discos con problemas de codificación de caracteres (como tildes o la letra "ñ" con espacios en blanco o mojibake). Utilizará el diccionario inteligente y portadas vinculadas a Discogs para buscar los nombres oficiales y sugerir una corrección automática.
+                      </p>
+                    </div>
+
+                    {/* Loading State or Proposals list */}
+                    {repairProposals.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 space-y-4 text-center">
+                        <div className="text-gray-500 text-sm">Escaneando inventario y buscando correcciones...</div>
+                        <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {/* Summary / Table Header */}
+                        <div className="flex justify-between items-center text-xs text-gray-400 border-b border-white/5 pb-2">
+                          <div>
+                            Se encontraron <span className="text-indigo-400 font-bold">{repairProposals.length}</span> discos con posibles errores de caracteres.
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setRepairProposals(prev => prev.map(p => ({ ...p, selected: true })))}
+                              className="text-indigo-400 hover:text-indigo-300 font-semibold"
+                            >
+                              Seleccionar Todo
+                            </button>
+                            <span className="text-gray-600">|</span>
+                            <button
+                              onClick={() => setRepairProposals(prev => prev.map(p => ({ ...p, selected: false })))}
+                              className="text-gray-400 hover:text-gray-300 font-semibold"
+                            >
+                              Deseleccionar Todo
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* List / Table of Proposals */}
+                        <div className="max-h-[300px] overflow-y-auto space-y-3 pr-1">
+                          {repairProposals.map((prop, idx) => {
+                            const isSelected = prop.selected;
+                            return (
+                              <div 
+                                key={idx}
+                                className={`flex items-center gap-3 p-3.5 rounded-2xl border transition-all ${
+                                  isSelected 
+                                    ? 'bg-indigo-500/5 border-indigo-500/20' 
+                                    : 'bg-slate-800/10 border-white/5 hover:border-white/10'
+                                }`}
+                              >
+                                {/* Checkbox */}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (prop.loading) return;
+                                    setRepairProposals(prev => prev.map((p, pIdx) => 
+                                      pIdx === idx ? { ...p, selected: !p.selected } : p
+                                    ));
+                                  }}
+                                  className="text-gray-400 hover:text-white transition-all shrink-0"
+                                >
+                                  {isSelected ? (
+                                    <CheckSquare className="w-5 h-5 text-indigo-400" />
+                                  ) : (
+                                    <Square className="w-5 h-5 text-gray-600" />
+                                  )}
+                                </button>
+
+                                {/* Cover Thumbnail */}
+                                {prop.item.cover ? (
+                                  <img 
+                                    src={prop.item.cover} 
+                                    alt="" 
+                                    className="w-10 h-10 object-cover rounded-lg border border-white/10 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-10 rounded-lg bg-slate-800 border border-white/5 flex items-center justify-center shrink-0">
+                                    <Music className="w-5 h-5 text-gray-600" />
+                                  </div>
+                                )}
+
+                                {/* Comparisons */}
+                                <div className="flex-1 min-w-0 grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                  {/* Original */}
+                                  <div className="min-w-0">
+                                    <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Original</div>
+                                    <div className="text-gray-400 truncate line-through">
+                                      {prop.originalArtist} - {prop.originalTitle}
+                                    </div>
+                                    {prop.originalLabel && (
+                                      <div className="text-[10px] text-gray-500 italic truncate">
+                                        Sello: {prop.originalLabel}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Proposed */}
+                                  <div className="min-w-0">
+                                    <div className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider flex items-center gap-1">
+                                      <span>Sugerido</span>
+                                      {prop.resolvedVia === 'discogs' && (
+                                        <span className="text-[9px] px-1 bg-indigo-500/10 text-indigo-400 rounded-md border border-indigo-500/20 font-sans uppercase">Discogs 💿</span>
+                                      )}
+                                      {prop.resolvedVia === 'dictionary' && (
+                                        <span className="text-[9px] px-1 bg-purple-500/10 text-purple-400 rounded-md border border-purple-500/20 font-sans uppercase">Diccionario 📖</span>
+                                      )}
+                                    </div>
+                                    <div className="text-emerald-400 font-semibold truncate">
+                                      {prop.proposedArtist} - {prop.proposedTitle}
+                                    </div>
+                                    {prop.proposedLabel && (
+                                      <div className="text-[10px] text-emerald-500/80 italic truncate">
+                                        Sello: {prop.proposedLabel}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+
+                                {/* Loading state indicator */}
+                                {prop.loading && (
+                                  <Loader2 className="w-4 h-4 text-indigo-400 animate-spin shrink-0" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Logs output */}
+                    {repairLogs.length > 0 && (
+                      <div className="space-y-2 pt-2">
+                        <div className="text-xs font-bold text-gray-300">Progreso de Reparación:</div>
+                        <div className="h-40 overflow-y-auto p-4 rounded-2xl bg-slate-950/90 border border-white/5 font-mono text-xs space-y-1">
+                          {repairLogs.map((log, index) => (
+                            <div 
+                              key={index}
+                              className={
+                                log.startsWith('❌') ? 'text-red-400' :
+                                log.startsWith('✅') ? 'text-emerald-400' : 'text-gray-300'
+                              }
+                            >
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer Actions */}
+                  <div className="border-t border-white/5 pt-4 flex justify-between items-center">
+                    <div className="text-xs text-gray-500">
+                      {repairProposals.some(p => p.loading) && (
+                        <span className="flex items-center gap-1.5 text-indigo-400">
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          Consultando Discogs para algunos discos...
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setIsRepairOpen(false)}
+                        disabled={isApplyingRepairs}
+                        className="btn-secondary-premium py-2 px-5 text-xs font-bold disabled:opacity-50"
+                      >
+                        {repairLogs.length > 0 ? 'Cerrar' : 'Cancelar'}
+                      </button>
+                      
+                      {repairProposals.length > 0 && (
+                        <button
+                          onClick={applyNameRepairs}
+                          disabled={isApplyingRepairs || repairProposals.some(p => p.loading) || !repairProposals.some(p => p.selected)}
+                          className="btn-premium py-2 px-5 text-xs font-bold flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          {isApplyingRepairs ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>Aplicando...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              <span>Aplicar Correcciones ({repairProposals.filter(p => p.selected).length})</span>
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             </div>
