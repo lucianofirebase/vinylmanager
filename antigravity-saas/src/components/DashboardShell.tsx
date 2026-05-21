@@ -1,0 +1,249 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { usePathname, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { 
+  LayoutDashboard, 
+  Settings, 
+  LogOut, 
+  Menu, 
+  X, 
+  User as UserIcon,
+  Sparkles,
+  ChevronRight,
+  Disc,
+  MessageSquare
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface DashboardShellProps {
+  children: React.ReactNode;
+}
+
+export default function DashboardShell({ children }: DashboardShellProps) {
+  const { userData, logout } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const menuItems = [
+    { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'WhatsApp Marketing', path: '/whatsapp', icon: MessageSquare },
+    { name: 'Configuración', path: '/settings', icon: Settings },
+  ];
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Error logging out:', err);
+    }
+  };
+
+  // Avatar renderer helper
+  const renderAvatar = (sizeClass = "w-10 h-10") => {
+    if (!userData) return null;
+    const initial = userData.username ? userData.username.charAt(0).toUpperCase() : 'V';
+    
+    if (userData.avatar && userData.avatar.startsWith('linear-gradient')) {
+      return (
+        <div 
+          className={`${sizeClass} rounded-xl flex items-center justify-center font-bold text-white shadow-md select-none text-sm`}
+          style={{ background: userData.avatar }}
+        >
+          {initial}
+        </div>
+      );
+    }
+
+    if (userData.avatar && userData.avatar.startsWith('data:image')) {
+      return (
+        <img 
+          src={userData.avatar} 
+          alt="Avatar" 
+          className={`${sizeClass} rounded-xl object-cover border border-white/10`} 
+        />
+      );
+    }
+
+    // Fallback if something went wrong
+    return (
+      <div className={`${sizeClass} rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 flex items-center justify-center font-bold text-white`}>
+        {initial}
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-[#030712] text-slate-100 flex relative overflow-hidden bg-grid-pattern">
+      {/* Background blobs */}
+      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] rounded-full bg-indigo-500/5 blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none" />
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex md:w-64 lg:w-72 shrink-0 flex-col border-r border-white/5 glass-panel h-screen sticky top-0 z-20">
+        {/* Brand header */}
+        <Link href="/dashboard" className="h-16 px-6 border-b border-white/5 flex items-center gap-3 select-none hover:bg-white/5 transition-all cursor-pointer">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-spin-slow">
+            <span className="font-bold text-white text-sm">💿</span>
+          </div>
+          <div>
+            <h1 className="font-bold text-white tracking-tight leading-none text-base">VinylStock</h1>
+            <span className="text-[10px] text-indigo-400 font-medium tracking-widest uppercase">Pro Edition</span>
+          </div>
+        </Link>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 px-4 py-6 space-y-1.5">
+          {menuItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = pathname === item.path;
+            return (
+              <Link
+                key={item.path}
+                href={item.path}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                  isActive 
+                    ? 'bg-gradient-to-r from-indigo-600/20 to-purple-600/10 border-l-2 border-indigo-500 text-white shadow-sm shadow-indigo-500/5' 
+                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User Card */}
+        <div className="p-4 border-t border-white/5 bg-slate-900/30 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            {renderAvatar("w-10 h-10")}
+            <div className="flex-1 overflow-hidden">
+              <p className="text-sm font-bold text-white truncate leading-snug">
+                @{userData?.username || 'usuario'}
+              </p>
+              <p className="text-[11px] text-gray-500 truncate leading-none">
+                {userData?.email}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/10 transition-all"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Cerrar sesión</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Mobile Header */}
+      <div className="md:hidden w-full h-16 border-b border-white/5 glass-panel fixed top-0 inset-x-0 z-30 px-4 flex items-center justify-between">
+          <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-all cursor-pointer">
+            <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-md animate-spin-slow">
+              <span className="font-bold text-white text-xs">💿</span>
+            </div>
+            <span className="font-bold text-white tracking-tight text-sm">VinylStock</span>
+          </Link>
+        <button
+          onClick={() => setMobileMenuOpen(true)}
+          className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-300"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Mobile Drawer (AnimatePresence) */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.5 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 bg-black z-40 md:hidden"
+            />
+            {/* Menu Panel */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 bottom-0 w-80 glass-panel border-l border-white/10 z-50 md:hidden flex flex-col"
+            >
+              <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between">
+                <span className="font-bold text-white text-sm">Navegación</span>
+                <button
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-300"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Navigation Items */}
+              <nav className="flex-1 px-4 py-6 space-y-1.5">
+                {menuItems.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.path;
+                  return (
+                    <Link
+                      key={item.path}
+                      href={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                        isActive 
+                          ? 'bg-indigo-600/20 border-l-2 border-indigo-500 text-white' 
+                          : 'text-gray-400 hover:text-white hover:bg-white/5'
+                      }`}
+                    >
+                      <Icon className="w-4.5 h-4.5 text-gray-400" />
+                      <span>{item.name}</span>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* User details */}
+              <div className="p-5 border-t border-white/5 bg-slate-900/30 flex flex-col gap-4">
+                <div className="flex items-center gap-3">
+                  {renderAvatar("w-10 h-10")}
+                  <div className="overflow-hidden">
+                    <p className="text-sm font-bold text-white truncate">
+                      @{userData?.username || 'usuario'}
+                    </p>
+                    <p className="text-[11px] text-gray-500 truncate">
+                      {userData?.email}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-semibold text-red-400 hover:bg-red-500/10 border border-red-500/10"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Cerrar sesión</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content Layout */}
+      <div className="flex-1 flex flex-col min-w-0 md:pt-0 pt-16 h-screen overflow-y-auto">
+        <main className="flex-1 p-6 md:p-8 lg:p-10 max-w-7xl mx-auto w-full">
+          {children}
+        </main>
+      </div>
+    </div>
+  );
+}

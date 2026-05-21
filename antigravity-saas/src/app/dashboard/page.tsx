@@ -1,0 +1,1732 @@
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../../context/AuthContext';
+import DashboardShell from '../../components/DashboardShell';
+import { 
+  collection, 
+  query, 
+  onSnapshot, 
+  addDoc, 
+  doc, 
+  updateDoc, 
+  deleteDoc, 
+  writeBatch 
+} from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Music, 
+  TrendingUp, 
+  Clock, 
+  Sparkles, 
+  Grid, 
+  List, 
+  Search, 
+  Plus, 
+  Trash2, 
+  Check, 
+  FileSpreadsheet, 
+  RefreshCw, 
+  X, 
+  Edit2, 
+  ExternalLink, 
+  Eye, 
+  EyeOff, 
+  CheckSquare, 
+  Square, 
+  ChevronDown, 
+  Loader2,
+  AlertCircle
+} from 'lucide-react';
+import Link from 'next/link';
+import { formatCurrency } from '../../lib/utils';
+
+// Discogs credentials from previous legacy configuration
+const DISCOGS_KEY = 'kTXBUunaWzBTXwJZlRga';
+const DISCOGS_SECRET = 'uZxBlMTEDrEMcPblPAoQChIrhlZivIwz';
+
+interface VinylItem {
+  id: string;
+  artist: string;
+  title: string;
+  price: number;
+  qty: number;
+  format: string;
+  grade: string;
+  gradeCover: string;
+  label?: string;
+  catno?: string;
+  year?: string;
+  cover?: string;
+  status: 'disponible' | 'coleccion' | 'reservado' | 'vendido' | 'borrador';
+  dateAdded: string;
+  photos?: string[];
+  discogsPhotos?: string[];
+  discogsId?: number;
+  url?: string;
+}
+
+export default function DashboardPage() {
+  const { user, userData } = useAuth();
+  
+  // Real-time stock state
+  const [stock, setStock] = useState<VinylItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Selection and layout states
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+
+  // Filter and search states
+  const [searchQuery, setSearchQuery] = useState('');
+  const [formatFilter, setFormatFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [sortBy, setSortBy] = useState('recent'); // 'recent', 'price_asc', 'price_desc'
+
+  // Modals state
+  const [isAddEditOpen, setIsAddEditOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<VinylItem | null>(null);
+  
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [isSyncOpen, setIsSyncOpen] = useState(false);
+  
+  // Autocomplete and Discogs Search states inside Add/Edit Modal
+  const [discogsSearchQuery, setDiscogsSearchQuery] = useState('');
+  const [discogsSearchResults, setDiscogsSearchResults] = useState<any[]>([]);
+  const [isSearchingDiscogs, setIsSearchingDiscogs] = useState(false);
+
+  // Form states for Add/Edit
+  const [formArtist, setFormArtist] = useState('');
+  const [formTitle, setFormTitle] = useState('');
+  const [formPrice, setFormPrice] = useState('0');
+  const [formQty, setFormQty] = useState('1');
+  const [formFormat, setFormFormat] = useState('Vinyl');
+  const [formGrade, setFormGrade] = useState('VG+');
+  const [formGradeCover, setFormGradeCover] = useState('VG+');
+  const [formLabel, setFormLabel] = useState('');
+  const [formCatno, setFormCatno] = useState('');
+  const [formYear, setFormYear] = useState('');
+  const [formCover, setFormCover] = useState('');
+  const [formStatus, setFormStatus] = useState<'disponible' | 'coleccion' | 'reservado' | 'vendido' | 'borrador'>('disponible');
+  const [formPhotos, setFormPhotos] = useState('');
+  const [formUrl, setFormUrl] = useState('');
+  const [formDiscogsId, setFormDiscogsId] = useState<number | undefined>(undefined);
+
+  // Excel paste import states
+  const [importPasteText, setImportPasteText] = useState('');
+  const [importData, setImportData] = useState<string[][]>([]);
+  const [importStep, setImportStep] = useState(1); // 1 = paste, 2 = mapping, 3 = logs
+  const [columnMapping, setColumnMapping] = useState<Record<string, number>>({});
+  const [importLogs, setImportLogs] = useState<{ msg: string; type: 'success' | 'warning' | 'error' }[]>([]);
+  const [importProgress, setImportProgress] = useState({ current: 0, total: 0, status: '' });
+  const [isImporting, setIsImporting] = useState(false);
+
+  // Discogs Sync states
+  const [syncLogs, setSyncLogs] = useState<{ msg: string; type: 'add' | 'skip' | 'error' }[]>([]);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Real-time listener for user stock
+  useEffect(() => {
+    if (!user) return;
+
+    const q = query(collection(db, 'users', user.uid, 'stock'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const items: VinylItem[] = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        items.push({
+          id: doc.id,
+          artist: data.artist || 'Desconocido',
+          title: data.title || 'Título Desconocido',
+          price: Number(data.price) || 0,
+          qty: Number(data.qty) || 1,
+          format: data.format || 'Vinyl',
+          grade: data.grade || 'VG+',
+          gradeCover: data.gradeCover || data.grade || 'VG+',
+          label: data.label || '',
+          catno: data.catno || '',
+          year: data.year || '',
+          cover: data.cover || '',
+          status: data.status || 'disponible',
+          dateAdded: data.dateAdded || new Date().toISOString(),
+          photos: data.photos || [],
+          discogsPhotos: data.discogsPhotos || [],
+          discogsId: data.discogsId || undefined,
+          url: data.url || ''
+        });
+      });
+      setStock(items);
+      setLoading(false);
+    }, (err) => {
+      console.error("Error loading stock:", err);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  // Statistics
+  const totalItems = stock.reduce((sum, item) => sum + (item.qty || 1), 0);
+  const availableItems = stock
+    .filter((i) => i.status === 'disponible')
+    .reduce((sum, item) => sum + (item.qty || 1), 0);
+  const totalValue = stock
+    .filter((i) => i.status === 'disponible')
+    .reduce((sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1), 0);
+
+  // Sorting and Filtering
+  const filteredStock = stock.filter((item) => {
+    const matchesSearch = 
+      item.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.label && item.label.toLowerCase().includes(searchQuery.toLowerCase()));
+
+    const matchesFormat = formatFilter === 'All' || item.format === formatFilter;
+    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+
+    return matchesSearch && matchesFormat && matchesStatus;
+  });
+
+  const sortedStock = [...filteredStock].sort((a, b) => {
+    if (sortBy === 'recent') {
+      return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+    }
+    if (sortBy === 'price_asc') {
+      return a.price - b.price;
+    }
+    if (sortBy === 'price_desc') {
+      return b.price - a.price;
+    }
+    return 0;
+  });
+
+  // Handle individual item selection
+  const toggleSelect = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === sortedStock.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(sortedStock.map(i => i.id)));
+    }
+  };
+
+  // Bulk Actions
+  const handleBulkSell = async () => {
+    if (!user || selectedIds.size === 0) return;
+    if (!confirm(`¿Estás seguro de marcar como VENDIDOS los ${selectedIds.size} discos seleccionados?`)) return;
+
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        const docRef = doc(db, 'users', user.uid, 'stock', id);
+        batch.update(docRef, { status: 'vendido' });
+      });
+      await batch.commit();
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Error bulk selling:", err);
+      alert("Ocurrió un error al vender en lote.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!user || selectedIds.size === 0) return;
+    if (!confirm(`¿Estás seguro de ELIMINAR permanentemente los ${selectedIds.size} discos seleccionados?`)) return;
+
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach((id) => {
+        const docRef = doc(db, 'users', user.uid, 'stock', id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+      setSelectedIds(new Set());
+    } catch (err) {
+      console.error("Error bulk deleting:", err);
+      alert("Ocurrió un error al eliminar en lote.");
+    }
+  };
+
+  // Add/Edit Form Handlers
+  const openAddModal = () => {
+    setEditingItem(null);
+    setFormArtist('');
+    setFormTitle('');
+    setFormPrice('0');
+    setFormQty('1');
+    setFormFormat('Vinyl');
+    setFormGrade('VG+');
+    setFormGradeCover('VG+');
+    setFormLabel('');
+    setFormCatno('');
+    setFormYear('');
+    setFormCover('');
+    setFormStatus('disponible');
+    setFormPhotos('');
+    setFormUrl('');
+    setFormDiscogsId(undefined);
+    setDiscogsSearchQuery('');
+    setDiscogsSearchResults([]);
+    setIsAddEditOpen(true);
+  };
+
+  const openEditModal = (item: VinylItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingItem(item);
+    setFormArtist(item.artist);
+    setFormTitle(item.title);
+    setFormPrice(item.price.toString());
+    setFormQty(item.qty.toString());
+    setFormFormat(item.format);
+    setFormGrade(item.grade);
+    setFormGradeCover(item.gradeCover);
+    setFormLabel(item.label || '');
+    setFormCatno(item.catno || '');
+    setFormYear(item.year || '');
+    setFormCover(item.cover || '');
+    setFormStatus(item.status);
+    setFormPhotos(item.photos?.join(', ') || '');
+    setFormUrl(item.url || '');
+    setFormDiscogsId(item.discogsId);
+    setDiscogsSearchQuery('');
+    setDiscogsSearchResults([]);
+    setIsAddEditOpen(true);
+  };
+
+  const handleSaveItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    const photosArray = formPhotos
+      ? formPhotos.split(',').map((p) => p.trim()).filter((p) => p !== '')
+      : [];
+
+    const data: Omit<VinylItem, 'id'> = {
+      artist: formArtist.trim(),
+      title: formTitle.trim(),
+      price: Number(formPrice) || 0,
+      qty: Number(formQty) || 1,
+      format: formFormat,
+      grade: formGrade,
+      gradeCover: formGradeCover,
+      label: formLabel.trim(),
+      catno: formCatno.trim(),
+      year: formYear.trim(),
+      cover: formCover.trim(),
+      status: formStatus,
+      photos: photosArray,
+      dateAdded: editingItem ? editingItem.dateAdded : new Date().toISOString(),
+      url: formUrl.trim()
+    };
+
+    if (formDiscogsId) {
+      data.discogsId = formDiscogsId;
+    }
+
+    try {
+      if (editingItem) {
+        // Edit existing
+        const docRef = doc(db, 'users', user.uid, 'stock', editingItem.id);
+        await updateDoc(docRef, data as any);
+      } else {
+        // Create new
+        const stockCol = collection(db, 'users', user.uid, 'stock');
+        await addDoc(stockCol, data);
+      }
+      setIsAddEditOpen(false);
+    } catch (err) {
+      console.error("Error saving vinyl item:", err);
+      alert("Hubo un error al guardar el disco.");
+    }
+  };
+
+  const handleDeleteItem = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    if (!confirm("¿Seguro de que deseas eliminar este disco?")) return;
+
+    try {
+      const docRef = doc(db, 'users', user.uid, 'stock', id);
+      await deleteDoc(docRef);
+      if (expandedCardId === id) setExpandedCardId(null);
+    } catch (err) {
+      console.error("Error deleting vinyl item:", err);
+      alert("Error al eliminar.");
+    }
+  };
+
+  // Search Discogs Autocomplete
+  const handleDiscogsSearch = async () => {
+    if (!discogsSearchQuery.trim()) return;
+    setIsSearchingDiscogs(true);
+    try {
+      const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(discogsSearchQuery)}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&type=release`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setDiscogsSearchResults(data.results || []);
+      }
+    } catch (err) {
+      console.error("Error searching Discogs API:", err);
+    } finally {
+      setIsSearchingDiscogs(false);
+    }
+  };
+
+  const selectDiscogsResult = async (result: any) => {
+    // Fill basic fields from result
+    const parts = result.title.split(' - ');
+    const artist = parts[0] || '';
+    const title = parts[1] || result.title;
+
+    setFormArtist(artist);
+    setFormTitle(title);
+    setFormCover(result.cover_image || '');
+    setFormYear(result.year || '');
+    setFormDiscogsId(result.id);
+    setFormUrl(`https://www.discogs.com${result.uri || ''}`);
+
+    if (result.label && result.label.length > 0) {
+      setFormLabel(result.label[0]);
+    }
+    if (result.catno) {
+      setFormCatno(result.catno);
+    }
+
+    setDiscogsSearchResults([]);
+    setDiscogsSearchQuery('');
+  };
+
+  // Excel Paste Import Logic
+  const processImportPaste = () => {
+    const text = importPasteText.trim();
+    if (!text) {
+      alert("Por favor, pega el contenido copiado de tu Excel primero.");
+      return;
+    }
+
+    const lines = text.split('\n');
+    const rows = lines.map((line) => line.split('\t'));
+    setImportData(rows);
+
+    // Set a default initial mapping: column 0 is artist, column 1 is title
+    const initialMapping: Record<string, number> = {};
+    if (rows[0] && rows[0].length > 0) initialMapping.artist = 0;
+    if (rows[0] && rows[0].length > 1) initialMapping.title = 1;
+
+    setColumnMapping(initialMapping);
+    setImportStep(2);
+  };
+
+  const startExcelImport = async () => {
+    if (!user) return;
+    const hasBasic = columnMapping.artist !== undefined && columnMapping.title !== undefined;
+    const hasUrl = columnMapping.url !== undefined;
+
+    if (!hasBasic && !hasUrl) {
+      alert("Debes asignar al menos las columnas de 'Artista' y 'Título', o la columna 'Link Discogs'.");
+      return;
+    }
+
+    setIsImporting(true);
+    setImportStep(3);
+    setImportLogs([]);
+
+    const total = importData.length;
+    setImportProgress({ current: 0, total, status: 'Iniciando importación...' });
+
+    for (let i = 0; i < total; i++) {
+      const row = importData[i];
+      let artist = columnMapping.artist !== undefined ? row[columnMapping.artist]?.trim() || 'Desconocido' : 'Desconocido';
+      let title = columnMapping.title !== undefined ? row[columnMapping.title]?.trim() || 'Desconocido' : 'Desconocido';
+      const url = columnMapping.url !== undefined ? row[columnMapping.url]?.trim() || '' : '';
+      const price = columnMapping.price !== undefined ? parseFloat(row[columnMapping.price].replace('$', '').trim()) || 0 : 0;
+      const qty = columnMapping.qty !== undefined ? parseInt(row[columnMapping.qty]) || 1 : 1;
+      const grade = columnMapping.grade !== undefined ? row[columnMapping.grade]?.trim() || 'VG+' : 'VG+';
+      const format = columnMapping.format !== undefined ? row[columnMapping.format]?.trim() || 'Vinyl' : 'Vinyl';
+
+      setImportProgress({ current: i + 1, total, status: `Procesando: ${artist} - ${title}` });
+
+      try {
+        let itemData: any = null;
+
+        // Try extracting information from Discogs link if present
+        let urlArtist = '';
+        let urlTitle = '';
+        if (url && url.includes('discogs.com')) {
+          const slugMatch = url.match(/\/(release|master)\/\d+-(.+)$/);
+          if (slugMatch && slugMatch[2]) {
+            const slug = slugMatch[2].replace(/-/g, ' ');
+            const parts = slug.split(' ');
+            urlArtist = parts[0] || '';
+            urlTitle = parts.slice(1).join(' ') || '';
+            if (artist === 'Desconocido') artist = urlArtist;
+            if (title === 'Desconocido') title = urlTitle;
+          }
+
+          const idMatch = url.match(/\/(release|master)\/(\d+)/);
+          if (idMatch) {
+            const type = idMatch[1] === 'release' ? 'releases' : 'masters';
+            const id = idMatch[2];
+            try {
+              const res = await fetch(`https://api.discogs.com/${type}/${id}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+              if (res.ok) {
+                const details = await res.json();
+                itemData = {
+                  artist: details.artists ? details.artists[0].name : (urlArtist || artist),
+                  title: details.title || (urlTitle || title),
+                  cover: details.images && details.images.length > 0 ? details.images[0].resource_url : '',
+                  year: details.year ? details.year.toString() : '',
+                  label: details.labels && details.labels.length > 0 ? details.labels[0].name : '',
+                  catno: details.labels && details.labels.length > 0 ? details.labels[0].catno : '',
+                  discogsId: details.id
+                };
+              }
+            } catch (e) {
+              console.error(`Fallo fetch directo para link ${id}`);
+            }
+          }
+        }
+
+        // Search Discogs database if no details fetched yet
+        if (!itemData && artist !== 'Desconocido' && title !== 'Desconocido') {
+          const searchName = `${artist} ${title}`;
+          const res = await fetch(`https://api.discogs.com/database/search?q=${encodeURIComponent(searchName)}&format=${format}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+          if (res.ok) {
+            const searchData = await res.json();
+            const bestMatch = searchData.results && searchData.results[0];
+            if (bestMatch) {
+              itemData = {
+                artist: bestMatch.title.split(' - ')[0] || artist,
+                title: bestMatch.title.split(' - ')[1] || bestMatch.title || title,
+                cover: bestMatch.cover_image || '',
+                year: bestMatch.year || '',
+                label: bestMatch.label ? bestMatch.label[0] : '',
+                catno: bestMatch.catno || '',
+                discogsId: bestMatch.id
+              };
+            }
+          }
+        }
+
+        if (!itemData) {
+          itemData = { artist, title, cover: '', year: '', label: '', catno: '' };
+        }
+
+        const newItem = {
+          ...itemData,
+          price,
+          qty,
+          grade,
+          gradeCover: grade,
+          format,
+          status: price > 0 ? 'disponible' : 'borrador',
+          dateAdded: new Date().toISOString(),
+          url
+        };
+
+        const stockCol = collection(db, 'users', user.uid, 'stock');
+        await addDoc(stockCol, newItem);
+
+        setImportLogs((prev) => [
+          { 
+            msg: `✅ Importado: ${newItem.artist} - ${newItem.title} (${newItem.format})` + 
+                 (itemData.discogsId ? '' : ' [Cargado manualmente]'), 
+            type: itemData.discogsId ? 'success' : 'warning' 
+          },
+          ...prev
+        ]);
+
+      } catch (err) {
+        console.error("Error importing line: ", err);
+        setImportLogs((prev) => [
+          { msg: `❌ Error en fila ${i+1}: ${artist} - ${title}`, type: 'error' },
+          ...prev
+        ]);
+      }
+
+      // Discogs rate limit delay (1.5 seconds)
+      await new Promise((r) => setTimeout(r, 1500));
+    }
+
+    setImportProgress((prev) => ({ ...prev, status: '¡Importación finalizada!' }));
+    setIsImporting(false);
+  };
+
+  const closeImportModal = () => {
+    setIsImportOpen(false);
+    setImportPasteText('');
+    setImportData([]);
+    setImportStep(1);
+    setImportLogs([]);
+  };
+
+  // Discogs Collection Sincronizador
+  const startDiscogsSync = async () => {
+    if (!user || !userData) return;
+    const discogsUser = (userData as any).discogsUser;
+
+    if (!discogsUser) {
+      alert("Primero debes configurar tu usuario de Discogs en la página de Configuración.");
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncLogs([]);
+    setSyncProgress({ current: 0, total: 0, status: `Buscando colección de @${discogsUser}...` });
+
+    try {
+      const res = await fetch(`https://api.discogs.com/users/${discogsUser}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`);
+      if (!res.ok) {
+        throw new Error("No se pudo acceder a tu colección. ¿Es pública en tu perfil de Discogs?");
+      }
+
+      const data = await res.json();
+      const releases = data.releases || [];
+      const total = releases.length;
+
+      if (total === 0) {
+        setSyncProgress({ current: 0, total: 0, status: 'La colección de Discogs está vacía.' });
+        setIsSyncing(false);
+        return;
+      }
+
+      setSyncProgress({ current: 0, total, status: 'Procesando colección...' });
+
+      let addedCount = 0;
+      let skippedCount = 0;
+
+      for (let i = 0; i < releases.length; i++) {
+        const rel = releases[i];
+        const info = rel.basic_information;
+
+        // Check for duplicates locally
+        const exists = stock.some(
+          (item) => 
+            item.artist.toLowerCase() === info.artists[0].name.toLowerCase() &&
+            item.title.toLowerCase() === info.title.toLowerCase()
+        );
+
+        if (exists) {
+          skippedCount++;
+          setSyncLogs((prev) => [
+            { msg: `⏭️ Saltado (ya existe): ${info.artists[0].name} - ${info.title}`, type: 'skip' },
+            ...prev
+          ]);
+        } else {
+          const newItem = {
+            artist: info.artists[0].name,
+            title: info.title,
+            label: info.labels && info.labels.length > 0 ? info.labels[0].name : '',
+            year: info.year ? info.year.toString() : '',
+            catno: info.labels && info.labels.length > 0 ? info.labels[0].catno : '',
+            cover: info.cover_image || '',
+            format: info.formats && info.formats.length > 0 ? info.formats[0].name : 'Vinyl',
+            price: 0,
+            qty: 1,
+            grade: 'VG+',
+            gradeCover: 'VG+',
+            status: 'coleccion',
+            dateAdded: new Date().toISOString(),
+            discogsId: rel.id,
+            url: `https://www.discogs.com/release/${rel.id}`
+          };
+
+          const stockCol = collection(db, 'users', user.uid, 'stock');
+          await addDoc(stockCol, newItem);
+
+          addedCount++;
+          setSyncLogs((prev) => [
+            { msg: `✅ Agregado: ${newItem.artist} - ${newItem.title}`, type: 'add' },
+            ...prev
+          ]);
+        }
+
+        setSyncProgress({ 
+          current: i + 1, 
+          total, 
+          status: `Procesando ${i + 1} de ${total}... (${addedCount} agregados, ${skippedCount} saltados)` 
+        });
+
+        // Throttle to respect Discogs rate limits (500ms)
+        await new Promise((r) => setTimeout(r, 500));
+      }
+
+      setSyncProgress({ 
+        current: total, 
+        total, 
+        status: `Sincronización finalizada. Nuevos: ${addedCount}, Saltados: ${skippedCount}` 
+      });
+
+    } catch (err: any) {
+      console.error("Error syncing Discogs:", err);
+      setSyncLogs((prev) => [
+        { msg: `❌ Error: ${err.message}`, type: 'error' },
+        ...prev
+      ]);
+      setSyncProgress((prev) => ({ ...prev, status: 'Error al sincronizar.' }));
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const getFormatBadgeColor = (format: string) => {
+    if (format === 'CD') return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
+    if (format === 'Cassette') return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+  };
+
+  const getStatusBadgeColor = (status: string) => {
+    switch (status) {
+      case 'disponible':
+        return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+      case 'coleccion':
+        return 'bg-violet-500/10 text-violet-450 border-violet-500/20';
+      case 'reservado':
+        return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+      case 'vendido':
+        return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
+      case 'borrador':
+        return 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20';
+      default:
+        return 'bg-gray-500/10 text-gray-400 border-transparent';
+    }
+  };
+
+  return (
+    <DashboardShell>
+      <div className="space-y-8 select-none">
+        {/* Welcome Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2 select-none">
+              <span className="text-indigo-400">💿</span>
+              <span>Mi Inventario de Vinilos</span>
+            </h2>
+            <p className="text-gray-450 text-sm mt-1">
+              Gestiona tu colección, stock de ventas, importaciones y sincronización en tiempo real.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => setIsSyncOpen(true)}
+              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Sincronizar Discogs</span>
+            </button>
+            <button 
+              onClick={() => setIsImportOpen(true)}
+              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Importar Excel</span>
+            </button>
+            <button 
+              onClick={openAddModal}
+              className="btn-premium py-2 px-4.5 text-xs font-semibold flex items-center gap-2"
+            >
+              <Plus className="w-4.5 h-4.5" />
+              <span>Añadir Disco</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+            <div className="flex items-center gap-4 mb-3">
+              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
+                <Music className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total en Catálogo</span>
+            </div>
+            <h3 className="text-3xl font-black text-white">{totalItems} <span className="text-xs text-gray-500 font-semibold">discos</span></h3>
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+            <div className="flex items-center gap-4 mb-3">
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                <Check className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Disponibles para Venta</span>
+            </div>
+            <h3 className="text-3xl font-black text-white">{availableItems} <span className="text-xs text-gray-500 font-semibold">items</span></h3>
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+            <div className="flex items-center gap-4 mb-3">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+                <TrendingUp className="w-5 h-5" />
+              </div>
+              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Valor de Stock</span>
+            </div>
+            <h3 className="text-3xl font-black text-white">{formatCurrency(totalValue, userData?.currency)}</h3>
+          </div>
+        </div>
+
+        {/* Toolbar & Filters */}
+        <div className="glass-card rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-white/5 select-none">
+          <div className="flex flex-1 flex-col sm:flex-row gap-3 min-w-0">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Buscar por artista, álbum o sello..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-white/5 border border-white/5 focus:border-indigo-500/50 rounded-xl text-sm font-medium focus:outline-none transition-all placeholder:text-gray-500"
+              />
+            </div>
+
+            {/* Format Filter */}
+            <div className="relative">
+              <select
+                value={formatFilter}
+                onChange={(e) => setFormatFilter(e.target.value)}
+                className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
+              >
+                <option value="All" className="bg-[#0f172a] text-white">Formatos: Todos</option>
+                <option value="Vinyl" className="bg-[#0f172a] text-white">Vinyl</option>
+                <option value="CD" className="bg-[#0f172a] text-white">CD</option>
+                <option value="Cassette" className="bg-[#0f172a] text-white">Cassette</option>
+              </select>
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
+              >
+                <option value="All" className="bg-[#0f172a] text-white">Estados: Todos</option>
+                <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
+                <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
+                <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
+                <option value="vendido" className="bg-[#0f172a] text-white">Vendido</option>
+                <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
+              </select>
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+
+            {/* Sort Filter */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
+              >
+                <option value="recent" className="bg-[#0f172a] text-white">Ordenar: Recientes</option>
+                <option value="price_asc" className="bg-[#0f172a] text-white">Precio: Menor a Mayor</option>
+                <option value="price_desc" className="bg-[#0f172a] text-white">Precio: Mayor a Menor</option>
+              </select>
+              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 self-end md:self-auto select-none">
+            {/* View Mode */}
+            <div className="flex rounded-xl bg-white/5 p-1 border border-white/5">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'grid' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                <Grid className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-indigo-600 text-white shadow-sm' : 'text-gray-400 hover:text-white'}`}
+              >
+                <List className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Selected Items Bulk Actions bar */}
+        <AnimatePresence>
+          {selectedIds.size > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 15 }}
+              className="bg-indigo-950/65 backdrop-blur-md border border-indigo-500/25 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none"
+            >
+              <div className="flex items-center gap-3">
+                <CheckSquare className="w-5 h-5 text-indigo-400 shrink-0" />
+                <span className="text-sm font-bold text-indigo-200">
+                  {selectedIds.size} discos seleccionados en este lote
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleBulkSell}
+                  className="bg-emerald-600/80 hover:bg-emerald-600 text-white text-xs font-semibold py-2 px-4 rounded-xl transition-all"
+                >
+                  Marcar Vendidos
+                </button>
+                <button
+                  onClick={handleBulkDelete}
+                  className="bg-red-900/60 hover:bg-red-900 text-white text-xs font-semibold py-2 px-4 rounded-xl transition-all"
+                >
+                  Eliminar Selección
+                </button>
+                <button
+                  onClick={() => setSelectedIds(new Set())}
+                  className="text-gray-400 hover:text-white text-xs font-semibold py-2 px-3 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Stock Catalog List */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 text-indigo-400 animate-spin mb-4" />
+            <p className="text-gray-400 text-sm">Cargando catálogo en tiempo real...</p>
+          </div>
+        ) : sortedStock.length === 0 ? (
+          <div className="glass-card rounded-2xl p-16 text-center max-w-lg mx-auto border border-white/5 space-y-4">
+            <AlertCircle className="w-12 h-12 text-gray-500 mx-auto" />
+            <h3 className="text-lg font-bold text-white">Catálogo vacío</h3>
+            <p className="text-gray-400 text-sm">
+              No se encontraron discos que coincidan con los filtros seleccionados o no has agregado ningún vinilo todavía.
+            </p>
+            <button 
+              onClick={openAddModal}
+              className="btn-premium py-2 px-4 text-xs font-semibold inline-flex items-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Añadir primer vinilo</span>
+            </button>
+          </div>
+        ) : viewMode === 'grid' ? (
+          /* GRID VIEW */
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 select-none">
+            {sortedStock.map((item) => {
+              const isSelected = selectedIds.has(item.id);
+              const isExpanded = expandedCardId === item.id;
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setExpandedCardId(isExpanded ? null : item.id)}
+                  className={`glass-card rounded-2xl overflow-hidden cursor-pointer border transition-all flex flex-col group relative ${
+                    isSelected ? 'border-indigo-500/50 bg-indigo-950/5' : 'border-white/5 hover:border-white/10'
+                  }`}
+                >
+                  {/* Select Checkbox Indicator */}
+                  <div 
+                    onClick={(e) => toggleSelect(item.id, e)}
+                    className="absolute top-3 left-3 z-10 w-6 h-6 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10 hover:border-indigo-400 hover:bg-black/80 transition-all"
+                  >
+                    {isSelected ? (
+                      <Check className="w-4 h-4 text-indigo-400" />
+                    ) : (
+                      <div className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  {/* Album Cover */}
+                  <div className="aspect-square w-full bg-slate-900 flex items-center justify-center relative overflow-hidden border-b border-white/5">
+                    {item.cover ? (
+                      <img 
+                        src={item.cover} 
+                        alt={`${item.artist} - ${item.title}`} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gray-600">
+                        <Music className="w-12 h-12" />
+                        <span className="text-[10px] font-semibold uppercase tracking-widest">Sin Portada</span>
+                      </div>
+                    )}
+
+                    {/* Format and Status Badges */}
+                    <div className="absolute bottom-3 right-3 flex gap-2">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getFormatBadgeColor(item.format)}`}>
+                        {item.format}
+                      </span>
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Main Details */}
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-indigo-400 tracking-wider uppercase leading-none truncate">
+                        {item.artist || 'Artista Desconocido'}
+                      </h4>
+                      <h3 className="text-base font-bold text-white leading-tight truncate">
+                        {item.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                      <span className="text-xs text-gray-500 font-medium">
+                        Estado: <strong className="text-gray-300 font-semibold">{item.grade}</strong>
+                      </span>
+                      <span className="text-lg font-black text-emerald-400">
+                        {formatCurrency(item.price, userData?.currency)}
+                      </span>
+                    </div>
+
+                    {/* Expandable details area */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="pt-3 border-t border-white/5 space-y-2 text-xs text-gray-400 overflow-hidden"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {item.label && <p><strong>Sello:</strong> {item.label}</p>}
+                          {item.catno && <p><strong>N° Catálogo:</strong> {item.catno}</p>}
+                          {item.year && <p><strong>Año:</strong> {item.year}</p>}
+                          {item.gradeCover && <p><strong>Estado Tapa:</strong> {item.gradeCover}</p>}
+                          {item.qty > 1 && <p><strong>Cantidad:</strong> {item.qty}</p>}
+                          {item.url && (
+                            <a 
+                              href={item.url} 
+                              target="_blank" 
+                              rel="noreferrer" 
+                              className="text-indigo-400 hover:underline flex items-center gap-1 mt-1.5 w-fit"
+                            >
+                              <span>Ver en Discogs</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </a>
+                          )}
+                          <div className="flex gap-2.5 pt-3">
+                            <button
+                              onClick={(e) => openEditModal(item, e)}
+                              className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-1.5 border border-white/5 transition-all text-xs"
+                            >
+                              <Edit2 className="w-3.5 h-3.5 text-indigo-450" />
+                              <span>Editar</span>
+                            </button>
+                            <button
+                              onClick={(e) => handleDeleteItem(item.id, e)}
+                              className="py-2 px-3 rounded-lg bg-red-950/30 hover:bg-red-950/65 text-red-400 hover:text-red-300 font-bold border border-red-500/10 hover:border-red-500/20 transition-all"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          /* LIST VIEW */
+          <div className="overflow-x-auto w-full scrollbar-thin">
+            <div className="glass-card rounded-2xl border border-white/5 divide-y divide-white/5 overflow-hidden select-none min-w-[750px]">
+            <div className="grid grid-cols-12 p-4 text-xs font-bold text-gray-500 bg-slate-950/30 border-b border-white/5 items-center">
+              <div className="col-span-1 flex items-center gap-2 pl-1">
+                <button 
+                  onClick={toggleSelectAll} 
+                  className="p-1 rounded hover:bg-white/5 transition-all text-gray-400 hover:text-white"
+                >
+                  {selectedIds.size === sortedStock.length ? (
+                    <CheckSquare className="w-4.5 h-4.5 text-indigo-400" />
+                  ) : (
+                    <Square className="w-4.5 h-4.5" />
+                  )}
+                </button>
+              </div>
+              <div className="col-span-4 pl-2">Álbum / Artista</div>
+              <div className="col-span-2">Formato</div>
+              <div className="col-span-2">Estado</div>
+              <div className="col-span-2">Precio</div>
+              <div className="col-span-1 text-right pr-2">Acciones</div>
+            </div>
+
+            {sortedStock.map((item) => {
+              const isSelected = selectedIds.has(item.id);
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                  className={`grid grid-cols-12 p-3.5 items-center hover:bg-white/5 cursor-pointer text-sm font-medium ${
+                    isSelected ? 'bg-indigo-950/5' : ''
+                  }`}
+                >
+                  <div className="col-span-1 pl-1 flex items-center" onClick={(e) => e.stopPropagation()}>
+                    <button 
+                      onClick={(e) => toggleSelect(item.id, e)}
+                      className="p-1 rounded hover:bg-white/5 transition-all text-gray-400 hover:text-white"
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4.5 h-4.5 text-indigo-400" />
+                      ) : (
+                        <Square className="w-4.5 h-4.5" />
+                      )}
+                    </button>
+                  </div>
+                  
+                  <div className="col-span-4 pl-2 flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-md bg-slate-900 overflow-hidden shrink-0 flex items-center justify-center">
+                      {item.cover ? (
+                        <img src={item.cover} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        <Music className="w-4 h-4 text-gray-500" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-white truncate">{item.title}</p>
+                      <p className="text-xs text-indigo-400 font-semibold truncate uppercase">{item.artist}</p>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getFormatBadgeColor(item.format)}`}>
+                      {item.format}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2">
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
+                      {item.status}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 font-black text-emerald-400">
+                    {formatCurrency(item.price, userData?.currency)}
+                  </div>
+
+                  <div className="col-span-1 text-right pr-2 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => openEditModal(item, e)}
+                      className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={(e) => handleDeleteItem(item.id, e)}
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: ADD / EDIT VINYL */}
+        <AnimatePresence>
+          {isAddEditOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.6 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsAddEditOpen(false)}
+                className="absolute inset-0 bg-black"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 relative border border-white/10 z-10 space-y-6"
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <h3 className="text-xl font-bold text-white">
+                    {editingItem ? 'Editar Vinilo' : 'Añadir Nuevo Vinilo'}
+                  </h3>
+                  <button 
+                    onClick={() => setIsAddEditOpen(false)}
+                    className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Autocomplete / Search Discogs Bar */}
+                {!editingItem && (
+                  <div className="bg-indigo-950/20 border border-indigo-500/15 rounded-2xl p-4.5 space-y-3">
+                    <label className="text-xs font-bold text-indigo-300 uppercase tracking-wider block">Autocompletar con Discogs (Recomendado)</label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Buscar: Beatles Abbey Road, Miles Davis, Pink Floyd..."
+                          value={discogsSearchQuery}
+                          onChange={(e) => setDiscogsSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && handleDiscogsSearch()}
+                          className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500/50"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDiscogsSearch}
+                        disabled={isSearchingDiscogs}
+                        className="btn-secondary-premium py-2 px-4 text-xs font-semibold shrink-0"
+                      >
+                        {isSearchingDiscogs ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
+                      </button>
+                    </div>
+
+                    {/* Results dropdown */}
+                    {discogsSearchResults.length > 0 && (
+                      <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/90 divide-y divide-white/5">
+                        {discogsSearchResults.slice(0, 5).map((res) => (
+                          <div
+                            key={res.id}
+                            onClick={() => selectDiscogsResult(res)}
+                            className="flex items-center gap-3 p-2.5 hover:bg-indigo-500/10 cursor-pointer text-xs"
+                          >
+                            <img src={res.cover_image} alt="" className="w-8 h-8 object-cover rounded" />
+                            <div className="min-w-0 flex-1">
+                              <p className="font-bold text-white truncate">{res.title}</p>
+                              <p className="text-[10px] text-gray-400 truncate">{res.label?.[0]} • {res.year}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <form onSubmit={handleSaveItem} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Artista */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-450 uppercase tracking-wider block">Artista</label>
+                      <input
+                        type="text"
+                        value={formArtist}
+                        onChange={(e) => setFormArtist(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                        required
+                      />
+                    </div>
+                    {/* Titulo */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-450 uppercase tracking-wider block">Título</label>
+                      <input
+                        type="text"
+                        value={formTitle}
+                        onChange={(e) => setFormTitle(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                        required
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {/* Precio */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Precio (ARS)</label>
+                      <input
+                        type="number"
+                        value={formPrice}
+                        onChange={(e) => setFormPrice(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                        min="0"
+                        required
+                      />
+                    </div>
+                    {/* Cantidad */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Cantidad</label>
+                      <input
+                        type="number"
+                        value={formQty}
+                        onChange={(e) => setFormQty(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                        min="1"
+                        required
+                      />
+                    </div>
+                    {/* Formato */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Formato</label>
+                      <select
+                        value={formFormat}
+                        onChange={(e) => setFormFormat(e.target.value)}
+                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
+                      >
+                        <option value="Vinyl" className="bg-[#0f172a] text-white">Vinyl</option>
+                        <option value="CD" className="bg-[#0f172a] text-white">CD</option>
+                        <option value="Cassette" className="bg-[#0f172a] text-white">Cassette</option>
+                      </select>
+                    </div>
+                    {/* Estado */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Estado</label>
+                      <select
+                        value={formStatus}
+                        onChange={(e) => setFormStatus(e.target.value as any)}
+                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
+                      >
+                        <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
+                        <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
+                        <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
+                        <option value="vendido" className="bg-[#0f172a] text-white">Vendido</option>
+                        <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {/* Grade Media */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Estado Disco</label>
+                      <select
+                        value={formGrade}
+                        onChange={(e) => setFormGrade(e.target.value)}
+                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
+                      >
+                        <option value="MINT" className="bg-[#0f172a] text-white">M (Mint)</option>
+                        <option value="NM" className="bg-[#0f172a] text-white">NM (Near Mint)</option>
+                        <option value="VG+" className="bg-[#0f172a] text-white">VG+ (Very Good Plus)</option>
+                        <option value="VG" className="bg-[#0f172a] text-white">VG (Very Good)</option>
+                        <option value="G+" className="bg-[#0f172a] text-white">G+ (Good Plus)</option>
+                        <option value="G" className="bg-[#0f172a] text-white">G (Good)</option>
+                        <option value="F" className="bg-[#0f172a] text-white">F (Fair)</option>
+                        <option value="P" className="bg-[#0f172a] text-white">P (Poor)</option>
+                      </select>
+                    </div>
+                    {/* Grade Cover */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Estado Tapa</label>
+                      <select
+                        value={formGradeCover}
+                        onChange={(e) => setFormGradeCover(e.target.value)}
+                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
+                      >
+                        <option value="MINT" className="bg-[#0f172a] text-white">M (Mint)</option>
+                        <option value="NM" className="bg-[#0f172a] text-white">NM (Near Mint)</option>
+                        <option value="VG+" className="bg-[#0f172a] text-white">VG+ (Very Good Plus)</option>
+                        <option value="VG" className="bg-[#0f172a] text-white">VG (Very Good)</option>
+                        <option value="G+" className="bg-[#0f172a] text-white">G+ (Good Plus)</option>
+                        <option value="G" className="bg-[#0f172a] text-white">G (Good)</option>
+                        <option value="F" className="bg-[#0f172a] text-white">F (Fair)</option>
+                        <option value="P" className="bg-[#0f172a] text-white">P (Poor)</option>
+                      </select>
+                    </div>
+                    {/* Año */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Año</label>
+                      <input
+                        type="text"
+                        value={formYear}
+                        onChange={(e) => setFormYear(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                      />
+                    </div>
+                    {/* N° Catalogo */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Ref. Catálogo</label>
+                      <input
+                        type="text"
+                        value={formCatno}
+                        onChange={(e) => setFormCatno(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Label */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-465 uppercase tracking-wider block">Sello Discográfico</label>
+                      <input
+                        type="text"
+                        value={formLabel}
+                        onChange={(e) => setFormLabel(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                      />
+                    </div>
+                    {/* Cover Url */}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-gray-465 uppercase tracking-wider block">URL de Carátula</label>
+                      <input
+                        type="text"
+                        value={formCover}
+                        onChange={(e) => setFormCover(e.target.value)}
+                        className="w-full input-premium py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Photos URLs */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-470 uppercase tracking-wider block">Fotos reales del disco (URLs separadas por comas)</label>
+                    <input
+                      type="text"
+                      placeholder="https://imgur.com/..., https://imgur.com/..."
+                      value={formPhotos}
+                      onChange={(e) => setFormPhotos(e.target.value)}
+                      className="w-full input-premium py-2 text-sm"
+                    />
+                  </div>
+
+                  {/* Discogs Url Link */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-gray-470 uppercase tracking-wider block">Enlace de Discogs (opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="https://www.discogs.com/release/..."
+                      value={formUrl}
+                      onChange={(e) => setFormUrl(e.target.value)}
+                      className="w-full input-premium py-2 text-sm"
+                    />
+                  </div>
+
+                  {/* Actions */}
+                  <div className="border-t border-white/5 pt-4.5 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddEditOpen(false)}
+                      className="btn-secondary-premium py-2.5 px-5 text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-premium py-2.5 px-6 text-sm flex items-center gap-1.5"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>{editingItem ? 'Guardar Cambios' : 'Añadir Disco'}</span>
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: EXCEL PASTE IMPORT */}
+        <AnimatePresence>
+          {isImportOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.6 }}
+                exit={{ opacity: 0 }}
+                onClick={closeImportModal}
+                className="absolute inset-0 bg-black"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="glass-card w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 relative border border-white/10 z-10 space-y-6"
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <FileSpreadsheet className="w-5.5 h-5.5 text-emerald-400" />
+                    <span>Importador Inteligente de Excel</span>
+                  </h3>
+                  <button 
+                    onClick={closeImportModal}
+                    className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400"
+                    disabled={isImporting}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* STEP 1: PASTE DATA */}
+                {importStep === 1 && (
+                  <div className="space-y-4">
+                    <p className="text-xs text-gray-400">
+                      Copia las celdas directamente desde Microsoft Excel o Google Sheets (con cabeceras o sin ellas) y pégalas en el siguiente recuadro:
+                    </p>
+                    <textarea
+                      rows={8}
+                      placeholder="Artista	Título	Link Discogs	Precio	Cantidad	Estado	Formato&#10;The Beatles	Abbey Road	https://www.discogs.com/release/...	45000	1	VG+	Vinyl..."
+                      value={importPasteText}
+                      onChange={(e) => setImportPasteText(e.target.value)}
+                      className="w-full p-4 bg-slate-950/60 border border-white/10 focus:border-indigo-500/50 rounded-2xl text-xs font-mono focus:outline-none focus:ring-0 leading-normal"
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        onClick={processImportPaste}
+                        className="btn-premium py-2 px-5 text-xs font-bold"
+                      >
+                        Procesar Pegado
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: COLUMN MAPPING */}
+                {importStep === 2 && (
+                  <div className="space-y-5">
+                    <p className="text-xs text-gray-450">
+                      Asigna la cabecera correspondiente a cada columna de tus datos para que el importador procese correctamente cada campo:
+                    </p>
+
+                    <div className="overflow-x-auto max-h-[300px] border border-white/5 rounded-2xl">
+                      <table className="min-w-full divide-y divide-white/5 text-left text-xs">
+                        <thead className="bg-slate-950/40">
+                          <tr>
+                            {importData[0]?.map((_, colIdx) => (
+                              <th key={colIdx} className="p-3">
+                                <select
+                                  value={
+                                    Object.keys(columnMapping).find(k => columnMapping[k] === colIdx) || 'skip'
+                                  }
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    setColumnMapping((prev) => {
+                                      const next = { ...prev };
+                                      // Remove old mapping for this key if exists
+                                      if (value !== 'skip') {
+                                        // clear keys mapping to the target colIdx
+                                        Object.keys(next).forEach(k => {
+                                          if (next[k] === colIdx) delete next[k];
+                                        });
+                                        next[value] = colIdx;
+                                      } else {
+                                        // find the key that was mapping to colIdx and delete it
+                                        const key = Object.keys(next).find(k => next[k] === colIdx);
+                                        if (key) delete next[key];
+                                      }
+                                      return next;
+                                    });
+                                  }}
+                                  className="bg-indigo-950/80 text-indigo-200 border border-indigo-500/35 rounded-lg py-1 px-2.5 text-xs cursor-pointer outline-none focus:ring-0 font-bold"
+                                >
+                                  <option value="skip" className="bg-[#0f172a] text-white">❌ Ignorar</option>
+                                  <option value="artist" className="bg-[#0f172a] text-white">👤 Artista</option>
+                                  <option value="title" className="bg-[#0f172a] text-white">💿 Título</option>
+                                  <option value="url" className="bg-[#0f172a] text-white">🔗 Link Discogs</option>
+                                  <option value="price" className="bg-[#0f172a] text-white">💰 Precio</option>
+                                  <option value="qty" className="bg-[#0f172a] text-white">🔢 Cantidad</option>
+                                  <option value="grade" className="bg-[#0f172a] text-white">⭐ Estado</option>
+                                  <option value="format" className="bg-[#0f172a] text-white">📻 Formato</option>
+                                </select>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 bg-slate-900/10">
+                          {importData.slice(0, 5).map((row, rIdx) => (
+                            <tr key={rIdx}>
+                              {row.map((cell, cIdx) => (
+                                <td key={cIdx} className="p-3 text-gray-400 border border-white/5 truncate max-w-[150px]">
+                                  {cell}
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="flex justify-between border-t border-white/5 pt-4">
+                      <button
+                        onClick={() => setImportStep(1)}
+                        className="btn-secondary-premium py-2 px-4 text-xs font-semibold"
+                      >
+                        Atrás
+                      </button>
+                      <button
+                        onClick={startExcelImport}
+                        className="btn-premium py-2 px-5 text-xs font-bold"
+                      >
+                        Comenzar Importación
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: PROGRESS & LOGS */}
+                {importStep === 3 && (
+                  <div className="space-y-5">
+                    {/* Progress details */}
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-xs font-bold text-gray-300">
+                        <span>{importProgress.status}</span>
+                        <span>{importProgress.current} / {importProgress.total}</span>
+                      </div>
+                      <div className="w-full bg-slate-800/40 h-2.5 rounded-full overflow-hidden border border-white/5">
+                        <div 
+                          className="h-full bg-gradient-to-r from-emerald-500 to-indigo-500 transition-all duration-300"
+                          style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Logs view */}
+                    <div className="h-64 overflow-y-auto p-4 rounded-2xl bg-slate-950/90 border border-white/5 font-mono text-xs space-y-1">
+                      {importLogs.map((log, index) => (
+                        <div 
+                          key={index}
+                          className={
+                            log.type === 'error' ? 'text-red-400' :
+                            log.type === 'warning' ? 'text-amber-400' : 'text-emerald-400'
+                          }
+                        >
+                          {log.msg}
+                        </div>
+                      ))}
+                      {importLogs.length === 0 && (
+                        <div className="text-gray-600 text-center py-20 select-none">
+                          Esperando el inicio de importación...
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex justify-end border-t border-white/5 pt-4">
+                      <button
+                        onClick={closeImportModal}
+                        disabled={isImporting}
+                        className="btn-premium py-2 px-5 text-xs font-bold disabled:opacity-50"
+                      >
+                        Finalizar & Cerrar
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: DISCOGS COLECTION SYNC */}
+        <AnimatePresence>
+          {isSyncOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.6 }}
+                exit={{ opacity: 0 }}
+                onClick={() => !isSyncing && setIsSyncOpen(false)}
+                className="absolute inset-0 bg-black"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                className="glass-card w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 relative border border-white/10 z-10 space-y-6"
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <RefreshCw className="w-5 h-5 text-indigo-400" />
+                    <span>Sincronización con la Colección de Discogs</span>
+                  </h3>
+                  <button 
+                    onClick={() => setIsSyncOpen(false)}
+                    className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400"
+                    disabled={isSyncing}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-200 text-xs">
+                    <Sparkles className="w-5 h-5 shrink-0 text-indigo-400" />
+                    <p>
+                      Esta herramienta descargará hasta 100 álbumes de tu colección pública de Discogs vinculada (cuenta: <strong className="text-white">@{ (userData as any)?.discogsUser || 'No configurado' }</strong>). Los nuevos discos se agregarán automáticamente a tu inventario bajo la categoría <strong className="text-white">"Colección"</strong> sin alterar los precios o ítems existentes.
+                    </p>
+                  </div>
+
+                  {!isSyncing && syncLogs.length === 0 && (
+                    <div className="flex justify-center py-6">
+                      <button
+                        onClick={startDiscogsSync}
+                        className="btn-premium py-2.5 px-6 text-xs font-bold flex items-center gap-2"
+                      >
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Iniciar Sincronización</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Sync status and progress */}
+                  {(isSyncing || syncLogs.length > 0) && (
+                    <div className="space-y-4 pt-2">
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-gray-300">
+                          <span>{syncProgress.status}</span>
+                          {syncProgress.total > 0 && (
+                            <span>{syncProgress.current} / {syncProgress.total}</span>
+                          )}
+                        </div>
+                        {syncProgress.total > 0 && (
+                          <div className="w-full bg-slate-800/40 h-2.5 rounded-full overflow-hidden border border-white/5">
+                            <div 
+                              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-300"
+                              style={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Logs output */}
+                      <div className="h-60 overflow-y-auto p-4 rounded-2xl bg-slate-950/90 border border-white/5 font-mono text-xs space-y-1">
+                        {syncLogs.map((log, index) => (
+                          <div 
+                            key={index}
+                            className={
+                              log.type === 'error' ? 'text-red-400' :
+                              log.type === 'skip' ? 'text-gray-500' : 'text-emerald-400'
+                            }
+                          >
+                            {log.msg}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-white/5 pt-4.5 flex justify-end">
+                  <button
+                    onClick={() => setIsSyncOpen(false)}
+                    disabled={isSyncing}
+                    className="btn-premium py-2 px-5 text-xs font-bold disabled:opacity-50"
+                  >
+                    Cerrar Ventana
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
+    </DashboardShell>
+  );
+}

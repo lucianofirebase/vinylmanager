@@ -3,8 +3,21 @@ services:
     name: vinyl-stock-manager
     env: node
     plan: free
-    buildCommand: npm install
-    startCommand: npm start
+    rootDir: antigravity-saas
+    buildCommand: npm install && npm run build
+    startCommand: npm run start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NEXT_PUBLIC_FIREBASE_API_KEY
+        value: AIzaSyDOcnNy0PtJz8HnbMWD0fs2ti2TRf3ieCI
+      - key: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+        value: vinylstockmanager.firebaseapp.com
+      - key: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+        value: vinylstockmanager
+      - key: NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        value: vinylstockmanager.firebasestorage.app
+      - key: NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+        value: "590608026938"
+      - key: NEXT_PUBLIC_FIREBASE_APP_ID
+        value: "1:590608026938:web:d1b729b62f6a833ddd5403"
