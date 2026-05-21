@@ -41,7 +41,11 @@ import {
   Instagram,
   ArrowLeft,
   Camera,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Disc,
+  FileText,
+  Calendar,
+  Layers
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
@@ -83,7 +87,8 @@ export default function DashboardPage() {
   // Selection and layout states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
+  const [previewModalItem, setPreviewModalItem] = useState<VinylItem | null>(null);
+  const [previewActivePhoto, setPreviewActivePhoto] = useState<string | null>(null);
 
   // Filter and search states
   const [searchQuery, setSearchQuery] = useState('');
@@ -582,7 +587,7 @@ export default function DashboardPage() {
     try {
       const docRef = doc(db, 'users', user.uid, 'stock', id);
       await deleteDoc(docRef);
-      if (expandedCardId === id) setExpandedCardId(null);
+      if (previewModalItem?.id === id) setPreviewModalItem(null);
     } catch (err) {
       console.error("Error deleting vinyl item:", err);
       alert("Error al eliminar.");
@@ -1174,11 +1179,13 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 select-none">
             {sortedStock.map((item) => {
               const isSelected = selectedIds.has(item.id);
-              const isExpanded = expandedCardId === item.id;
               return (
                 <div
                   key={item.id}
-                  onClick={() => setExpandedCardId(isExpanded ? null : item.id)}
+                  onClick={() => {
+                    setPreviewModalItem(item);
+                    setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
+                  }}
                   className={`glass-card rounded-2xl overflow-hidden cursor-pointer border transition-all flex flex-col group relative ${
                     isSelected ? 'border-indigo-500/50 bg-indigo-950/5' : 'border-white/5 hover:border-white/10'
                   }`}
@@ -1242,65 +1249,6 @@ export default function DashboardPage() {
                       </span>
                     </div>
 
-                    {/* Expandable details area */}
-                    <AnimatePresence>
-                      {isExpanded && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          className="pt-3 border-t border-white/5 space-y-2 text-xs text-gray-400 overflow-hidden"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {item.label && <p><strong>Sello:</strong> {item.label}</p>}
-                          {item.catno && <p><strong>N° Catálogo:</strong> {item.catno}</p>}
-                          {item.year && <p><strong>Año:</strong> {item.year}</p>}
-                          {item.gradeCover && <p><strong>Estado Tapa:</strong> {item.gradeCover}</p>}
-                          {item.qty > 1 && <p><strong>Cantidad:</strong> {item.qty}</p>}
-                          {item.url && (
-                            <a 
-                              href={item.url} 
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-indigo-400 hover:underline flex items-center gap-1 mt-1.5 w-fit mb-2.5"
-                            >
-                              <span>Ver en Discogs</span>
-                              <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-
-                          <div className="mt-2 mb-3.5" onClick={(e) => e.stopPropagation()}>
-                            <AudioPreviewPlayer
-                              discogsId={item.discogsId}
-                              artist={item.artist}
-                              title={item.title}
-                            />
-                          </div>
-                          <div className="flex gap-2 pt-3">
-                            <button
-                              onClick={(e) => openEditModal(item, e)}
-                              className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-1 border border-white/5 transition-all text-xs"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-indigo-400" />
-                              <span>Editar</span>
-                            </button>
-                            <button
-                              onClick={(e) => openInstagramModal(item, e)}
-                              className="flex-1 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center gap-1 border border-indigo-500/20 transition-all text-xs"
-                            >
-                              <Instagram className="w-3.5 h-3.5" />
-                              <span>Compartir</span>
-                            </button>
-                            <button
-                              onClick={(e) => handleDeleteItem(item.id, e)}
-                              className="py-1.5 px-2.5 rounded-lg bg-red-950/30 hover:bg-red-950/65 text-red-400 hover:text-red-300 font-bold border border-red-500/10 hover:border-red-500/20 transition-all"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
                   </div>
                 </div>
               );
@@ -1335,7 +1283,10 @@ export default function DashboardPage() {
               return (
                 <div
                   key={item.id}
-                  onClick={() => setExpandedCardId(expandedCardId === item.id ? null : item.id)}
+                  onClick={() => {
+                    setPreviewModalItem(item);
+                    setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
+                  }}
                   className={`grid grid-cols-12 p-3.5 items-center hover:bg-white/5 cursor-pointer text-sm font-medium ${
                     isSelected ? 'bg-indigo-950/5' : ''
                   }`}
@@ -2540,6 +2491,196 @@ export default function DashboardPage() {
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: PREVIEW ITEM DETAILS */}
+        <AnimatePresence>
+          {previewModalItem && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 sm:p-6"
+              onClick={() => setPreviewModalItem(null)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                transition={{ type: "spring", duration: 0.5, bounce: 0 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-4xl max-h-[90vh] glass-card rounded-2xl border border-white/10 shadow-2xl overflow-y-auto overflow-x-hidden scrollbar-thin relative flex flex-col"
+              >
+                {/* Header Actions */}
+                <div className="sticky top-0 z-20 flex justify-between items-center p-4 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
+                  <div className="flex gap-2">
+                    <button
+                      onClick={(e) => { setPreviewModalItem(null); openEditModal(previewModalItem, e); }}
+                      className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
+                    >
+                      <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Editar
+                    </button>
+                    <button
+                      onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
+                      className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
+                    >
+                      <Instagram className="w-3.5 h-3.5 text-indigo-400" /> Compartir
+                    </button>
+                    <button
+                      onClick={(e) => { handleDeleteItem(previewModalItem.id, e); }}
+                      className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold border border-red-500/20 transition-all text-xs flex items-center"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <button 
+                    onClick={() => setPreviewModalItem(null)}
+                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-8">
+                  {/* Left Column: Image Viewer */}
+                  <div className="md:col-span-5 space-y-4">
+                    <div className="glass-card rounded-2xl border border-white/5 overflow-hidden aspect-square flex items-center justify-center relative bg-slate-950/40 select-none">
+                      {previewActivePhoto ? (
+                        <img 
+                          src={previewActivePhoto} 
+                          alt={`${previewModalItem.title} cover`} 
+                          className="w-full h-full object-cover" 
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-gray-600 p-8">
+                          <Disc className="w-24 h-24 stroke-[1] animate-spin-slow mb-4" />
+                          <span className="text-xs text-gray-500 font-medium">Sin imagen de portada</span>
+                        </div>
+                      )}
+                      
+                      {/* Format Tag */}
+                      <div className="absolute top-4 left-4 bg-indigo-600/90 text-white text-[10px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full border border-indigo-400/30 shadow-lg">
+                        {previewModalItem.format}
+                      </div>
+
+                      {/* Condition indicators on image */}
+                      <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md text-[10px] font-bold text-gray-200 px-3 py-1.5 rounded-lg border border-white/10 flex gap-3 shadow-lg">
+                        <span>Disco: <strong className="text-emerald-400">{previewModalItem.grade}</strong></span>
+                        <span>Tapa: <strong className="text-emerald-400">{previewModalItem.gradeCover || previewModalItem.grade}</strong></span>
+                      </div>
+                    </div>
+
+                    {/* Gallery Thumbnails */}
+                    {(() => {
+                      const allPhotos = [...(previewModalItem.photos || []), ...(previewModalItem.discogsPhotos || [])];
+                      if (allPhotos.length <= 1) return null;
+                      return (
+                        <div className="flex gap-2 overflow-x-auto pb-2 select-none scrollbar-thin">
+                          {allPhotos.map((photo, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => setPreviewActivePhoto(photo)}
+                              className={`w-16 h-16 rounded-lg overflow-hidden border shrink-0 bg-slate-900 transition-all ${
+                                previewActivePhoto === photo 
+                                  ? 'border-indigo-400 scale-105 shadow-md shadow-indigo-500/20' 
+                                  : 'border-white/5 opacity-70 hover:opacity-100 hover:scale-95'
+                              }`}
+                            >
+                              <img src={photo} alt="thumbnail" className="w-full h-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Right Column: Information & Audio Player */}
+                  <div className="md:col-span-7 space-y-6">
+                    <div className="space-y-4">
+                      {/* Album Header */}
+                      <div>
+                        <span className="text-xs font-extrabold text-indigo-400 tracking-wider uppercase">{previewModalItem.artist || 'Artista Desconocido'}</span>
+                        <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-1 leading-tight">
+                          {previewModalItem.title}
+                        </h1>
+                      </div>
+
+                      {/* Price section */}
+                      <div className="flex items-baseline gap-2 pb-2">
+                        <span className="text-3xl font-extrabold text-emerald-400">
+                          {formatCurrency(previewModalItem.price, userData?.currency)}
+                        </span>
+                        {previewModalItem.status !== 'disponible' && (
+                          <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded uppercase">
+                            {previewModalItem.status}
+                          </span>
+                        )}
+                        {previewModalItem.qty > 1 && (
+                          <span className="text-xs text-gray-500 font-bold ml-2">
+                            x{previewModalItem.qty} disponibles
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Specifications Box */}
+                      <div className="glass-card rounded-xl p-4 border border-white/5 space-y-3 bg-slate-900/50">
+                        <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-2">
+                          <Layers className="w-4 h-4" /> Especificaciones
+                        </h4>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div>
+                            <span className="text-gray-500 block mb-1">Sello Discográfico:</span>
+                            <span className="font-semibold text-white">{previewModalItem.label || 'Desconocido'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block mb-1">Número de Catálogo:</span>
+                            <span className="font-semibold text-white">{previewModalItem.catno || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block mb-1">Año de Edición:</span>
+                            <span className="font-semibold text-white flex items-center gap-1.5">
+                              <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                              {previewModalItem.year || 'Desconocido'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500 block mb-1">Formato:</span>
+                            <span className="font-semibold text-white">{previewModalItem.format}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Links and Actions */}
+                      {previewModalItem.url && (
+                        <div className="pt-2">
+                          <a 
+                            href={previewModalItem.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="inline-flex items-center gap-2 py-2 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 text-white text-xs font-bold transition-all border border-white/5 hover:border-white/10"
+                          >
+                            <ExternalLink className="w-4 h-4 text-indigo-400" />
+                            Ver página en Discogs
+                          </a>
+                        </div>
+                      )}
+
+                      {/* Audio Preview section */}
+                      <div className="space-y-3 pt-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Escuchar Grabación</span>
+                        <AudioPreviewPlayer 
+                          discogsId={previewModalItem.discogsId} 
+                          artist={previewModalItem.artist} 
+                          title={previewModalItem.title} 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
           )}
         </AnimatePresence>
 
