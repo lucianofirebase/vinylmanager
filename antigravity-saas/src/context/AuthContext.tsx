@@ -21,6 +21,7 @@ interface UserData {
   avatarType?: 'preset' | 'upload' | null;
   discogsUser?: string | null;
   currency?: string | null;
+  whatsappPhone?: string | null;
 }
 
 interface AuthContextType {
@@ -112,11 +113,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     if (loading) return;
 
-    const isPublicPath = pathname === '/login';
+    const isLoginPath = pathname === '/login';
+    const isPublicShowcasePath = pathname?.startsWith('/v/');
     const isOnboardingPath = pathname === '/onboarding';
 
     if (!user) {
-      if (!isPublicPath) {
+      if (!isLoginPath && !isPublicShowcasePath) {
         router.push('/login');
       }
     } else {
@@ -126,7 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           router.push('/onboarding');
         }
       } else {
-        if (isPublicPath || isOnboardingPath || pathname === '/') {
+        if (isLoginPath || isOnboardingPath || pathname === '/') {
           router.push('/dashboard');
         }
       }

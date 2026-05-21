@@ -145,10 +145,13 @@ export default function WhatsAppMarketingPage() {
       const gCover = getGradeText(item.gradeCover || item.grade || 'VG+', true);
       text += `📀 Disco: ${gMedia} | 📁 Tapa: ${gCover}\n`;
       
-      const hasPhotos = (item.photos && item.photos.length > 0) || (item.discogsPhotos && item.discogsPhotos.length > 0);
-      const photoInfo = hasPhotos ? " 📸 *(Pide fotos)*" : "";
       const formattedPriceText = formatCurrency(price, userData?.currency);
-      text += `💰 *${formattedPriceText}*${photoInfo}\n\n`;
+      text += `💰 *${formattedPriceText}*\n`;
+
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://vinylstockmanager.web.app';
+      const publicUrl = `${origin}/v?u=${user?.uid}&id=${item.id}`;
+      text += `🔗 Fotos y Audio: ${publicUrl}\n\n`;
+      
       text += `--------------------------\n\n`;
     });
 

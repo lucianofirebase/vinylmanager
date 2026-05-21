@@ -21,7 +21,8 @@ import {
   Cpu,
   Coins,
   Compass,
-  ChevronDown
+  ChevronDown,
+  Phone
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -56,6 +57,7 @@ export default function SettingsPage() {
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [discogsUser, setDiscogsUser] = useState('');
   const [currency, setCurrency] = useState('USD');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -66,6 +68,7 @@ export default function SettingsPage() {
       setUsername(userData.username || '');
       setDiscogsUser(userData.discogsUser || '');
       setCurrency(userData.currency || 'USD');
+      setWhatsappPhone(userData.whatsappPhone || '');
       
       if (userData.avatarType === 'upload') {
         setAvatarType('upload');
@@ -186,6 +189,7 @@ export default function SettingsPage() {
         username: cleanUsername,
         discogsUser: discogsUser.trim(),
         currency: currency,
+        whatsappPhone: whatsappPhone.trim(),
         avatar: finalAvatar,
         avatarType: avatarType,
         interests: selectedInterests,
@@ -361,6 +365,24 @@ export default function SettingsPage() {
                 </div>
               </div>
               <p className="text-[10px] text-gray-500">Selecciona la moneda por defecto para mostrar los precios y generar listas de WhatsApp.</p>
+            </div>
+
+            {/* Número de WhatsApp */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Número de WhatsApp (Ventas)</label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
+                  <Phone className="w-5 h-5 text-indigo-400" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Ej: 5491112345678 (código de país + área + número, sin espacios ni '+')"
+                  value={whatsappPhone}
+                  onChange={(e) => setWhatsappPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                  className="w-full !pl-10 !pr-10 input-premium font-medium"
+                />
+              </div>
+              <p className="text-[10px] text-gray-500">El número con el que los compradores se contactarán contigo al ver tus vinilos públicos. Incluye código internacional (ej. 54 para Argentina, 598 para Uruguay, sin el signo "+").</p>
             </div>
 
             {/* Email Address (disabled representation) */}

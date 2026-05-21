@@ -37,10 +37,13 @@ import {
   Square, 
   ChevronDown, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Instagram
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '../../lib/utils';
+import InstagramCardGenerator from '../../components/InstagramCardGenerator';
+import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
 
 // Discogs credentials from previous legacy configuration
 const DISCOGS_KEY = 'kTXBUunaWzBTXwJZlRga';
@@ -91,6 +94,14 @@ export default function DashboardPage() {
   
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
+  const [isInstagramOpen, setIsInstagramOpen] = useState(false);
+  const [instagramVinyl, setInstagramVinyl] = useState<VinylItem | null>(null);
+
+  const openInstagramModal = (item: VinylItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setInstagramVinyl(item);
+    setIsInstagramOpen(true);
+  };
   
   // Autocomplete and Discogs Search states inside Add/Edit Modal
   const [discogsSearchQuery, setDiscogsSearchQuery] = useState('');
@@ -1018,23 +1029,38 @@ export default function DashboardPage() {
                               href={item.url} 
                               target="_blank" 
                               rel="noreferrer" 
-                              className="text-indigo-400 hover:underline flex items-center gap-1 mt-1.5 w-fit"
+                              className="text-indigo-400 hover:underline flex items-center gap-1 mt-1.5 w-fit mb-2.5"
                             >
                               <span>Ver en Discogs</span>
                               <ExternalLink className="w-3 h-3" />
                             </a>
                           )}
-                          <div className="flex gap-2.5 pt-3">
+
+                          <div className="mt-2 mb-3.5" onClick={(e) => e.stopPropagation()}>
+                            <AudioPreviewPlayer
+                              discogsId={item.discogsId}
+                              artist={item.artist}
+                              title={item.title}
+                            />
+                          </div>
+                          <div className="flex gap-2 pt-3">
                             <button
                               onClick={(e) => openEditModal(item, e)}
-                              className="flex-1 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-1.5 border border-white/5 transition-all text-xs"
+                              className="flex-1 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white font-bold flex items-center justify-center gap-1 border border-white/5 transition-all text-xs"
                             >
-                              <Edit2 className="w-3.5 h-3.5 text-indigo-450" />
+                              <Edit2 className="w-3.5 h-3.5 text-indigo-400" />
                               <span>Editar</span>
                             </button>
                             <button
+                              onClick={(e) => openInstagramModal(item, e)}
+                              className="flex-1 py-1.5 rounded-lg bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold flex items-center justify-center gap-1 border border-indigo-500/20 transition-all text-xs"
+                            >
+                              <Instagram className="w-3.5 h-3.5" />
+                              <span>Compartir</span>
+                            </button>
+                            <button
                               onClick={(e) => handleDeleteItem(item.id, e)}
-                              className="py-2 px-3 rounded-lg bg-red-950/30 hover:bg-red-950/65 text-red-400 hover:text-red-300 font-bold border border-red-500/10 hover:border-red-500/20 transition-all"
+                              className="py-1.5 px-2.5 rounded-lg bg-red-950/30 hover:bg-red-950/65 text-red-400 hover:text-red-300 font-bold border border-red-500/10 hover:border-red-500/20 transition-all"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -1124,16 +1150,25 @@ export default function DashboardPage() {
                     {formatCurrency(item.price, userData?.currency)}
                   </div>
 
-                  <div className="col-span-1 text-right pr-2 flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
+                  <div className="col-span-1 text-right pr-2 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => openInstagramModal(item, e)}
+                      title="Compartir en Instagram"
+                      className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
+                    >
+                      <Instagram className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={(e) => openEditModal(item, e)}
-                      className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white"
+                      title="Editar vinilo"
+                      className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-all"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => handleDeleteItem(item.id, e)}
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400"
+                      title="Eliminar vinilo"
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-450 hover:text-red-400 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1726,6 +1761,15 @@ export default function DashboardPage() {
             </div>
           )}
         </AnimatePresence>
+
+        {/* MODAL: INSTAGRAM CARD GENERATOR */}
+        <InstagramCardGenerator
+          isOpen={isInstagramOpen}
+          onClose={() => setIsInstagramOpen(false)}
+          vinyl={instagramVinyl}
+          currency={userData?.currency || 'USD'}
+          shopName={userData?.username || 'mi_tienda'}
+        />
       </div>
     </DashboardShell>
   );
