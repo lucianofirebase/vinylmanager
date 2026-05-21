@@ -48,43 +48,79 @@ function wrapFirestore(item) {
     return { fields };
 }
 
+async function getAuthHeaders(customHeaders = {}) {
+    const headers = { ...customHeaders };
+    const user = auth.currentUser;
+    if (user) {
+        try {
+            const token = await user.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (e) {
+            console.error("Error al obtener token de autenticación:", e);
+        }
+    }
+    return headers;
+}
+
 async function fsLoadStock(uid) {
     // Añadimos pageSize=1000 para traer todo y un timestamp para evitar la caché del navegador
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock?pageSize=1000&key=${FIREBASE_CONFIG.apiKey}&t=${Date.now()}`;
     try {
-        const res = await fetch(url);
-        if (!res.ok) return [];
+        const headers = await getAuthHeaders();
+        const res = await originalFetch(url, { headers });
+        if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error?.message || `Error del servidor Firestore: ${res.status}`);
+        }
         const data = await res.json();
         return (data.documents || []).map(unwrapFirestore);
     } catch (err) {
         console.error("Error cargando stock:", err);
-        return [];
+        throw err;
     }
 }
 
 async function fsAddItem(uid, item) {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock?key=${FIREBASE_CONFIG.apiKey}`;
-    const res = await fetch(url, {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await originalFetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(wrapFirestore(item))
     });
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Error del servidor Firestore al añadir: ${res.status}`);
+    }
     const doc = await res.json();
     return unwrapFirestore(doc);
 }
 
 async function fsUpdateItem(uid, docId, item) {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock/${docId}?key=${FIREBASE_CONFIG.apiKey}`;
-    await fetch(url, {
+    const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
+    const res = await originalFetch(url, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: headers,
         body: JSON.stringify(wrapFirestore(item))
     });
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Error del servidor Firestore al actualizar: ${res.status}`);
+    }
 }
 
 async function fsDeleteItem(uid, docId) {
     const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${uid}/stock/${docId}?key=${FIREBASE_CONFIG.apiKey}`;
-    await fetch(url, { method: 'DELETE' });
+    const headers = await getAuthHeaders();
+    const res = await originalFetch(url, {
+        method: 'DELETE',
+        headers: headers
+    });
+    if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Error del servidor Firestore al eliminar: ${res.status}`);
+    }
 }
 
 // ------ Override fetch (Misma lógica pero llamando a las funciones REST) ------
@@ -93,27 +129,47 @@ window.fetch = async (url, options = {}) => {
     if (typeof url !== 'string') return originalFetch(url, options);
 
     if (url.includes('/api/settings')) {
+        if (!currentUid) {
+            return new Response(JSON.stringify({ error: 'No hay usuario autenticado' }), { status: 401 });
+        }
         const settingsUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.projectId}/databases/(default)/documents/users/${currentUid}/settings/main?key=${FIREBASE_CONFIG.apiKey}`;
-        if (options.method === 'POST') {
-            const body = JSON.parse(options.body);
-            await originalFetch(settingsUrl, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(wrapFirestore(body))
-            });
-            return new Response(JSON.stringify(body));
-        } else {
-            const res = await originalFetch(settingsUrl);
-            if (res.status === 404) return new Response(JSON.stringify({}));
-            const doc = await res.json();
-            return new Response(JSON.stringify(unwrapFirestore(doc)));
+        try {
+            if (options.method === 'POST') {
+                const body = JSON.parse(options.body);
+                const headers = await getAuthHeaders({ 'Content-Type': 'application/json' });
+                const res = await originalFetch(settingsUrl, {
+                    method: 'PATCH',
+                    headers: headers,
+                    body: JSON.stringify(wrapFirestore(body))
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `Error del servidor Firestore al guardar configuración: ${res.status}`);
+                }
+                return new Response(JSON.stringify(body));
+            } else {
+                const headers = await getAuthHeaders();
+                const res = await originalFetch(settingsUrl, { headers });
+                if (res.status === 404) return new Response(JSON.stringify({}));
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    throw new Error(errData.error?.message || `Error del servidor Firestore al cargar configuración: ${res.status}`);
+                }
+                const doc = await res.json();
+                return new Response(JSON.stringify(unwrapFirestore(doc)));
+            }
+        } catch (err) {
+            console.error("Error en settings:", err);
+            return new Response(JSON.stringify({ error: err.message }), { status: 500 });
         }
     }
 
     if (!url.includes('/api/stock')) {
         return originalFetch(url, options);
     }
-    if (!currentUid) throw new Error('No hay usuario autenticado');
+    if (!currentUid) {
+        return new Response(JSON.stringify({ error: 'No hay usuario autenticado' }), { status: 401 });
+    }
 
     const method = options.method || 'GET';
     const body = options.body ? JSON.parse(options.body) : null;
@@ -139,7 +195,7 @@ window.fetch = async (url, options = {}) => {
         }
     } catch (err) {
         console.error("Error en operación Firestore:", err);
-        return new Response(JSON.stringify({error: err.message}), { status: 500 });
+        return new Response(JSON.stringify({ error: err.message }), { status: 500 });
     }
     return originalFetch(url, options);
 };
