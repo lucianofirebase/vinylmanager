@@ -117,8 +117,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const isPublicShowcasePath = pathname === '/v' || pathname?.startsWith('/v/');
     const isOnboardingPath = pathname === '/onboarding';
 
+    // Public showcase page should never trigger any redirect guards
+    if (isPublicShowcasePath) {
+      return;
+    }
+
     if (!user) {
-      if (!isLoginPath && !isPublicShowcasePath) {
+      if (!isLoginPath) {
         router.push('/login');
       }
     } else {
@@ -160,10 +165,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const isPublicShowcasePath = pathname === '/v' || pathname?.startsWith('/v/');
+
   return (
     <AuthContext.Provider value={{ user, userData, loading, loginWithGoogle, logout, refreshUserData }}>
       <AnimatePresence mode="wait">
-        {loading ? (
+        {loading && !isPublicShowcasePath ? (
           <motion.div
             key="auth-loader"
             initial={{ opacity: 1 }}
