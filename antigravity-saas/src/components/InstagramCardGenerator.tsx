@@ -78,10 +78,14 @@ export default function InstagramCardGenerator({
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
-    // CORS bypass parameter
+    // CORS bypass using images.weserv.nl proxy
     const coverUrl = vinyl.cover || '';
     if (coverUrl) {
-      img.src = coverUrl.includes('?') ? `${coverUrl}&cors=true` : `${coverUrl}?cors=true`;
+      if (coverUrl.includes('discogs.com') || coverUrl.startsWith('http')) {
+        img.src = `https://images.weserv.nl/?url=${encodeURIComponent(coverUrl)}`;
+      } else {
+        img.src = coverUrl;
+      }
     } else {
       // Draw placeholder if no cover
       drawGraphic(ctx, width, height, null);

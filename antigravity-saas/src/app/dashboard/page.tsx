@@ -124,7 +124,9 @@ export default function DashboardPage() {
   const [formYear, setFormYear] = useState('');
   const [formCover, setFormCover] = useState('');
   const [formStatus, setFormStatus] = useState<'disponible' | 'coleccion' | 'reservado' | 'vendido' | 'borrador'>('disponible');
-  const [formPhotos, setFormPhotos] = useState('');
+  const [photosList, setPhotosList] = useState<string[]>([]);
+  const [photoUrlInput, setPhotoUrlInput] = useState('');
+  const [failedImages, setFailedImages] = useState<Set<string>>(new Set());
   const [formUrl, setFormUrl] = useState('');
   const [formDiscogsId, setFormDiscogsId] = useState<number | undefined>(undefined);
 
@@ -293,7 +295,9 @@ export default function DashboardPage() {
     setFormYear('');
     setFormCover('');
     setFormStatus('disponible');
-    setFormPhotos('');
+    setPhotosList([]);
+    setPhotoUrlInput('');
+    setFailedImages(new Set());
     setFormUrl('');
     setFormDiscogsId(undefined);
     setDiscogsSearchQuery('');
@@ -330,8 +334,10 @@ export default function DashboardPage() {
     setFormYear(item.year || '');
     setFormCover(item.cover || '');
     setFormStatus(item.status);
-    setFormPhotos(item.photos?.join(', ') || '');
-    setFormUrl(item.url || '');
+    setPhotosList(item.photos || []);
+    setPhotoUrlInput('');
+    setFailedImages(new Set());
+    setFormUrl('');
     setFormDiscogsId(item.discogsId);
     setDiscogsSearchQuery('');
     setDiscogsSearchResults([]);
@@ -341,10 +347,6 @@ export default function DashboardPage() {
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
-    const photosArray = formPhotos
-      ? formPhotos.split(',').map((p) => p.trim()).filter((p) => p !== '')
-      : [];
 
     const data: Omit<VinylItem, 'id'> = {
       artist: formArtist.trim(),
@@ -359,7 +361,7 @@ export default function DashboardPage() {
       year: formYear.trim(),
       cover: formCover.trim(),
       status: formStatus,
-      photos: photosArray,
+      photos: photosList,
       dateAdded: editingItem ? editingItem.dateAdded : new Date().toISOString(),
       url: formUrl.trim()
     };
@@ -1220,10 +1222,10 @@ export default function DashboardPage() {
             <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 0.6 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsAddEditOpen(false)}
-                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/90"
               />
               
               <motion.div
@@ -1231,7 +1233,7 @@ export default function DashboardPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 15 }}
                 transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl relative border border-white/10 z-10 overflow-hidden"
+                className="bg-[#0f172a] w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl relative border border-white/10 z-10 overflow-hidden shadow-2xl shadow-black/80"
               >
                 {/* Background Floating Orbs */}
                 <div className="absolute top-0 left-0 w-60 h-60 rounded-full bg-indigo-500/10 blur-[60px] animate-orb-slow-1 pointer-events-none" />
@@ -1457,7 +1459,9 @@ export default function DashboardPage() {
                           {/* Commercial Grid */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
                             <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">Precio (ARS)</label>
+                              <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
+                                Precio ({userData?.currency || 'USD'})
+                              </label>
                               <input
                                 type="number"
                                 value={formPrice}
@@ -1577,41 +1581,95 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Technical/Advanced Fields */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Sello Discográfico</label>
-                              <input
-                                type="text"
-                                value={formLabel}
-                                onChange={(e) => setFormLabel(e.target.value)}
-                                className="w-full input-premium py-2 text-sm"
-                                placeholder="Ej: Harvest, EMI"
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">URL de Carátula</label>
-                              <input
-                                type="text"
-                                value={formCover}
-                                onChange={(e) => setFormCover(e.target.value)}
-                                className="w-full input-premium py-2 text-sm"
-                                placeholder="Ej: https://images.discogs.com/..."
-                              />
-                            </div>
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Sello Discográfico</label>
+                            <input
+                              type="text"
+                              value={formLabel}
+                              onChange={(e) => setFormLabel(e.target.value)}
+                              className="w-full input-premium py-2 text-sm"
+                              placeholder="Ej: Harvest, EMI"
+                            />
                           </div>
 
                           {/* Real Photos */}
-                          <div className="space-y-1.5">
+                          <div className="space-y-2">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
-                              Fotos Reales (URLs separadas por comas)
+                              Fotos Reales del Vinilo
                             </label>
-                            <input
-                              type="text"
-                              placeholder="Ej: https://imgur.com/foto1.jpg, https://imgur.com/foto2.jpg"
-                              value={formPhotos}
-                              onChange={(e) => setFormPhotos(e.target.value)}
-                              className="w-full input-premium py-2 text-sm"
-                            />
+                            <div className="flex gap-2">
+                              <input
+                                type="url"
+                                placeholder="Pegar URL de foto (ej: Imgur, etc.)"
+                                value={photoUrlInput}
+                                onChange={(e) => setPhotoUrlInput(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    const trimmed = photoUrlInput.trim();
+                                    if (trimmed) {
+                                      if (!photosList.includes(trimmed)) {
+                                        setPhotosList(prev => [...prev, trimmed]);
+                                      }
+                                      setPhotoUrlInput('');
+                                    }
+                                  }
+                                }}
+                                className="flex-1 input-premium py-2 text-sm"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const trimmed = photoUrlInput.trim();
+                                  if (trimmed) {
+                                    if (!photosList.includes(trimmed)) {
+                                      setPhotosList(prev => [...prev, trimmed]);
+                                    }
+                                    setPhotoUrlInput('');
+                                  }
+                                }}
+                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-colors shrink-0"
+                              >
+                                Agregar
+                              </button>
+                            </div>
+
+                            {/* Thumbnails list */}
+                            {photosList.length > 0 && (
+                              <div className="flex flex-wrap gap-3 pt-2">
+                                {photosList.map((url, idx) => {
+                                  const isFailed = failedImages.has(url);
+                                  return (
+                                    <div key={idx} className="relative group w-16 h-16 rounded-xl overflow-hidden border border-white/10 bg-slate-800/50 flex items-center justify-center shadow-md shrink-0">
+                                      {isFailed ? (
+                                        <Music className="w-5 h-5 text-gray-500" />
+                                      ) : (
+                                        <img
+                                          src={url}
+                                          alt={`Foto ${idx + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                          onError={() => {
+                                            setFailedImages(prev => {
+                                              const next = new Set(prev);
+                                              next.add(url);
+                                              return next;
+                                            });
+                                          }}
+                                        />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => setPhotosList(prev => prev.filter((_, i) => i !== idx))}
+                                        className="absolute top-1 right-1 bg-black/70 hover:bg-red-650 text-white rounded-full p-0.5 transition-colors z-10"
+                                        title="Eliminar foto"
+                                      >
+                                        <X className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
 
                           {/* Discogs Url */}
