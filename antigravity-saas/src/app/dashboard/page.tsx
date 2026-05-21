@@ -140,7 +140,7 @@ export default function DashboardPage() {
       const reader = new FileReader();
       reader.onload = (e) => {
         img.onload = () => {
-          const MAX = 900;
+          const MAX = 700;
           let { width, height } = img;
           if (width > MAX || height > MAX) {
             if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
@@ -151,7 +151,7 @@ export default function DashboardPage() {
           canvas.height = height;
           const ctx = canvas.getContext('2d')!;
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', 0.75));
+          resolve(canvas.toDataURL('image/jpeg', 0.65));
         };
         img.onerror = reject;
         img.src = e.target?.result as string;
@@ -1791,8 +1791,11 @@ export default function DashboardPage() {
 
                           {/* Real Photos */}
                           <div className="space-y-2">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
-                              Fotos Reales del Vinilo
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
+                              <span>Fotos Reales del Vinilo</span>
+                              <span className={`font-mono ${photosList.length >= 5 ? 'text-amber-400' : 'text-gray-600'}`}>
+                                {photosList.length}/5
+                              </span>
                             </label>
 
                             {/* Upload buttons row */}
@@ -1800,9 +1803,9 @@ export default function DashboardPage() {
                               {/* Camera button */}
                               <button
                                 type="button"
-                                disabled={isUploadingPhoto}
+                                disabled={isUploadingPhoto || photosList.length >= 5}
                                 onClick={() => photoCameraInputRef.current?.click()}
-                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <Camera className="w-5 h-5" />
                                 <span className="text-[10px] font-semibold">Cámara</span>
@@ -1811,9 +1814,9 @@ export default function DashboardPage() {
                               {/* Gallery / file button */}
                               <button
                                 type="button"
-                                disabled={isUploadingPhoto}
+                                disabled={isUploadingPhoto || photosList.length >= 5}
                                 onClick={() => photoFileInputRef.current?.click()}
-                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 flex flex-col items-center justify-center gap-1.5 py-3 rounded-xl border border-white/10 bg-slate-800/40 hover:bg-slate-700/40 hover:border-indigo-500/30 transition-all text-gray-400 hover:text-white disabled:opacity-40 disabled:cursor-not-allowed"
                               >
                                 <Plus className="w-5 h-5" />
                                 <span className="text-[10px] font-semibold">Galería</span>
@@ -1831,9 +1834,10 @@ export default function DashboardPage() {
                                   if (!files.length) return;
                                   setIsUploadingPhoto(true);
                                   for (const file of files) {
+                                    if (photosList.length >= 5) break;
                                     try {
                                       const b64 = await compressImageToBase64(file);
-                                      setPhotosList(prev => [...prev, b64]);
+                                      setPhotosList(prev => prev.length < 5 ? [...prev, b64] : prev);
                                     } catch (err) {
                                       console.error('Error processing photo:', err);
                                     }
@@ -1853,9 +1857,10 @@ export default function DashboardPage() {
                                   if (!files.length) return;
                                   setIsUploadingPhoto(true);
                                   for (const file of files) {
+                                    if (photosList.length >= 5) break;
                                     try {
                                       const b64 = await compressImageToBase64(file);
-                                      setPhotosList(prev => [...prev, b64]);
+                                      setPhotosList(prev => prev.length < 5 ? [...prev, b64] : prev);
                                     } catch (err) {
                                       console.error('Error processing photo:', err);
                                     }
