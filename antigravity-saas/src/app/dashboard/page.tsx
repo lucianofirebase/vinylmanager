@@ -38,7 +38,8 @@ import {
   ChevronDown, 
   Loader2,
   AlertCircle,
-  Instagram
+  Instagram,
+  ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '../../lib/utils';
@@ -91,6 +92,8 @@ export default function DashboardPage() {
   // Modals state
   const [isAddEditOpen, setIsAddEditOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<VinylItem | null>(null);
+  const [formStep, setFormStep] = useState<1 | 2>(1);
+  const [selectedDiscogsItem, setSelectedDiscogsItem] = useState<any | null>(null);
   
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isSyncOpen, setIsSyncOpen] = useState(false);
@@ -276,6 +279,8 @@ export default function DashboardPage() {
   // Add/Edit Form Handlers
   const openAddModal = () => {
     setEditingItem(null);
+    setSelectedDiscogsItem(null);
+    setFormStep(1);
     setFormArtist('');
     setFormTitle('');
     setFormPrice('0');
@@ -299,6 +304,20 @@ export default function DashboardPage() {
   const openEditModal = (item: VinylItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingItem(item);
+    if (item.discogsId) {
+      setSelectedDiscogsItem({
+        title: item.title,
+        artist: item.artist,
+        cover: item.cover || '',
+        year: item.year || '',
+        label: item.label || '',
+        catno: item.catno || '',
+        id: item.discogsId
+      });
+    } else {
+      setSelectedDiscogsItem(null);
+    }
+    setFormStep(2);
     setFormArtist(item.artist);
     setFormTitle(item.title);
     setFormPrice(item.price.toString());
@@ -414,13 +433,28 @@ export default function DashboardPage() {
 
     if (result.label && result.label.length > 0) {
       setFormLabel(result.label[0]);
+    } else {
+      setFormLabel('');
     }
     if (result.catno) {
       setFormCatno(result.catno);
+    } else {
+      setFormCatno('');
     }
+
+    setSelectedDiscogsItem({
+      title: title,
+      artist: artist,
+      cover: result.cover_image || '',
+      year: result.year || '',
+      label: result.label?.[0] || '',
+      catno: result.catno || '',
+      id: result.id
+    });
 
     setDiscogsSearchResults([]);
     setDiscogsSearchQuery('');
+    setFormStep(2);
   };
 
   // Excel Paste Import Logic
@@ -1189,279 +1223,445 @@ export default function DashboardPage() {
                 animate={{ opacity: 0.6 }}
                 exit={{ opacity: 0 }}
                 onClick={() => setIsAddEditOpen(false)}
-                className="absolute inset-0 bg-black"
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
               />
               
               <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 relative border border-white/10 z-10 space-y-6"
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="glass-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl relative border border-white/10 z-10 overflow-hidden"
               >
-                <div className="flex items-center justify-between border-b border-white/5 pb-4">
-                  <h3 className="text-xl font-bold text-white">
-                    {editingItem ? 'Editar Vinilo' : 'Añadir Nuevo Vinilo'}
-                  </h3>
-                  <button 
-                    onClick={() => setIsAddEditOpen(false)}
-                    className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
+                {/* Background Floating Orbs */}
+                <div className="absolute top-0 left-0 w-60 h-60 rounded-full bg-indigo-500/10 blur-[60px] animate-orb-slow-1 pointer-events-none" />
+                <div className="absolute bottom-0 right-0 w-60 h-60 rounded-full bg-purple-500/10 blur-[60px] animate-orb-slow-2 pointer-events-none" />
+                
+                {/* Subtle top border illumination */}
+                <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
 
-                {/* Autocomplete / Search Discogs Bar */}
-                {!editingItem && (
-                  <div className="bg-indigo-950/20 border border-indigo-500/15 rounded-2xl p-4.5 space-y-3">
-                    <label className="text-xs font-bold text-indigo-300 uppercase tracking-wider block">Autocompletar con Discogs (Recomendado)</label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Buscar: Beatles Abbey Road, Miles Davis, Pink Floyd..."
-                          value={discogsSearchQuery}
-                          onChange={(e) => setDiscogsSearchQuery(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleDiscogsSearch()}
-                          className="w-full pl-9 pr-4 py-2 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500/50"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleDiscogsSearch}
-                        disabled={isSearchingDiscogs}
-                        className="btn-secondary-premium py-2 px-4 text-xs font-semibold shrink-0"
+                <div className="relative z-10 p-6 sm:p-8 space-y-6">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-white/5 pb-4">
+                    <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2 select-none">
+                      <span className="text-indigo-400">💿</span>
+                      <span>{editingItem ? 'Editar Vinilo' : 'Añadir Nuevo Vinilo'}</span>
+                    </h3>
+                    <button 
+                      onClick={() => setIsAddEditOpen(false)}
+                      className="p-1.5 rounded-lg border border-white/10 hover:bg-white/5 text-gray-400 hover:text-white transition-all"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <AnimatePresence mode="wait">
+                    {formStep === 1 && !editingItem ? (
+                      <motion.div
+                        key="step-search"
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.3 }}
+                        className="space-y-6"
                       >
-                        {isSearchingDiscogs ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Buscar'}
-                      </button>
-                    </div>
-
-                    {/* Results dropdown */}
-                    {discogsSearchResults.length > 0 && (
-                      <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/90 divide-y divide-white/5">
-                        {discogsSearchResults.slice(0, 5).map((res) => (
-                          <div
-                            key={res.id}
-                            onClick={() => selectDiscogsResult(res)}
-                            className="flex items-center gap-3 p-2.5 hover:bg-indigo-500/10 cursor-pointer text-xs"
+                        {/* Decorative spinning vinyl */}
+                        <div className="flex flex-col items-center text-center py-2">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ repeat: Infinity, duration: 15, ease: "linear" }}
+                            className="flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-tr from-indigo-650 to-purple-600 shadow-xl shadow-indigo-500/20 mb-4 relative select-none"
                           >
-                            <img src={res.cover_image} alt="" className="w-8 h-8 object-cover rounded" />
+                            <span className="text-3xl">💿</span>
+                            <div className="absolute w-3 h-3 rounded-full bg-[#030712] border border-white/30" />
+                          </motion.div>
+                          
+                          <h4 className="text-2xl font-black text-white tracking-tight text-gradient-primary">
+                            Buscador Discogs
+                          </h4>
+                          <p className="text-gray-400 text-xs mt-1 max-w-sm">
+                            Auto-completa los detalles del disco al instante, o ingresa la información manualmente.
+                          </p>
+                        </div>
+
+                        {/* Autocomplete / Search Discogs Bar */}
+                        <div className="bg-white/3 border border-white/8 rounded-2xl p-5 space-y-3 shadow-inner">
+                          <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
+                            Buscar Álbum o Artista
+                          </label>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                              <input
+                                type="text"
+                                placeholder="Ej: The Beatles Abbey Road, Pink Floyd, Daft Punk..."
+                                value={discogsSearchQuery}
+                                onChange={(e) => setDiscogsSearchQuery(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleDiscogsSearch()}
+                                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white placeholder-gray-500 transition-all"
+                              />
+                            </div>
+                            <button
+                              type="button"
+                              onClick={handleDiscogsSearch}
+                              disabled={isSearchingDiscogs}
+                              className="btn-premium py-2.5 px-5 text-xs font-bold shrink-0 flex items-center gap-2"
+                            >
+                              {isSearchingDiscogs ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <>
+                                  <Search className="w-3.5 h-3.5" />
+                                  <span>Buscar</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          {/* Results layout */}
+                          {discogsSearchResults.length > 0 && (
+                            <div className="mt-4 space-y-2.5 max-h-[220px] overflow-y-auto pr-1">
+                              <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wider px-1">
+                                Resultados de Discogs
+                              </p>
+                              <div className="space-y-2">
+                                {discogsSearchResults.slice(0, 5).map((res) => (
+                                  <div
+                                    key={res.id}
+                                    onClick={() => selectDiscogsResult(res)}
+                                    className="flex items-center gap-3.5 p-3 rounded-xl bg-white/3 border border-white/5 hover:border-indigo-500/30 hover:bg-indigo-500/8 cursor-pointer transition-all duration-200 group"
+                                  >
+                                    {res.cover_image ? (
+                                      <img
+                                        src={res.cover_image}
+                                        alt=""
+                                        className="w-11 h-11 object-cover rounded-lg shadow-md border border-white/10 group-hover:scale-105 transition-all duration-200 shrink-0"
+                                      />
+                                    ) : (
+                                      <div className="w-11 h-11 bg-white/5 rounded-lg border border-white/10 flex items-center justify-center shrink-0">
+                                        <Music className="w-5 h-5 text-gray-500" />
+                                      </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                      <p className="font-bold text-white text-xs truncate group-hover:text-indigo-300 transition-colors">
+                                        {res.title}
+                                      </p>
+                                      <p className="text-[10px] text-gray-400 truncate mt-0.5">
+                                        {res.label?.[0] || 'Sello desconocido'} • {res.year || 'Año desconocido'}
+                                      </p>
+                                    </div>
+                                    <Plus className="w-4 h-4 text-gray-500 group-hover:text-indigo-400 transition-colors shrink-0 ml-2" />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Premium watermark tag */}
+                        <div className="flex items-center justify-center gap-2 text-[10px] text-indigo-400/60 select-none py-1">
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>VinylStock - Búsqueda en base de datos global</span>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 pt-5">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedDiscogsItem(null);
+                              setFormStep(2);
+                            }}
+                            className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors py-2"
+                          >
+                            ✍️ Cargar datos manualmente
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setIsAddEditOpen(false)}
+                            className="btn-secondary-premium py-2 px-5 text-xs font-semibold w-full sm:w-auto"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="step-form"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="space-y-5"
+                      >
+                        {/* Selected Discogs item showcase */}
+                        {selectedDiscogsItem ? (
+                          <div className="relative p-4 rounded-2xl bg-indigo-950/20 border border-indigo-500/20 flex gap-4 items-center">
+                            <div className="absolute top-2.5 right-3 bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[8px] font-extrabold uppercase px-1.5 py-0.5 rounded-full tracking-wider">
+                              Discogs Match
+                            </div>
+                            {selectedDiscogsItem.cover ? (
+                              <img
+                                src={selectedDiscogsItem.cover}
+                                alt=""
+                                className="w-14 h-14 object-cover rounded-xl border border-white/10 shadow-md shadow-black/30 shrink-0"
+                              />
+                            ) : (
+                              <div className="w-14 h-14 bg-white/5 rounded-xl border border-white/10 flex items-center justify-center shrink-0">
+                                <Music className="w-6 h-6 text-gray-400" />
+                              </div>
+                            )}
                             <div className="min-w-0 flex-1">
-                              <p className="font-bold text-white truncate">{res.title}</p>
-                              <p className="text-[10px] text-gray-400 truncate">{res.label?.[0]} • {res.year}</p>
+                              <h4 className="font-bold text-white text-sm truncate">{selectedDiscogsItem.title}</h4>
+                              <p className="text-xs text-indigo-300 font-medium truncate mt-0.5">{selectedDiscogsItem.artist}</p>
+                              <p className="text-[10px] text-gray-400 mt-1 truncate">
+                                {selectedDiscogsItem.label} {selectedDiscogsItem.year ? `• ${selectedDiscogsItem.year}` : ''} {selectedDiscogsItem.catno ? `• Cat: ${selectedDiscogsItem.catno}` : ''}
+                              </p>
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        ) : (
+                          <div className="pb-2 border-b border-white/5">
+                            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                              {editingItem ? 'Editando información del vinilo' : 'Cargando datos manualmente'}
+                            </h4>
+                          </div>
+                        )}
+
+                        {/* Actual Form */}
+                        <form onSubmit={handleSaveItem} className="space-y-4">
+                          {/* Basic Fields */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Artista</label>
+                              <input
+                                type="text"
+                                value={formArtist}
+                                onChange={(e) => setFormArtist(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: Pink Floyd"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Título del Álbum</label>
+                              <input
+                                type="text"
+                                value={formTitle}
+                                onChange={(e) => setFormTitle(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: The Dark Side of the Moon"
+                                required
+                              />
+                            </div>
+                          </div>
+
+                          {/* Commercial Grid */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">Precio (ARS)</label>
+                              <input
+                                type="number"
+                                value={formPrice}
+                                onChange={(e) => setFormPrice(e.target.value)}
+                                className="w-full input-premium py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
+                                min="0"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cantidad</label>
+                              <input
+                                type="number"
+                                value={formQty}
+                                onChange={(e) => setFormQty(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                min="1"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Formato</label>
+                              <div className="relative">
+                                <select
+                                  value={formFormat}
+                                  onChange={(e) => setFormFormat(e.target.value)}
+                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                >
+                                  <option value="Vinyl" className="bg-[#0c101d] text-white">Vinyl</option>
+                                  <option value="CD" className="bg-[#0c101d] text-white">CD</option>
+                                  <option value="Cassette" className="bg-[#0c101d] text-white">Cassette</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Venta</label>
+                              <div className="relative">
+                                <select
+                                  value={formStatus}
+                                  onChange={(e) => setFormStatus(e.target.value as any)}
+                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                >
+                                  <option value="disponible" className="bg-[#0c101d] text-white">Disponible</option>
+                                  <option value="coleccion" className="bg-[#0c101d] text-white">En Colección</option>
+                                  <option value="reservado" className="bg-[#0c101d] text-white">Reservado</option>
+                                  <option value="vendido" className="bg-[#0c101d] text-white">Vendido</option>
+                                  <option value="borrador" className="bg-[#0c101d] text-white">Borrador</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Grading & Details */}
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Disco</label>
+                              <div className="relative">
+                                <select
+                                  value={formGrade}
+                                  onChange={(e) => setFormGrade(e.target.value)}
+                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                >
+                                  <option value="MINT" className="bg-[#0c101d] text-white">M (Mint)</option>
+                                  <option value="NM" className="bg-[#0c101d] text-white">NM (Near Mint)</option>
+                                  <option value="VG+" className="bg-[#0c101d] text-white">VG+ (Very Good Plus)</option>
+                                  <option value="VG" className="bg-[#0c101d] text-white">VG (Very Good)</option>
+                                  <option value="G+" className="bg-[#0c101d] text-white">G+ (Good Plus)</option>
+                                  <option value="G" className="bg-[#0c101d] text-white">G (Good)</option>
+                                  <option value="F" className="bg-[#0c101d] text-white">F (Fair)</option>
+                                  <option value="P" className="bg-[#0c101d] text-white">P (Poor)</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Tapa</label>
+                              <div className="relative">
+                                <select
+                                  value={formGradeCover}
+                                  onChange={(e) => setFormGradeCover(e.target.value)}
+                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                >
+                                  <option value="MINT" className="bg-[#0c101d] text-white">M (Mint)</option>
+                                  <option value="NM" className="bg-[#0c101d] text-white">NM (Near Mint)</option>
+                                  <option value="VG+" className="bg-[#0c101d] text-white">VG+ (Very Good Plus)</option>
+                                  <option value="VG" className="bg-[#0c101d] text-white">VG (Very Good)</option>
+                                  <option value="G+" className="bg-[#0c101d] text-white">G+ (Good Plus)</option>
+                                  <option value="G" className="bg-[#0c101d] text-white">G (Good)</option>
+                                  <option value="F" className="bg-[#0c101d] text-white">F (Fair)</option>
+                                  <option value="P" className="bg-[#0c101d] text-white">P (Poor)</option>
+                                </select>
+                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                              </div>
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Año</label>
+                              <input
+                                type="text"
+                                value={formYear}
+                                onChange={(e) => setFormYear(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: 1973"
+                              />
+                            </div>
+                            <div className="space-y-1.5 col-span-1">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Ref. Catálogo</label>
+                              <input
+                                type="text"
+                                value={formCatno}
+                                onChange={(e) => setFormCatno(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: SHVL 804"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Technical/Advanced Fields */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Sello Discográfico</label>
+                              <input
+                                type="text"
+                                value={formLabel}
+                                onChange={(e) => setFormLabel(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: Harvest, EMI"
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">URL de Carátula</label>
+                              <input
+                                type="text"
+                                value={formCover}
+                                onChange={(e) => setFormCover(e.target.value)}
+                                className="w-full input-premium py-2 text-sm"
+                                placeholder="Ej: https://images.discogs.com/..."
+                              />
+                            </div>
+                          </div>
+
+                          {/* Real Photos */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
+                              Fotos Reales (URLs separadas por comas)
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="Ej: https://imgur.com/foto1.jpg, https://imgur.com/foto2.jpg"
+                              value={formPhotos}
+                              onChange={(e) => setFormPhotos(e.target.value)}
+                              className="w-full input-premium py-2 text-sm"
+                            />
+                          </div>
+
+                          {/* Discogs Url */}
+                          <div className="space-y-1.5">
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Enlace de Discogs (opcional)</label>
+                            <input
+                              type="text"
+                              placeholder="Ej: https://www.discogs.com/release/..."
+                              value={formUrl}
+                              onChange={(e) => setFormUrl(e.target.value)}
+                              className="w-full input-premium py-2 text-sm"
+                            />
+                          </div>
+
+                          {/* Actions */}
+                          <div className="border-t border-white/5 pt-5 flex flex-col sm:flex-row justify-between gap-4">
+                            <div>
+                              {!editingItem && (
+                                <button
+                                  type="button"
+                                  onClick={() => setFormStep(1)}
+                                  className="btn-secondary-premium py-2.5 px-4 text-xs font-semibold w-full sm:w-auto flex items-center justify-center gap-2"
+                                >
+                                  <ArrowLeft className="w-3.5 h-3.5" />
+                                  <span>Volver al buscador</span>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex gap-3 justify-end w-full sm:w-auto">
+                              <button
+                                type="button"
+                                onClick={() => setIsAddEditOpen(false)}
+                                className="btn-secondary-premium py-2.5 px-5 text-sm flex-1 sm:flex-none"
+                              >
+                                Cancelar
+                              </button>
+                              <button
+                                type="submit"
+                                className="btn-premium py-2.5 px-6 text-sm flex items-center justify-center gap-1.5 flex-1 sm:flex-none"
+                              >
+                                <Check className="w-4 h-4" />
+                                <span>{editingItem ? 'Guardar Cambios' : 'Añadir Disco'}</span>
+                              </button>
+                            </div>
+                          </div>
+                        </form>
+                      </motion.div>
                     )}
-                  </div>
-                )}
-
-                <form onSubmit={handleSaveItem} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Artista */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-450 uppercase tracking-wider block">Artista</label>
-                      <input
-                        type="text"
-                        value={formArtist}
-                        onChange={(e) => setFormArtist(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                        required
-                      />
-                    </div>
-                    {/* Titulo */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-450 uppercase tracking-wider block">Título</label>
-                      <input
-                        type="text"
-                        value={formTitle}
-                        onChange={(e) => setFormTitle(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {/* Precio */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Precio (ARS)</label>
-                      <input
-                        type="number"
-                        value={formPrice}
-                        onChange={(e) => setFormPrice(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                        min="0"
-                        required
-                      />
-                    </div>
-                    {/* Cantidad */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Cantidad</label>
-                      <input
-                        type="number"
-                        value={formQty}
-                        onChange={(e) => setFormQty(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                        min="1"
-                        required
-                      />
-                    </div>
-                    {/* Formato */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Formato</label>
-                      <select
-                        value={formFormat}
-                        onChange={(e) => setFormFormat(e.target.value)}
-                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
-                      >
-                        <option value="Vinyl" className="bg-[#0f172a] text-white">Vinyl</option>
-                        <option value="CD" className="bg-[#0f172a] text-white">CD</option>
-                        <option value="Cassette" className="bg-[#0f172a] text-white">Cassette</option>
-                      </select>
-                    </div>
-                    {/* Estado */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-455 uppercase tracking-wider block">Estado</label>
-                      <select
-                        value={formStatus}
-                        onChange={(e) => setFormStatus(e.target.value as any)}
-                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
-                      >
-                        <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
-                        <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
-                        <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
-                        <option value="vendido" className="bg-[#0f172a] text-white">Vendido</option>
-                        <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {/* Grade Media */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Estado Disco</label>
-                      <select
-                        value={formGrade}
-                        onChange={(e) => setFormGrade(e.target.value)}
-                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
-                      >
-                        <option value="MINT" className="bg-[#0f172a] text-white">M (Mint)</option>
-                        <option value="NM" className="bg-[#0f172a] text-white">NM (Near Mint)</option>
-                        <option value="VG+" className="bg-[#0f172a] text-white">VG+ (Very Good Plus)</option>
-                        <option value="VG" className="bg-[#0f172a] text-white">VG (Very Good)</option>
-                        <option value="G+" className="bg-[#0f172a] text-white">G+ (Good Plus)</option>
-                        <option value="G" className="bg-[#0f172a] text-white">G (Good)</option>
-                        <option value="F" className="bg-[#0f172a] text-white">F (Fair)</option>
-                        <option value="P" className="bg-[#0f172a] text-white">P (Poor)</option>
-                      </select>
-                    </div>
-                    {/* Grade Cover */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Estado Tapa</label>
-                      <select
-                        value={formGradeCover}
-                        onChange={(e) => setFormGradeCover(e.target.value)}
-                        className="w-full bg-[#111827]/40 border border-white/5 focus:border-indigo-500/50 rounded-xl py-2 px-3 text-sm focus:outline-none"
-                      >
-                        <option value="MINT" className="bg-[#0f172a] text-white">M (Mint)</option>
-                        <option value="NM" className="bg-[#0f172a] text-white">NM (Near Mint)</option>
-                        <option value="VG+" className="bg-[#0f172a] text-white">VG+ (Very Good Plus)</option>
-                        <option value="VG" className="bg-[#0f172a] text-white">VG (Very Good)</option>
-                        <option value="G+" className="bg-[#0f172a] text-white">G+ (Good Plus)</option>
-                        <option value="G" className="bg-[#0f172a] text-white">G (Good)</option>
-                        <option value="F" className="bg-[#0f172a] text-white">F (Fair)</option>
-                        <option value="P" className="bg-[#0f172a] text-white">P (Poor)</option>
-                      </select>
-                    </div>
-                    {/* Año */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Año</label>
-                      <input
-                        type="text"
-                        value={formYear}
-                        onChange={(e) => setFormYear(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                      />
-                    </div>
-                    {/* N° Catalogo */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-460 uppercase tracking-wider block">Ref. Catálogo</label>
-                      <input
-                        type="text"
-                        value={formCatno}
-                        onChange={(e) => setFormCatno(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Label */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-465 uppercase tracking-wider block">Sello Discográfico</label>
-                      <input
-                        type="text"
-                        value={formLabel}
-                        onChange={(e) => setFormLabel(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                      />
-                    </div>
-                    {/* Cover Url */}
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-gray-465 uppercase tracking-wider block">URL de Carátula</label>
-                      <input
-                        type="text"
-                        value={formCover}
-                        onChange={(e) => setFormCover(e.target.value)}
-                        className="w-full input-premium py-2 text-sm"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Photos URLs */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-470 uppercase tracking-wider block">Fotos reales del disco (URLs separadas por comas)</label>
-                    <input
-                      type="text"
-                      placeholder="https://imgur.com/..., https://imgur.com/..."
-                      value={formPhotos}
-                      onChange={(e) => setFormPhotos(e.target.value)}
-                      className="w-full input-premium py-2 text-sm"
-                    />
-                  </div>
-
-                  {/* Discogs Url Link */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-gray-470 uppercase tracking-wider block">Enlace de Discogs (opcional)</label>
-                    <input
-                      type="text"
-                      placeholder="https://www.discogs.com/release/..."
-                      value={formUrl}
-                      onChange={(e) => setFormUrl(e.target.value)}
-                      className="w-full input-premium py-2 text-sm"
-                    />
-                  </div>
-
-                  {/* Actions */}
-                  <div className="border-t border-white/5 pt-4.5 flex justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsAddEditOpen(false)}
-                      className="btn-secondary-premium py-2.5 px-5 text-sm"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn-premium py-2.5 px-6 text-sm flex items-center gap-1.5"
-                    >
-                      <Check className="w-4 h-4" />
-                      <span>{editingItem ? 'Guardar Cambios' : 'Añadir Disco'}</span>
-                    </button>
-                  </div>
-                </form>
+                  </AnimatePresence>
+                </div>
               </motion.div>
             </div>
           )}
