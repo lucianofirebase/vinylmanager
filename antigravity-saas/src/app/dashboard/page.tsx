@@ -13,8 +13,7 @@ import {
   deleteDoc, 
   writeBatch 
 } from 'firebase/firestore';
-import { db, storage } from '../../lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '../../lib/firebase';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Music, 
@@ -133,6 +132,34 @@ export default function DashboardPage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const photoFileInputRef = useRef<HTMLInputElement>(null);
   const photoCameraInputRef = useRef<HTMLInputElement>(null);
+
+  // Compress and convert image file to base64 for storage in Firestore
+  const compressImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        img.onload = () => {
+          const MAX = 900;
+          let { width, height } = img;
+          if (width > MAX || height > MAX) {
+            if (width > height) { height = Math.round(height * MAX / width); width = MAX; }
+            else { width = Math.round(width * MAX / height); height = MAX; }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.75));
+        };
+        img.onerror = reject;
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
   const [formUrl, setFormUrl] = useState('');
   const [formDiscogsId, setFormDiscogsId] = useState<number | undefined>(undefined);
 
@@ -1801,16 +1828,14 @@ export default function DashboardPage() {
                                 className="hidden"
                                 onChange={async (e) => {
                                   const files = Array.from(e.target.files || []);
-                                  if (!files.length || !user) return;
+                                  if (!files.length) return;
                                   setIsUploadingPhoto(true);
                                   for (const file of files) {
                                     try {
-                                      const storageRef = ref(storage, `users/${user.uid}/photos/${Date.now()}_${file.name}`);
-                                      await uploadBytes(storageRef, file);
-                                      const url = await getDownloadURL(storageRef);
-                                      setPhotosList(prev => [...prev, url]);
+                                      const b64 = await compressImageToBase64(file);
+                                      setPhotosList(prev => [...prev, b64]);
                                     } catch (err) {
-                                      console.error('Error uploading photo:', err);
+                                      console.error('Error processing photo:', err);
                                     }
                                   }
                                   setIsUploadingPhoto(false);
@@ -1825,16 +1850,14 @@ export default function DashboardPage() {
                                 className="hidden"
                                 onChange={async (e) => {
                                   const files = Array.from(e.target.files || []);
-                                  if (!files.length || !user) return;
+                                  if (!files.length) return;
                                   setIsUploadingPhoto(true);
                                   for (const file of files) {
                                     try {
-                                      const storageRef = ref(storage, `users/${user.uid}/photos/${Date.now()}_${file.name}`);
-                                      await uploadBytes(storageRef, file);
-                                      const url = await getDownloadURL(storageRef);
-                                      setPhotosList(prev => [...prev, url]);
+                                      const b64 = await compressImageToBase64(file);
+                                      setPhotosList(prev => [...prev, b64]);
                                     } catch (err) {
-                                      console.error('Error uploading photo:', err);
+                                      console.error('Error processing photo:', err);
                                     }
                                   }
                                   setIsUploadingPhoto(false);
