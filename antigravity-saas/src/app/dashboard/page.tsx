@@ -503,14 +503,14 @@ export default function DashboardPage() {
     if (!user) return;
 
     const data: Omit<VinylItem, 'id'> = {
-      artist: formArtist.trim(),
-      title: formTitle.trim(),
+      artist: repairTextEncoding(formArtist.trim()),
+      title: repairTextEncoding(formTitle.trim()),
       price: Number(formPrice) || 0,
       qty: Number(formQty) || 1,
       format: formFormat,
       grade: formGrade,
       gradeCover: formGradeCover,
-      label: formLabel.trim(),
+      label: repairTextEncoding(formLabel.trim()),
       catno: formCatno.trim(),
       year: formYear.trim(),
       cover: formCover.trim(),
@@ -738,6 +738,9 @@ export default function DashboardPage() {
 
         const newItem = {
           ...itemData,
+          artist: repairTextEncoding(itemData.artist || ''),
+          title: repairTextEncoding(itemData.title || ''),
+          label: repairTextEncoding(itemData.label || ''),
           price,
           qty,
           grade,
@@ -932,13 +935,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={runNameRepairScan}
-              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Reparar Nombres</span>
-            </button>
             <button 
               onClick={() => setIsSyncOpen(true)}
               className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
