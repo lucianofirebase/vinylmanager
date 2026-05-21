@@ -2,7 +2,7 @@
 // Inicializa Firebase Auth para el login, pero usa fetch estándar para los datos.
 
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, signOut, onAuthStateChanged }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, signOut, onAuthStateChanged }
     from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const firebaseApp = initializeApp(FIREBASE_CONFIG);
@@ -149,8 +149,36 @@ const loginScreen = document.getElementById('login-screen');
 const mainApp = document.getElementById('main-app');
 const btnLogin = document.getElementById('btn-google-login');
 const btnLogout = document.getElementById('btn-logout');
+const loginError = document.getElementById('login-error');
 
-btnLogin.addEventListener('click', () => signInWithRedirect(auth, provider));
+btnLogin.addEventListener('click', async () => {
+    if (loginError) {
+        loginError.classList.add('hidden');
+        loginError.textContent = '';
+    }
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Error al iniciar sesión con popup:", error);
+        // Si el popup fue bloqueado o hay otro error de popup, intentamos con redirect como alternativa
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/cancelled-popup-request') {
+            try {
+                await signInWithRedirect(auth, provider);
+            } catch (redirectError) {
+                console.error("Error al iniciar sesión con redirect:", redirectError);
+                if (loginError) {
+                    loginError.textContent = "Error al iniciar sesión: " + redirectError.message;
+                    loginError.classList.remove('hidden');
+                }
+            }
+        } else {
+            if (loginError) {
+                loginError.textContent = "Error: " + error.message;
+                loginError.classList.remove('hidden');
+            }
+        }
+    }
+});
 btnLogout.addEventListener('click', () => signOut(auth));
 
 onAuthStateChanged(auth, async (user) => {
