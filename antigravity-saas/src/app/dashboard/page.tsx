@@ -587,10 +587,20 @@ export default function DashboardPage() {
         // Edit existing
         const docRef = doc(db, 'users', user.uid, 'stock', editingItem.id);
         await updateDoc(docRef, data as any);
+
+        // Switch tabs automatically if status changed between coleccion and others
+        if (editingItem.status !== formStatus) {
+          if (formStatus === 'coleccion') setActiveTab('coleccion');
+          else if (editingItem.status === 'coleccion') setActiveTab('tienda');
+        }
       } else {
         // Create new
         const stockCol = collection(db, 'users', user.uid, 'stock');
         await addDoc(stockCol, data);
+        
+        // Switch tab based on new item's status
+        if (formStatus === 'coleccion') setActiveTab('coleccion');
+        else setActiveTab('tienda');
       }
       setIsAddEditOpen(false);
     } catch (err) {
@@ -603,15 +613,21 @@ export default function DashboardPage() {
     e.stopPropagation();
     if (!user) return;
     
-    const newStatus = item.status === 'coleccion' ? 'disponible' : 'coleccion';
+    // Si movemos a la tienda, abrimos el modal de edición para pedir precio/cantidad
+    if (item.status === 'coleccion') {
+      setPreviewModalItem(null);
+      openEditModal({ ...item, status: 'disponible' }, e);
+      return;
+    }
+
+    // Si movemos a la colección, es directo
     try {
       const docRef = doc(db, 'users', user.uid, 'stock', item.id);
-      await updateDoc(docRef, { status: newStatus });
-      setStock((prev) => prev.map((v) => v.id === item.id ? { ...v, status: newStatus } : v));
+      await updateDoc(docRef, { status: 'coleccion' });
+      setStock((prev) => prev.map((v) => v.id === item.id ? { ...v, status: 'coleccion' } : v));
       
-      // Close preview modal and switch tab
       setPreviewModalItem(null);
-      setActiveTab(newStatus === 'coleccion' ? 'coleccion' : 'tienda');
+      setActiveTab('coleccion');
     } catch (err) {
       console.error("Error al mover el item", err);
     }
@@ -1695,31 +1711,35 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Commercial Grid */}
-                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
-                            <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
-                                Precio ({userData?.currency || 'USD'})
-                              </label>
-                              <input
-                                type="number"
-                                value={formPrice}
-                                onChange={(e) => setFormPrice(e.target.value)}
-                                className="w-full input-premium py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
-                                min="0"
-                                required
-                              />
-                            </div>
-                            <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cantidad</label>
-                              <input
-                                type="number"
-                                value={formQty}
-                                onChange={(e) => setFormQty(e.target.value)}
-                                className="w-full input-premium py-2 text-sm"
-                                min="1"
-                                required
-                              />
-                            </div>
+                          <div className={`grid grid-cols-2 ${formStatus === 'coleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl`}>
+                            {formStatus !== 'coleccion' && (
+                              <>
+                                <div className="space-y-1.5 col-span-1">
+                                  <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
+                                    Precio ({userData?.currency || 'USD'})
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={formPrice}
+                                    onChange={(e) => setFormPrice(e.target.value)}
+                                    className="w-full input-premium py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
+                                    min="0"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-1.5 col-span-1">
+                                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cantidad</label>
+                                  <input
+                                    type="number"
+                                    value={formQty}
+                                    onChange={(e) => setFormQty(e.target.value)}
+                                    className="w-full input-premium py-2 text-sm"
+                                    min="1"
+                                    required
+                                  />
+                                </div>
+                              </>
+                            )}
                             <div className="space-y-1.5 col-span-1">
                               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Formato</label>
                               <div className="relative">
