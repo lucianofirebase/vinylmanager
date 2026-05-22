@@ -2057,7 +2057,7 @@ export default function DashboardPage() {
                                 </button>
                               )}
                             </div>
-                            <div className="flex gap-3 justify-end w-full sm:w-auto">
+                            <div className="flex flex-col sm:flex-row gap-3 justify-end w-full sm:w-auto">
                               <button
                                 type="button"
                                 onClick={() => setIsAddEditOpen(false)}
@@ -2638,39 +2638,42 @@ export default function DashboardPage() {
                 className="w-full max-w-4xl max-h-[90vh] glass-card rounded-2xl border border-white/10 shadow-2xl overflow-y-auto overflow-x-hidden scrollbar-thin relative flex flex-col"
               >
                 {/* Header Actions */}
-                <div className="sticky top-0 z-20 flex justify-between items-center p-4 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-                  <div className="flex gap-2">
+                <div className="sticky top-0 z-20 p-4 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl flex flex-wrap gap-2 min-h-[64px]">
+                  <div className="flex flex-wrap gap-2 flex-1 pr-10 items-center">
                     <button
                       onClick={(e) => { handleToggleCollectionStatus(previewModalItem, e); }}
                       className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 border-transparent"
                     >
                       {activeTab === 'coleccion' ? <Store className="w-3.5 h-3.5 text-emerald-400" /> : <Archive className="w-3.5 h-3.5 text-emerald-400" />}
-                      {activeTab === 'coleccion' ? "Mover a Tienda" : "A Colección"}
+                      <span className="hidden sm:inline">{activeTab === 'coleccion' ? "Mover a Tienda" : "A Colección"}</span>
                     </button>
                     <button
                       onClick={(e) => { setPreviewModalItem(null); openEditModal(previewModalItem, e); }}
                       className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
                     >
-                      <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Editar
+                      <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> 
+                      <span className="hidden sm:inline">Editar</span>
                     </button>
                     {previewModalItem.status !== 'coleccion' && (
                       <button
                         onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
                         className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
                       >
-                        <Instagram className="w-3.5 h-3.5 text-indigo-400" /> Compartir
+                        <Instagram className="w-3.5 h-3.5 text-indigo-400" /> 
+                        <span className="hidden sm:inline">Compartir</span>
                       </button>
                     )}
                     <button
                       onClick={(e) => { handleDeleteItem(previewModalItem.id, e); }}
                       className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold border border-red-500/20 transition-all text-xs flex items-center"
+                      title="Eliminar"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                   <button 
                     onClick={() => setPreviewModalItem(null)}
-                    className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
+                    className="absolute right-4 top-4 p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors text-gray-400 hover:text-white"
                   >
                     <X className="w-5 h-5" />
                   </button>
