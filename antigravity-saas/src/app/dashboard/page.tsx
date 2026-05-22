@@ -539,11 +539,7 @@ export default function DashboardPage() {
       await batch.commit();
 
       if (previewModalItem?.id === item.id) {
-        if (item.qty <= 1) {
-          setPreviewModalItem(null);
-        } else {
-          setPreviewModalItem({ ...item, qty: item.qty - 1 });
-        }
+        setPreviewModalItem(null);
       }
 
     } catch (err) {
