@@ -22,7 +22,9 @@ import {
   Compass,
   AlertCircle,
   Disc,
-  RefreshCw
+  RefreshCw,
+  Phone,
+  ChevronDown
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -61,7 +63,12 @@ export default function OnboardingPage() {
 
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [discogsUsername, setDiscogsUsername] = useState('');
-  
+  const [storeName, setStoreName] = useState('');
+  const [storeBio, setStoreBio] = useState('');
+  const [currency, setCurrency] = useState('USD');
+  const [whatsappPhone, setWhatsappPhone] = useState('');
+  const [isPublicStore, setIsPublicStore] = useState(true);
+
   // Sync states
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
@@ -131,25 +138,23 @@ export default function OnboardingPage() {
   const handleNext = () => {
     if (step === 2 && (!isUsernameAvailable || isUsernameChecking)) return;
     
-    setDirection(1);
-    
-    // Si pasamos del paso 4 (Discogs) y NO hay usuario, saltamos el paso 5 (Sync)
-    if (step === 4 && !discogsUsername.trim()) {
-      setStep(6);
-    } else {
-      setStep((prev) => prev + 1);
+    // Auto-fill defaults for Store Name / Bio
+    if (step === 2) {
+      if (!storeName.trim()) {
+        setStoreName(`Tienda de ${username}`);
+      }
+      if (!storeBio.trim()) {
+        setStoreBio('¡Bienvenido a mi showroom de vinilos!');
+      }
     }
+
+    setDirection(1);
+    setStep((prev) => prev + 1);
   };
 
   const handleBack = () => {
     setDirection(-1);
-    
-    // Si volvemos del paso 6 (Intereses) y no hay usuario, volvemos al paso 4
-    if (step === 6 && !discogsUsername.trim()) {
-      setStep(4);
-    } else {
-      setStep((prev) => prev - 1);
-    }
+    setStep((prev) => prev - 1);
   };
 
   // Sync logic
@@ -170,7 +175,7 @@ export default function OnboardingPage() {
       const total = releases.length;
 
       if (total === 0) {
-        setSyncProgress({ current: 0, total: 0, status: 'La colección está vacía.' });
+        setSyncProgress({ current: 0, total: 0, status: 'La colección está vacía o no tiene álbumes públicos.' });
         setIsSyncing(false);
         setSyncDone(true);
         return;
@@ -275,6 +280,11 @@ export default function OnboardingPage() {
         avatarType: avatarType,
         interests: selectedInterests,
         discogsUsername: discogsUsername.trim() || null,
+        currency: currency,
+        whatsappPhone: whatsappPhone.trim() || null,
+        isPublicStore: isPublicStore,
+        storeName: storeName.trim() || `Tienda de ${cleanUsername}`,
+        storeBio: storeBio.trim() || '¡Bienvenido a mi showroom de vinilos!',
         onboardingComplete: true,
         tutorialCompleted: false, // New users start with tutorial pending
         updatedAt: new Date(),
@@ -322,7 +332,7 @@ export default function OnboardingPage() {
           <motion.div 
             className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
             initial={{ width: '0%' }}
-            animate={{ width: `${(step / 7) * 100}%` }}
+            animate={{ width: `${(step / 6) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -360,51 +370,83 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 2: USERNAME */}
+              {/* STEP 2: USERNAME AND STORE NAME */}
               {step === 2 && (
-                <div className="flex flex-col flex-1 py-2">
-                  <h3 className="text-2xl font-bold text-white mb-2">Crea tu identificador único</h3>
-                  <p className="text-gray-400 text-sm mb-6">
-                    Elige un nombre de usuario que representará tu cuenta dentro de la plataforma.
-                  </p>
-
-                  <div className="relative mt-2">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                      <UserIcon className="w-5 h-5" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="nombre_usuario"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
-                      className="w-full !pl-12 !pr-12 input-premium text-lg tracking-wide font-medium"
-                      autoFocus
-                    />
-                    <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-                      {isUsernameChecking && (
-                        <Loader2 className="w-5 h-5 text-indigo-400 animate-spin" />
-                      )}
-                      {!isUsernameChecking && isUsernameAvailable === true && (
-                        <Check className="w-5 h-5 text-emerald-400" />
-                      )}
-                      {!isUsernameChecking && isUsernameAvailable === false && (
-                        <span className="text-red-400 text-sm font-semibold">Uso</span>
-                      )}
-                    </div>
+                <div className="flex flex-col flex-1 py-2 space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Tu Identidad en VinylStock</h3>
+                    <p className="text-gray-450 text-xs">
+                      Elige tu identificador único de cuenta y configura la presentación básica de tu tienda.
+                    </p>
                   </div>
 
-                  <div className="mt-3 min-h-[24px]">
-                    {usernameError && (
-                      <p className="text-red-400 text-xs flex items-center gap-1.5">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                        {usernameError}
-                      </p>
-                    )}
-                    {!isUsernameChecking && isUsernameAvailable === true && (
-                      <p className="text-emerald-400 text-xs">
-                        ¡Excelente! El nombre de usuario está disponible.
-                      </p>
-                    )}
+                  <div className="space-y-4 max-h-[290px] overflow-y-auto pr-1">
+                    {/* Username input */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Nombre de Usuario (Único)</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                          <UserIcon className="w-4 h-4" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="ej: mi_tienda_discos"
+                          value={username}
+                          onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                          className="w-full !pl-11 !pr-12 input-premium text-sm font-medium"
+                          autoFocus
+                        />
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                          {isUsernameChecking && (
+                            <Loader2 className="w-4 h-4 text-indigo-400 animate-spin" />
+                          )}
+                          {!isUsernameChecking && isUsernameAvailable === true && (
+                            <Check className="w-4 h-4 text-emerald-400" />
+                          )}
+                          {!isUsernameChecking && isUsernameAvailable === false && (
+                            <span className="text-red-400 text-xs font-bold">En uso</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="min-h-[16px]">
+                        {usernameError && (
+                          <p className="text-red-400 text-[10px] flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            {usernameError}
+                          </p>
+                        )}
+                        {!isUsernameChecking && isUsernameAvailable === true && (
+                          <p className="text-emerald-400 text-[10px] flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5 shrink-0" />
+                            ¡Excelente! El nombre de usuario está disponible.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Store Name input */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Nombre de la Tienda / Showroom</label>
+                      <input
+                        type="text"
+                        placeholder={username ? `Tienda de ${username}` : "Ej: Disquería Melómano"}
+                        value={storeName}
+                        onChange={(e) => setStoreName(e.target.value)}
+                        className="w-full input-premium text-sm font-medium"
+                      />
+                    </div>
+
+                    {/* Store Bio input */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Breve Biografía / Descripción</label>
+                      <textarea
+                        placeholder="Ej: Joyas de rock progresivo y jazz, en formato físico."
+                        value={storeBio}
+                        onChange={(e) => setStoreBio(e.target.value)}
+                        rows={2}
+                        className="w-full input-premium text-sm font-medium resize-none py-2"
+                      />
+                    </div>
                   </div>
                 </div>
               )}
@@ -413,8 +455,8 @@ export default function OnboardingPage() {
               {step === 3 && (
                 <div className="flex flex-col flex-1 py-2">
                   <h3 className="text-2xl font-bold text-white mb-2">Tu imagen de perfil</h3>
-                  <p className="text-gray-400 text-sm mb-6">
-                    Elige una paleta de color para tu avatar o sube una imagen personalizada.
+                  <p className="text-gray-455 text-xs mb-6">
+                    Elige una paleta de color para tu avatar o sube una imagen personalizada para identificarte.
                   </p>
 
                   <div className="flex flex-col items-center md:flex-row gap-6 mb-4">
@@ -422,14 +464,14 @@ export default function OnboardingPage() {
                     <div className="relative w-28 h-28 rounded-2xl border border-white/10 flex items-center justify-center overflow-hidden shrink-0 shadow-inner bg-slate-900/60">
                       {avatarType === 'preset' ? (
                         <div 
-                          className="w-full h-full flex items-center justify-center text-3xl font-bold text-white select-none"
+                          className="w-full h-full flex items-center justify-center text-3xl font-bold text-white select-none animate-pulse-slow"
                           style={{ background: GRADIENT_PRESETS[selectedPresetIdx] }}
                         >
                           {username ? username.charAt(0).toUpperCase() : 'V'}
                         </div>
                       ) : (
                         uploadedAvatar && (
-                          <img src={uploadedAvatar} alt="Uploaded Avatar" className="w-full h-full object-cover" />
+                          <img src={uploadedAvatar} alt="Uploaded Avatar" className="w-full h-full object-cover animate-fade-in" />
                         )
                       )}
                       <div className="absolute bottom-1 right-1 bg-black/60 p-1.5 rounded-lg border border-white/10">
@@ -439,7 +481,7 @@ export default function OnboardingPage() {
 
                     {/* Controls options */}
                     <div className="flex-1 w-full space-y-4">
-                      {/* Gradient Selector Carousel */}
+                      {/* Gradient Selector */}
                       <div>
                         <span className="text-xs text-gray-400 block mb-2 font-medium">Avatares prediseñados</span>
                         <div className="flex flex-wrap gap-2.5">
@@ -480,45 +522,126 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 4: DISCOGS INTEGRATION */}
+              {/* STEP 4: CONFIGURACIÓN DE VENTA */}
               {step === 4 && (
-                <div className="flex flex-col flex-1 py-2">
-                  <h3 className="text-2xl font-bold text-white mb-2">Conecta tu cuenta de Discogs</h3>
-                  <p className="text-gray-400 text-sm mb-6">
-                    Si tienes una cuenta de Discogs, ingrésala aquí. En el futuro, esto nos permitirá sincronizar automáticamente tu colección y obtener los valores de mercado.
-                    <br /><br />
-                    <span className="italic text-gray-500">Puedes omitir este paso si no tienes cuenta o quieres hacerlo más adelante.</span>
-                  </p>
+                <div className="flex flex-col flex-1 py-2 space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Configuración del Showroom</h3>
+                    <p className="text-gray-450 text-xs">
+                      Define tu moneda preferida, tu número de contacto para ventas y si deseas activar tu showroom público.
+                    </p>
+                  </div>
 
-                  <div className="relative mt-2">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
-                      <Disc className="w-5 h-5" />
+                  <div className="space-y-4 max-h-[290px] overflow-y-auto pr-1">
+                    {/* Preferred Currency Selector */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Divisa Preferida</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                          <Coins className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <select
+                          value={currency}
+                          onChange={(e) => setCurrency(e.target.value)}
+                          className="w-full !pl-11 pr-10 input-premium text-sm font-medium appearance-none cursor-pointer bg-[#0b0f19]"
+                        >
+                          <option value="USD" className="bg-[#0f172a] text-white">Dólar Estadounidense (USD - $)</option>
+                          <option value="EUR" className="bg-[#0f172a] text-white">Euro (EUR - €)</option>
+                          <option value="UYU" className="bg-[#0f172a] text-white">Peso Uruguayo (UYU - $ UYU)</option>
+                          <option value="ARS" className="bg-[#0f172a] text-white">Peso Argentino (ARS - $ ARS)</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-gray-400">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-gray-500">Moneda por defecto para mostrar los precios en tu catálogo.</p>
                     </div>
-                    <input
-                      type="text"
-                      placeholder="Usuario de Discogs (opcional)"
-                      value={discogsUsername}
-                      onChange={(e) => setDiscogsUsername(e.target.value)}
-                      className="w-full !pl-12 input-premium text-lg tracking-wide font-medium"
-                      autoFocus
-                    />
+
+                    {/* WhatsApp Phone Number */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Número de WhatsApp (Ventas)</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                          <Phone className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Ej: 5491112345678 (código país + código área + número sin '+')"
+                          value={whatsappPhone}
+                          onChange={(e) => setWhatsappPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                          className="w-full !pl-11 input-premium text-sm font-medium"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-500">Los clientes te enviarán mensajes directos a este número para comprar discos.</p>
+                    </div>
+
+                    {/* Public Showroom Toggle */}
+                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/50">
+                      <div className="pr-4">
+                        <h4 className="text-xs font-bold text-white mb-0.5">Catálogo Público Activo</h4>
+                        <p className="text-[10px] text-gray-500">Permite a los visitantes ver tu stock disponible desde tu enlace único sin iniciar sesión.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer"
+                          checked={isPublicStore}
+                          onChange={(e) => setIsPublicStore(e.target.checked)}
+                        />
+                        <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* STEP 5: SYNC DISCOGS */}
+              {/* STEP 5: CONEXIÓN DISCOGS */}
               {step === 5 && (
-                <div className="flex flex-col flex-1 py-2 items-center justify-center text-center">
-                  <h3 className="text-2xl font-bold text-white mb-2">Sincroniza tu colección ahora</h3>
-                  <p className="text-gray-400 text-sm mb-6 max-w-sm">
-                    Podemos importar tu colección de Discogs directamente a tu inventario. Esto puede tardar un par de minutos si tu colección es grande.
-                  </p>
+                <div className="flex flex-col flex-1 py-2 space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Integración con Discogs</h3>
+                    <p className="text-gray-450 text-xs">
+                      Importa automáticamente tus discos desde tu colección de Discogs directamente a tu inventario de VinylStock.
+                    </p>
+                  </div>
 
-                  <div className="flex flex-col items-center justify-center w-full max-w-sm space-y-4">
-                    {isSyncing ? (
-                      <div className="w-full text-center space-y-4">
+                  <div className="space-y-4 max-h-[290px] overflow-y-auto pr-1 flex flex-col justify-center">
+                    {!isSyncing && !syncDone ? (
+                      <>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Usuario de Discogs (Opcional)</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                              <Disc className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Tu nombre de usuario de Discogs"
+                              value={discogsUsername}
+                              onChange={(e) => setDiscogsUsername(e.target.value)}
+                              className="w-full !pl-11 input-premium text-sm font-medium"
+                            />
+                          </div>
+                        </div>
+
+                        {discogsUsername.trim() ? (
+                          <button
+                            onClick={handleSyncDiscogs}
+                            className="btn-premium py-3 px-6 text-xs w-full flex items-center justify-center gap-2 mt-2 transition-all font-semibold uppercase tracking-wider"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                            Conectar y Sincronizar Colección
+                          </button>
+                        ) : (
+                          <div className="p-4 rounded-xl bg-slate-900/40 border border-white/5 text-center text-xs text-gray-500 italic mt-2">
+                            Puedes omitir este paso si no tienes cuenta en Discogs o prefieres hacerlo más tarde desde la configuración.
+                          </div>
+                        )}
+                      </>
+                    ) : isSyncing ? (
+                      <div className="w-full text-center space-y-4 py-4">
                         <Loader2 className="w-10 h-10 text-indigo-400 animate-spin mx-auto" />
-                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/10">
+                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/10 max-w-xs mx-auto">
                           <div 
                             className="bg-indigo-500 h-full transition-all duration-300"
                             style={{ width: `${syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : 0}%` }}
@@ -526,49 +649,54 @@ export default function OnboardingPage() {
                         </div>
                         <p className="text-xs text-indigo-300 font-semibold">{syncProgress.status}</p>
                       </div>
-                    ) : syncDone ? (
-                      <div className="w-full text-center space-y-4">
+                    ) : syncDone && (
+                      <div className="w-full text-center space-y-4 py-4">
                         <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
                           <Check className="w-6 h-6" />
                         </div>
-                        <p className="text-emerald-400 font-bold text-sm">{syncProgress.status}</p>
+                        <h4 className="text-emerald-400 font-bold text-sm">¡Colección sincronizada!</h4>
+                        <p className="text-xs text-gray-405 max-w-xs mx-auto leading-relaxed">{syncProgress.status}</p>
                         <button
-                          onClick={handleNext}
-                          className="btn-premium py-2 px-6 text-sm"
+                          onClick={() => {
+                            setSyncDone(false);
+                            setDiscogsUsername('');
+                          }}
+                          className="text-[10px] text-gray-500 hover:text-white underline transition-colors"
                         >
-                          Continuar
+                          Conectar otra cuenta
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <button
-                          onClick={handleSyncDiscogs}
-                          className="btn-premium py-3 px-6 text-sm w-full flex items-center justify-center gap-2"
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                          Sincronizar ahora
-                        </button>
-                        <button
-                          onClick={handleNext}
-                          className="py-2 text-sm text-gray-500 hover:text-white transition-colors"
-                        >
-                          Omitir por ahora
-                        </button>
-                      </>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* STEP 6: INTERESTS */}
+              {/* STEP 6: TUS GUSTOS Y PREFERENCIAS */}
               {step === 6 && (
-                <div className="flex flex-col flex-1 py-2">
-                  <h3 className="text-2xl font-bold text-white mb-2">Tus preferencias</h3>
-                  <p className="text-gray-400 text-sm mb-4">
-                    Selecciona las áreas que deseas priorizar dentro de tu panel (puedes elegir varias).
-                  </p>
+                <div className="flex flex-col flex-1 py-2 space-y-4 relative">
+                  {isSubmitting && (
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-center rounded-2xl">
+                      <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mb-6" />
+                      <h3 className="text-2xl font-bold text-white mb-2">Configurando tu entorno...</h3>
+                      <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
+                        Estamos personalizando tu experiencia VinylStock y guardando tus datos en la base de datos.
+                      </p>
+                      {submitError && (
+                        <div className="mt-4 text-red-400 text-xs bg-red-500/10 border border-red-500/25 p-3 rounded-lg max-w-xs">
+                          {submitError}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                  <div className="grid grid-cols-1 gap-2.5 max-h-[220px] overflow-y-auto pr-1">
+                  <div>
+                    <h3 className="text-2xl font-bold text-white mb-1">Tus Preferencias</h3>
+                    <p className="text-gray-450 text-xs">
+                      Selecciona las áreas que deseas priorizar dentro de tu panel (puedes elegir varias).
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
                     {INTERESTS_PRESETS.map((item) => {
                       const IconComponent = item.icon;
                       const isSelected = selectedInterests.includes(item.id);
@@ -576,22 +704,22 @@ export default function OnboardingPage() {
                         <div
                           key={item.id}
                           onClick={() => toggleInterest(item.id)}
-                          className={`flex items-center gap-3.5 p-3 rounded-xl border cursor-pointer select-none transition-all ${
+                          className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
                             isSelected 
                               ? 'bg-indigo-500/10 border-indigo-500/40 text-white' 
                               : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-white/10'
                           }`}
                         >
-                          <div className={`p-2 rounded-lg ${isSelected ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-gray-400'}`}>
-                            <IconComponent className="w-4.5 h-4.5" />
+                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-gray-400'}`}>
+                            <IconComponent className="w-4 h-4" />
                           </div>
                           <div className="flex-1 text-left">
-                            <div className="text-sm font-semibold">{item.label}</div>
-                            <div className="text-xs text-gray-400">{item.desc}</div>
+                            <div className="text-xs font-semibold">{item.label}</div>
+                            <div className="text-[10px] text-gray-400">{item.desc}</div>
                           </div>
                           {isSelected && (
-                            <div className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center">
-                              <Check className="w-3.5 h-3.5 text-white" />
+                            <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
+                              <Check className="w-3 h-3 text-white" />
                             </div>
                           )}
                         </div>
@@ -600,43 +728,12 @@ export default function OnboardingPage() {
                   </div>
                 </div>
               )}
-
-              {/* STEP 7: FINALIZING */}
-              {step === 7 && (
-                <div className="flex flex-col items-center text-center justify-center flex-1 py-4">
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mb-6" />
-                      <h3 className="text-2xl font-bold text-white mb-2">Configurando tu entorno...</h3>
-                      <p className="text-gray-400 text-sm max-w-xs">
-                        Estamos personalizando tu experiencia VinylStock y asegurando tus credenciales.
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-6">
-                        <Check className="w-8 h-8" />
-                      </div>
-                      <h3 className="text-2xl font-bold text-white mb-2">¡Todo listo para despegar!</h3>
-                      <p className="text-gray-400 text-sm max-w-sm leading-relaxed mb-6">
-                        Hemos guardado tus preferencias y preparado tu panel. Haz clic abajo para iniciar sesión por primera vez.
-                      </p>
-
-                      {submitError && (
-                        <div className="mb-4 text-red-400 text-xs bg-red-500/10 border border-red-500/25 p-3 rounded-lg max-w-xs">
-                          {submitError}
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
             </motion.div>
           </AnimatePresence>
 
           {/* Action buttons */}
           <div className="flex items-center justify-between border-t border-white/5 pt-6 mt-6">
-            {step > 1 && step < 7 && !(step === 5 && isSyncing) && !(step === 5 && syncDone) ? (
+            {step > 1 && step < 6 && !(step === 5 && isSyncing) ? (
               <button
                 onClick={handleBack}
                 disabled={isSubmitting}
@@ -649,22 +746,22 @@ export default function OnboardingPage() {
               <div />
             )}
 
-            {step < 7 && step !== 5 ? (
+            {step < 6 ? (
               <button
                 onClick={handleNext}
-                disabled={step === 2 && (!isUsernameAvailable || isUsernameChecking)}
+                disabled={(step === 2 && (!isUsernameAvailable || isUsernameChecking)) || (step === 5 && isSyncing)}
                 className="btn-premium flex items-center gap-1.5 py-2.5 px-5 text-sm"
               >
                 <span>Continuar</span>
                 <ChevronRight className="w-4.5 h-4.5" />
               </button>
-            ) : step === 7 ? (
+            ) : step === 6 ? (
               !isSubmitting && (
                 <button
                   onClick={handleSubmit}
                   className="btn-premium py-2.5 px-6 text-sm flex items-center gap-2"
                 >
-                  <span>Entrar al Dashboard</span>
+                  <span>Finalizar y Entrar</span>
                   <ChevronRight className="w-4.5 h-4.5" />
                 </button>
               )

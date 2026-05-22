@@ -425,6 +425,23 @@ export default function DashboardPage() {
     .filter((i) => i.status === 'disponible' || i.status === 'coleccion')
     .reduce((sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1), 0);
 
+  // Dynamic trends (last 30 days)
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const recentItemsCount = tabStock
+    .filter((item) => item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
+    .reduce((sum, item) => sum + (item.qty || 1), 0);
+
+  const previousTotal = totalItems - recentItemsCount;
+  const growthPercent = previousTotal > 0
+    ? Math.round((recentItemsCount / previousTotal) * 100)
+    : (recentItemsCount > 0 ? 100 : 0);
+
+  const recentAvailableCount = tabStock
+    .filter((item) => item.status === 'disponible' && item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
+    .reduce((sum, item) => sum + (item.qty || 1), 0);
+
   // Sorting and Filtering
   const filteredStock = tabStock.filter((item) => {
     const matchesSearch = 
@@ -1232,10 +1249,12 @@ export default function DashboardPage() {
             </div>
             <div className="flex items-end justify-between">
               <h3 className="text-4xl font-black text-white">{totalItems} <span className="text-sm text-gray-500 font-semibold">discos</span></h3>
-              <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                <TrendingUp className="w-3 h-3" />
-                <span>+5% este mes</span>
-              </div>
+              {totalItems > 0 && growthPercent > 0 && (
+                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  <TrendingUp className="w-3 h-3" />
+                  <span>+{growthPercent}% este mes</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1253,10 +1272,12 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-end justify-between">
                   <h3 className="text-4xl font-black text-white">{availableItems} <span className="text-sm text-gray-500 font-semibold">items</span></h3>
-                  <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                    <TrendingUp className="w-3 h-3" />
-                    <span>+2 recientes</span>
-                  </div>
+                  {availableItems > 0 && recentAvailableCount > 0 && (
+                    <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      <TrendingUp className="w-3 h-3" />
+                      <span>+{recentAvailableCount} recientes</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
