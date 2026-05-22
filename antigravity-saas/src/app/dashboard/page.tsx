@@ -1096,6 +1096,16 @@ export default function DashboardPage() {
 
   return (
     <DashboardShell>
+      <div className="absolute top-6 right-8 z-10 hidden md:block">
+        <button 
+          onClick={() => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); }}
+          className="flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5 shadow-sm backdrop-blur-md"
+          title="Ver Tutorial"
+        >
+          <HelpCircle className="w-5 h-5" />
+        </button>
+      </div>
+
       <div className="space-y-8 select-none">
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -1128,13 +1138,6 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={() => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); }}
-              className="hidden md:flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
-              title="Ver Tutorial"
-            >
-              <HelpCircle className="w-5 h-5" />
-            </button>
             <button 
               onClick={() => setIsSyncOpen(true)}
               className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
