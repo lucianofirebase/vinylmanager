@@ -1096,16 +1096,6 @@ export default function DashboardPage() {
 
   return (
     <DashboardShell>
-      <div className="absolute top-6 right-8 z-10 hidden md:block">
-        <button 
-          onClick={() => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); }}
-          className="flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors border border-white/5 shadow-sm backdrop-blur-md"
-          title="Ver Tutorial"
-        >
-          <HelpCircle className="w-5 h-5" />
-        </button>
-      </div>
-
       <div className="space-y-8 select-none">
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -1139,20 +1129,6 @@ export default function DashboardPage() {
 
           <div className="flex flex-wrap gap-3">
             <button 
-              onClick={() => setIsSyncOpen(true)}
-              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
-            >
-              <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Sincronizar Discogs</span>
-            </button>
-            <button 
-              onClick={() => setIsImportOpen(true)}
-              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
-            >
-              <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Importar Excel</span>
-            </button>
-            <button 
               onClick={() => {
                 if (!userData?.username) {
                   alert("Primero debes configurar tu nombre de usuario en Configuración.");
@@ -1166,39 +1142,41 @@ export default function DashboardPage() {
               <Store className="w-3.5 h-3.5 text-emerald-400" />
               <span>Ver mi Tienda</span>
             </button>
-            <button 
-              onClick={async () => {
-                if (!userData?.username) {
-                  alert("Primero debes configurar tu nombre de usuario en Configuración.");
-                  return;
-                }
-                const url = `${window.location.origin}/${userData.username}`;
-                
-                if (navigator.share) {
-                  try {
-                    await navigator.share({
-                      title: 'Mi Tienda | VinylStock',
-                      text: '¡Mira mi catálogo de vinilos disponibles!',
-                      url: url,
-                    });
-                  } catch (e) {
-                    console.error('Error compartiendo', e);
+            {activeTab === 'tienda' && (
+              <button 
+                onClick={async () => {
+                  if (!userData?.username) {
+                    alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                    return;
                   }
-                } else {
-                  try {
-                    await navigator.clipboard.writeText(url);
-                    alert("¡Enlace copiado! " + url);
-                  } catch (e) {
-                    console.error(e);
+                  const url = `${window.location.origin}/${userData.username}`;
+                  
+                  if (navigator.share) {
+                    try {
+                      await navigator.share({
+                        title: 'Mi Tienda | VinylStock',
+                        text: '¡Mira mi catálogo de vinilos disponibles!',
+                        url: url,
+                      });
+                    } catch (e) {
+                      console.error('Error compartiendo', e);
+                    }
+                  } else {
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      alert("¡Enlace copiado! " + url);
+                    } catch (e) {
+                      console.error(e);
+                    }
                   }
-                }
-              }}
-              className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
-              title="Copiar enlace de Tienda Pública"
-            >
-              <Share2 className="w-3.5 h-3.5 text-indigo-400" />
-              <span>Compartir Tienda</span>
-            </button>
+                }}
+                className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+                title="Compartir Tienda Pública"
+              >
+                <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+                <span className="hidden sm:inline">Compartir Tienda</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -1232,8 +1210,7 @@ export default function DashboardPage() {
             className="btn-premium py-1.5 px-4 text-xs font-semibold flex items-center gap-2 mb-1"
           >
             <Plus className="w-4 h-4" />
-            <span className="hidden sm:inline">Añadir Disco</span>
-            <span className="sm:hidden">Añadir</span>
+            <span>Añadir</span>
           </button>
         </div>
 
@@ -2012,26 +1989,28 @@ export default function DashboardPage() {
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                               </div>
                             </div>
-                            <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Tapa</label>
-                              <div className="relative">
-                                <select
-                                  value={formGradeCover}
-                                  onChange={(e) => setFormGradeCover(e.target.value)}
-                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
-                                >
-                                  <option value="MINT" className="bg-[#0c101d] text-white">M (Mint)</option>
-                                  <option value="NM" className="bg-[#0c101d] text-white">NM (Near Mint)</option>
-                                  <option value="VG+" className="bg-[#0c101d] text-white">VG+ (Very Good Plus)</option>
-                                  <option value="VG" className="bg-[#0c101d] text-white">VG (Very Good)</option>
-                                  <option value="G+" className="bg-[#0c101d] text-white">G+ (Good Plus)</option>
-                                  <option value="G" className="bg-[#0c101d] text-white">G (Good)</option>
-                                  <option value="F" className="bg-[#0c101d] text-white">F (Fair)</option>
-                                  <option value="P" className="bg-[#0c101d] text-white">P (Poor)</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            {formFormat !== 'Cassette' && (
+                              <div className="space-y-1.5 col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Tapa</label>
+                                <div className="relative">
+                                  <select
+                                    value={formGradeCover}
+                                    onChange={(e) => setFormGradeCover(e.target.value)}
+                                    className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                  >
+                                    <option value="MINT" className="bg-[#0c101d] text-white">M (Mint)</option>
+                                    <option value="NM" className="bg-[#0c101d] text-white">NM (Near Mint)</option>
+                                    <option value="VG+" className="bg-[#0c101d] text-white">VG+ (Very Good Plus)</option>
+                                    <option value="VG" className="bg-[#0c101d] text-white">VG (Very Good)</option>
+                                    <option value="G+" className="bg-[#0c101d] text-white">G+ (Good Plus)</option>
+                                    <option value="G" className="bg-[#0c101d] text-white">G (Good)</option>
+                                    <option value="F" className="bg-[#0c101d] text-white">F (Fair)</option>
+                                    <option value="P" className="bg-[#0c101d] text-white">P (Poor)</option>
+                                  </select>
+                                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
                               </div>
-                            </div>
+                            )}
                             <div className="space-y-1.5 col-span-1">
                               <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Año</label>
                               <input
@@ -2271,7 +2250,7 @@ export default function DashboardPage() {
                                 className="btn-premium py-2.5 px-6 text-sm flex items-center justify-center gap-1.5 flex-1 sm:flex-none"
                               >
                                 <Check className="w-4 h-4" />
-                                <span>{editingItem ? 'Guardar Cambios' : 'Añadir Disco'}</span>
+                                <span>{editingItem ? 'Guardar Cambios' : 'Añadir'}</span>
                               </button>
                             </div>
                           </div>
