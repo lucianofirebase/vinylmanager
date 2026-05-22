@@ -49,7 +49,8 @@ import {
   HelpCircle,
   Store,
   Archive,
-  DollarSign
+  DollarSign,
+  Share2
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
@@ -1125,6 +1126,26 @@ export default function DashboardPage() {
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
               <span>Importar Excel</span>
+            </button>
+            <button 
+              onClick={async () => {
+                if (!userData?.username) {
+                  alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                  return;
+                }
+                const url = `${window.location.origin}/store/${userData.username}`;
+                try {
+                  await navigator.clipboard.writeText(url);
+                  alert("¡Enlace copiado! " + url);
+                } catch (e) {
+                  console.error(e);
+                }
+              }}
+              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+              title="Copiar enlace de Tienda Pública"
+            >
+              <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Compartir Tienda</span>
             </button>
             <button 
               onClick={openAddModal}

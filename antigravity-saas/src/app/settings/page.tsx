@@ -58,6 +58,12 @@ export default function SettingsPage() {
   const [discogsUsername, setDiscogsUsername] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [whatsappPhone, setWhatsappPhone] = useState('');
+  
+  // Store Settings
+  const [isPublicStore, setIsPublicStore] = useState(true);
+  const [storeName, setStoreName] = useState('');
+  const [storeBio, setStoreBio] = useState('');
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -69,6 +75,10 @@ export default function SettingsPage() {
       setDiscogsUsername(userData.discogsUsername || '');
       setCurrency(userData.currency || 'USD');
       setWhatsappPhone(userData.whatsappPhone || '');
+      
+      setIsPublicStore(userData.isPublicStore ?? true);
+      setStoreName(userData.storeName || '');
+      setStoreBio(userData.storeBio || '');
       
       if (userData.avatarType === 'upload') {
         setAvatarType('upload');
@@ -204,6 +214,9 @@ export default function SettingsPage() {
         avatar: finalAvatar,
         avatarType: avatarType,
         interests: selectedInterests,
+        isPublicStore: isPublicStore,
+        storeName: storeName.trim(),
+        storeBio: storeBio.trim(),
         updatedAt: new Date(),
       }, { merge: true });
 
@@ -396,8 +409,53 @@ export default function SettingsPage() {
               <p className="text-[10px] text-gray-500">El número con el que los compradores se contactarán contigo al ver tus vinilos públicos. Incluye código internacional (ej. 54 para Argentina, 598 para Uruguay, sin el signo "+").</p>
             </div>
 
+            {/* Tienda Pública Toggle */}
+            <div className="space-y-3 pt-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Tu Tienda Pública</label>
+              
+              <div className="flex items-center justify-between p-4 rounded-xl border border-white/5 bg-slate-900/50">
+                <div className="pr-4">
+                  <h4 className="text-sm font-bold text-white mb-1">Tienda Pública Activada</h4>
+                  <p className="text-[10px] text-gray-500">Permite que cualquier persona pueda ver tu stock disponible desde tu enlace de perfil sin iniciar sesión.</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={isPublicStore}
+                    onChange={(e) => setIsPublicStore(e.target.checked)}
+                  />
+                  <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                </label>
+              </div>
+
+              {isPublicStore && (
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Nombre de la Tienda (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Vinyl Club Buenos Aires"
+                      value={storeName}
+                      onChange={(e) => setStoreName(e.target.value)}
+                      className="w-full input-premium font-medium"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Descripción o Biografía (Opcional)</label>
+                    <textarea
+                      placeholder="Ej: Envíos a todo el país. Discos sellados y usados de primera calidad."
+                      value={storeBio}
+                      onChange={(e) => setStoreBio(e.target.value)}
+                      className="w-full input-premium font-medium min-h-[80px] resize-none"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* Email Address (disabled representation) */}
-            <div className="space-y-2">
+            <div className="space-y-2 pt-2 border-t border-white/5">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Correo Electrónico (Google)</label>
               <input
                 type="text"
@@ -409,7 +467,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Interests checklist */}
-            <div className="space-y-3">
+            <div className="space-y-3 pt-2 border-t border-white/5">
               <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Áreas de Interés</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {INTERESTS_PRESETS.map((item) => {

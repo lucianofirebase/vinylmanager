@@ -23,6 +23,9 @@ interface UserData {
   currency?: string | null;
   whatsappPhone?: string | null;
   tutorialCompleted?: boolean;
+  isPublicStore?: boolean;
+  storeName?: string;
+  storeBio?: string;
 }
 
 interface AuthContextType {
