@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Checks if the request is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Checks if the authenticated user is the owner of the specified userId
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // usernames collection: maps public usernames to UIDs
+    match /usernames/{username} {
+      // Anyone can read to resolve username to UID
+      allow read: if true;
+      
+      // Creating or updating a username mapping is allowed if the user is authenticated 
+      // and they are setting the map to their own UID
+      allow create, update: if isAuthenticated() && request.resource.data.uid == request.auth.uid;
+      
+      // Deleting a username mapping is allowed only if the existing mapping belongs to the authenticated user
+      allow delete: if isAuthenticated() && resource.data.uid == request.auth.uid;
+    }
+
+    // users collection: stores individual user profiles
+    match /users/{userId} {
+      // Anyone can read a seller profile (required for public storefront)
+      allow read: if true;
+      
+      // Only the owner of the profile can write (create, update, delete)
+      allow write: if isOwner(userId);
+      
+      // stock subcollection: items for sale in the user's inventory
+      match /stock/{itemId} {
+        // Anyone can view stock items
+        allow read: if true;
+        
+        // Only the owner can manage (add, update, delete) items in their inventory
+        allow write: if isOwner(userId);
+      }
+      
+      // sales subcollection: transactions and sales records
+      match /sales/{saleId} {
+        // Only the owner can view or record sales. Public access is completely restricted.
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}
