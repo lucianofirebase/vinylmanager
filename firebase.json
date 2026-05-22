@@ -1,18 +1,13 @@
 {
   "hosting": {
-    "public": "antigravity-saas/out",
-    "cleanUrls": true,
-    "trailingSlash": false,
+    "source": "antigravity-saas",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
     ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ]
+    "frameworksBackend": {
+      "region": "us-central1"
+    }
   }
 }
