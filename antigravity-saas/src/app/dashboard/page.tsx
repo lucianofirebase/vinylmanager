@@ -93,6 +93,7 @@ export default function DashboardPage() {
   const [previewActivePhoto, setPreviewActivePhoto] = useState<string | null>(null);
 
   // Filter and search states
+  const [activeTab, setActiveTab] = useState<'tienda' | 'coleccion'>('tienda');
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -390,16 +391,20 @@ export default function DashboardPage() {
   }, [user]);
 
   // Statistics
-  const totalItems = stock.reduce((sum, item) => sum + (item.qty || 1), 0);
-  const availableItems = stock
+  const tabStock = stock.filter((item) => 
+    activeTab === 'tienda' ? item.status !== 'coleccion' : item.status === 'coleccion'
+  );
+
+  const totalItems = tabStock.reduce((sum, item) => sum + (item.qty || 1), 0);
+  const availableItems = tabStock
     .filter((i) => i.status === 'disponible')
     .reduce((sum, item) => sum + (item.qty || 1), 0);
-  const totalValue = stock
-    .filter((i) => i.status === 'disponible')
+  const totalValue = tabStock
+    .filter((i) => i.status === 'disponible' || i.status === 'coleccion')
     .reduce((sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1), 0);
 
   // Sorting and Filtering
-  const filteredStock = stock.filter((item) => {
+  const filteredStock = tabStock.filter((item) => {
     const matchesSearch = 
       item.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1015,6 +1020,30 @@ export default function DashboardPage() {
               <span>Añadir Disco</span>
             </button>
           </div>
+        </div>
+
+        {/* Tabs Separator */}
+        <div className="flex items-center gap-2 border-b border-white/10 pb-px mt-2">
+          <button
+            onClick={() => setActiveTab('tienda')}
+            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === 'tienda' 
+                ? 'border-indigo-400 text-indigo-400' 
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Mi Tienda
+          </button>
+          <button
+            onClick={() => setActiveTab('coleccion')}
+            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === 'coleccion' 
+                ? 'border-indigo-400 text-indigo-400' 
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            Mi Colección
+          </button>
         </div>
 
         {/* Stats Grid */}

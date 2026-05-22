@@ -53,6 +53,8 @@ export default function WhatsAppMarketingPage() {
       const stockItems: VinylItem[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
+        if (data.status === 'coleccion') return; // Skip collection items
+        
         stockItems.push({
           id: doc.id,
           artist: data.artist || 'Desconocido',

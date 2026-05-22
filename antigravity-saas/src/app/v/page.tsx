@@ -85,6 +85,12 @@ function ShowcaseContent() {
         }
 
         const vinylData = vinylSnap.data();
+        if (vinylData.status === 'coleccion') {
+          setError('Este disco pertenece a una colección privada y no está disponible para su visualización pública.');
+          setLoading(false);
+          return;
+        }
+        
         const item: VinylItem = {
           id: vinylSnap.id,
           artist: vinylData.artist || 'Desconocido',
