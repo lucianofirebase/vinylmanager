@@ -410,7 +410,9 @@ export default function DashboardPage() {
 
   // Statistics
   const tabStock = stock.filter((item) => 
-    activeTab === 'tienda' ? item.status !== 'coleccion' : item.status === 'coleccion'
+    activeTab === 'tienda' 
+      ? (item.status !== 'coleccion' && item.status !== 'vendido') 
+      : item.status === 'coleccion'
   );
 
   const totalItems = tabStock.reduce((sum, item) => sum + (item.qty || 1), 0);
@@ -1239,7 +1241,6 @@ export default function DashboardPage() {
                 <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
                 <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
                 <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
-                <option value="vendido" className="bg-[#0f172a] text-white">Vendido</option>
                 <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
               </select>
               <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
@@ -1851,7 +1852,6 @@ export default function DashboardPage() {
                                   <option value="disponible" className="bg-[#0c101d] text-white">Disponible</option>
                                   <option value="coleccion" className="bg-[#0c101d] text-white">En Colección</option>
                                   <option value="reservado" className="bg-[#0c101d] text-white">Reservado</option>
-                                  <option value="vendido" className="bg-[#0c101d] text-white">Vendido</option>
                                   <option value="borrador" className="bg-[#0c101d] text-white">Borrador</option>
                                 </select>
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
