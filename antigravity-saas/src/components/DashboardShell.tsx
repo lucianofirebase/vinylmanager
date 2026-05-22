@@ -14,7 +14,10 @@ import {
   Sparkles,
   ChevronRight,
   Disc,
-  MessageSquare
+  MessageSquare,
+  HelpCircle,
+  RefreshCw,
+  FileSpreadsheet
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -207,6 +210,32 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                     </Link>
                   );
                 })}
+                
+                {pathname === '/dashboard' && (
+                  <div className="pt-4 border-t border-white/5 flex flex-col gap-1.5 mt-2 mb-auto">
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event('openTutorial')); }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10"
+                    >
+                      <HelpCircle className="w-4.5 h-4.5" />
+                      <span>Tutorial</span>
+                    </button>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event('openSyncDiscogs')); }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5"
+                    >
+                      <RefreshCw className="w-4.5 h-4.5" />
+                      <span>Sincronizar Discogs</span>
+                    </button>
+                    <button
+                      onClick={() => { setMobileMenuOpen(false); window.dispatchEvent(new Event('openImportExcel')); }}
+                      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      <FileSpreadsheet className="w-4.5 h-4.5" />
+                      <span>Importar Excel</span>
+                    </button>
+                  </div>
+                )}
               </nav>
 
               {/* User details */}

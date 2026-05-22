@@ -115,6 +115,21 @@ export default function DashboardPage() {
   // Tutorial Modal
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isFirstTimeTutorial, setIsFirstTimeTutorial] = useState(false);
+  useEffect(() => {
+    const handleTutorial = () => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); };
+    const handleSyncDiscogs = () => setIsSyncOpen(true);
+    const handleImportExcel = () => setIsImportOpen(true);
+
+    window.addEventListener('openTutorial', handleTutorial);
+    window.addEventListener('openSyncDiscogs', handleSyncDiscogs);
+    window.addEventListener('openImportExcel', handleImportExcel);
+
+    return () => {
+      window.removeEventListener('openTutorial', handleTutorial);
+      window.removeEventListener('openSyncDiscogs', handleSyncDiscogs);
+      window.removeEventListener('openImportExcel', handleImportExcel);
+    };
+  }, []);
 
   useEffect(() => {
     if (userData && userData.tutorialCompleted === false) {
@@ -1029,21 +1044,21 @@ export default function DashboardPage() {
           <div className="flex flex-wrap gap-3">
             <button 
               onClick={() => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); }}
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="hidden md:flex p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
               title="Ver Tutorial"
             >
               <HelpCircle className="w-5 h-5" />
             </button>
             <button 
               onClick={() => setIsSyncOpen(true)}
-              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
+              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
             >
               <RefreshCw className="w-3.5 h-3.5 text-indigo-400" />
               <span>Sincronizar Discogs</span>
             </button>
             <button 
               onClick={() => setIsImportOpen(true)}
-              className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
+              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
             >
               <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
               <span>Importar Excel</span>
