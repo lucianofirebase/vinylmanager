@@ -96,7 +96,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
         </Link>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-4 py-6 space-y-1.5">
+        <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = pathname === item.path;
@@ -108,7 +108,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                   isActive 
                     ? 'bg-gradient-to-r from-indigo-600/20 to-purple-600/10 border-l-2 border-indigo-500 text-white shadow-sm shadow-indigo-500/5' 
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
-                }`}
+                } ${item.path === '/settings' ? 'mt-auto' : ''}`}
               >
                 <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
                 <span>{item.name}</span>
@@ -187,7 +187,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               </div>
 
               {/* Navigation Items */}
-              <nav className="flex-1 px-4 py-6 space-y-1.5">
+              <nav className="flex-1 px-4 py-6 flex flex-col gap-1.5">
                 {menuItems.map((item) => {
                   const Icon = item.icon;
                   const isActive = pathname === item.path;
@@ -200,7 +200,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
                         isActive 
                           ? 'bg-indigo-600/20 border-l-2 border-indigo-500 text-white' 
                           : 'text-gray-400 hover:text-white hover:bg-white/5'
-                      }`}
+                      } ${item.path === '/settings' ? 'mt-auto' : ''}`}
                     >
                       <Icon className="w-4.5 h-4.5 text-gray-400" />
                       <span>{item.name}</span>
