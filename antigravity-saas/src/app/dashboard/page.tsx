@@ -1133,7 +1133,7 @@ export default function DashboardPage() {
                   alert("Primero debes configurar tu nombre de usuario en Configuración.");
                   return;
                 }
-                const url = `${window.location.origin}/store/${userData.username}`;
+                const url = `${window.location.origin}/store?u=${userData.username}`;
                 try {
                   await navigator.clipboard.writeText(url);
                   alert("¡Enlace copiado! " + url);
