@@ -13,6 +13,7 @@ import {
   User as UserIcon,
   Sparkles,
   ChevronRight,
+  ChevronLeft,
   Disc,
   MessageSquare,
   HelpCircle,
