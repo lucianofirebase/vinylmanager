@@ -1413,9 +1413,16 @@ export default function DashboardPage() {
                         Estado: <strong className="text-gray-300 font-semibold">{item.grade}</strong>
                       </span>
                       {activeTab === 'tienda' && (
-                        <span className="text-lg font-black text-emerald-400">
-                          {formatCurrency(item.price, userData?.currency)}
-                        </span>
+                        <div className="text-right">
+                          <div className="text-lg font-black text-emerald-400">
+                            {formatCurrency(item.price, userData?.currency)}
+                          </div>
+                          {item.qty > 1 && (
+                            <div className="text-[10px] text-gray-500 font-bold -mt-1">
+                              x{item.qty} disponibles
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
