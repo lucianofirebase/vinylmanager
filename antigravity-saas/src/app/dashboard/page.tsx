@@ -42,11 +42,12 @@ import {
   ArrowLeft,
   Camera,
   Link as LinkIcon,
-  Disc,
   FileText,
   Calendar,
   Layers,
-  HelpCircle
+  HelpCircle,
+  Store,
+  Archive
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
@@ -594,6 +595,25 @@ export default function DashboardPage() {
     } catch (err) {
       console.error("Error saving vinyl item:", err);
       alert("Hubo un error al guardar el disco.");
+    }
+  };
+
+  const handleToggleCollectionStatus = async (item: VinylItem, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) return;
+    
+    const newStatus = item.status === 'coleccion' ? 'disponible' : 'coleccion';
+    try {
+      const docRef = doc(db, 'users', user.uid, 'stock', item.id);
+      await updateDoc(docRef, { status: newStatus });
+      setStock((prev) => prev.map((v) => v.id === item.id ? { ...v, status: newStatus } : v));
+      
+      // Also update PreviewModal if it's open
+      if (previewModalItem && previewModalItem.id === item.id) {
+        setPreviewModalItem((prev) => prev ? { ...prev, status: newStatus } : null);
+      }
+    } catch (err) {
+      console.error("Error al mover el item", err);
     }
   };
 
@@ -1276,9 +1296,11 @@ export default function DashboardPage() {
                       <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getFormatBadgeColor(item.format)}`}>
                         {item.format}
                       </span>
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
-                        {item.status}
-                      </span>
+                      {activeTab === 'tienda' && (
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
+                          {item.status}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -1328,9 +1350,9 @@ export default function DashboardPage() {
               </div>
               <div className="col-span-4 pl-2">Álbum / Artista</div>
               <div className="col-span-2">Formato</div>
-              <div className="col-span-2">Estado</div>
+              {activeTab === 'tienda' && <div className="col-span-2">Estado</div>}
               {activeTab === 'tienda' && <div className="col-span-2">Precio</div>}
-              <div className={`text-right pr-2 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-3'}`}>Acciones</div>
+              <div className={`text-right pr-2 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-5'}`}>Acciones</div>
             </div>
 
             {sortedStock.map((item) => {
@@ -1379,11 +1401,13 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <div className="col-span-2">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
-                      {item.status}
-                    </span>
-                  </div>
+                  {activeTab === 'tienda' && (
+                    <div className="col-span-2">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </div>
+                  )}
 
                   {activeTab === 'tienda' && (
                     <div className="col-span-2 font-black text-emerald-400">
@@ -1391,7 +1415,14 @@ export default function DashboardPage() {
                     </div>
                   )}
 
-                  <div className={`text-right pr-2 flex items-center justify-end gap-1.5 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-3'}`} onClick={(e) => e.stopPropagation()}>
+                  <div className={`text-right pr-2 flex items-center justify-end gap-1.5 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-5'}`} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => handleToggleCollectionStatus(item, e)}
+                      title={activeTab === 'coleccion' ? "Mover a Tienda" : "Mover a Colección"}
+                      className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 transition-all"
+                    >
+                      {activeTab === 'coleccion' ? <Store className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
+                    </button>
                     {activeTab === 'tienda' && (
                       <button
                         onClick={(e) => openInstagramModal(item, e)}
@@ -2574,6 +2605,13 @@ export default function DashboardPage() {
                 {/* Header Actions */}
                 <div className="sticky top-0 z-20 flex justify-between items-center p-4 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
                   <div className="flex gap-2">
+                    <button
+                      onClick={(e) => { handleToggleCollectionStatus(previewModalItem, e); }}
+                      className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/30 border-transparent"
+                    >
+                      {activeTab === 'coleccion' ? <Store className="w-3.5 h-3.5 text-emerald-400" /> : <Archive className="w-3.5 h-3.5 text-emerald-400" />}
+                      {activeTab === 'coleccion' ? "Mover a Tienda" : "A Colección"}
+                    </button>
                     <button
                       onClick={(e) => { setPreviewModalItem(null); openEditModal(previewModalItem, e); }}
                       className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
