@@ -216,6 +216,47 @@ export default function DashboardPage() {
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [isSyncing, setIsSyncing] = useState(false);
 
+  // Ref for Wake Lock to keep screen awake on mobile during sync/import
+  const wakeLockRef = useRef<any>(null);
+
+  const requestWakeLock = async () => {
+    if (typeof window !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Screen Wake Lock active');
+      } catch (err) {
+        console.warn('Wake Lock request failed:', err);
+      }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Screen Wake Lock released');
+      } catch (err) {
+        console.warn('Wake Lock release failed:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && (isSyncing || isImporting)) {
+        await requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch((e: any) => console.warn(e));
+      }
+    };
+  }, [isSyncing, isImporting]);
+
   // Database Repair modal states
   const [isRepairOpen, setIsRepairOpen] = useState(false);
   interface RepairedItemProposal {
@@ -847,128 +888,137 @@ export default function DashboardPage() {
     setImportStep(3);
     setImportLogs([]);
 
-    const total = importData.length;
-    setImportProgress({ current: 0, total, status: 'Iniciando importación...' });
+    // Activar bloqueo de suspensión de pantalla
+    await requestWakeLock();
 
-    for (let i = 0; i < total; i++) {
-      const row = importData[i];
-      let artist = columnMapping.artist !== undefined ? row[columnMapping.artist]?.trim() || 'Desconocido' : 'Desconocido';
-      let title = columnMapping.title !== undefined ? row[columnMapping.title]?.trim() || 'Desconocido' : 'Desconocido';
-      const url = columnMapping.url !== undefined ? row[columnMapping.url]?.trim() || '' : '';
-      const price = columnMapping.price !== undefined ? parseFloat(row[columnMapping.price].replace('$', '').trim()) || 0 : 0;
-      const qty = columnMapping.qty !== undefined ? parseInt(row[columnMapping.qty]) || 1 : 1;
-      const grade = columnMapping.grade !== undefined ? row[columnMapping.grade]?.trim() || 'VG+' : 'VG+';
-      const format = columnMapping.format !== undefined ? row[columnMapping.format]?.trim() || 'Vinyl' : 'Vinyl';
+    try {
+      const total = importData.length;
+      setImportProgress({ current: 0, total, status: 'Iniciando importación...' });
 
-      setImportProgress({ current: i + 1, total, status: `Procesando: ${artist} - ${title}` });
+      for (let i = 0; i < total; i++) {
+        const row = importData[i];
+        let artist = columnMapping.artist !== undefined ? row[columnMapping.artist]?.trim() || 'Desconocido' : 'Desconocido';
+        let title = columnMapping.title !== undefined ? row[columnMapping.title]?.trim() || 'Desconocido' : 'Desconocido';
+        const url = columnMapping.url !== undefined ? row[columnMapping.url]?.trim() || '' : '';
+        const price = columnMapping.price !== undefined ? parseFloat(row[columnMapping.price].replace('$', '').trim()) || 0 : 0;
+        const qty = columnMapping.qty !== undefined ? parseInt(row[columnMapping.qty]) || 1 : 1;
+        const grade = columnMapping.grade !== undefined ? row[columnMapping.grade]?.trim() || 'VG+' : 'VG+';
+        const format = columnMapping.format !== undefined ? row[columnMapping.format]?.trim() || 'Vinyl' : 'Vinyl';
 
-      try {
-        let itemData: any = null;
+        setImportProgress({ current: i + 1, total, status: `Procesando: ${artist} - ${title}` });
 
-        // Try extracting information from Discogs link if present
-        let urlArtist = '';
-        let urlTitle = '';
-        if (url && url.includes('discogs.com')) {
-          const slugMatch = url.match(/\/(release|master)\/\d+-(.+)$/);
-          if (slugMatch && slugMatch[2]) {
-            const slug = slugMatch[2].replace(/-/g, ' ');
-            const parts = slug.split(' ');
-            urlArtist = parts[0] || '';
-            urlTitle = parts.slice(1).join(' ') || '';
-            if (artist === 'Desconocido') artist = urlArtist;
-            if (title === 'Desconocido') title = urlTitle;
+        try {
+          let itemData: any = null;
+
+          // Try extracting information from Discogs link if present
+          let urlArtist = '';
+          let urlTitle = '';
+          if (url && url.includes('discogs.com')) {
+            const slugMatch = url.match(/\/(release|master)\/\d+-(.+)$/);
+            if (slugMatch && slugMatch[2]) {
+              const slug = slugMatch[2].replace(/-/g, ' ');
+              const parts = slug.split(' ');
+              urlArtist = parts[0] || '';
+              urlTitle = parts.slice(1).join(' ') || '';
+              if (artist === 'Desconocido') artist = urlArtist;
+              if (title === 'Desconocido') title = urlTitle;
+            }
+
+            const idMatch = url.match(/\/(release|master)\/(\d+)/);
+            if (idMatch) {
+              const type = idMatch[1] === 'release' ? 'releases' : 'masters';
+              const id = idMatch[2];
+              try {
+                const res = await fetch(`https://api.discogs.com/${type}/${id}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+                if (res.ok) {
+                  const details = await res.json();
+                  itemData = {
+                    artist: details.artists ? details.artists[0].name : (urlArtist || artist),
+                    title: details.title || (urlTitle || title),
+                    cover: details.images && details.images.length > 0 ? details.images[0].resource_url : '',
+                    year: details.year ? details.year.toString() : '',
+                    label: details.labels && details.labels.length > 0 ? details.labels[0].name : '',
+                    catno: details.labels && details.labels.length > 0 ? details.labels[0].catno : '',
+                    discogsId: details.id
+                  };
+                }
+              } catch (e) {
+                console.error(`Fallo fetch directo para link ${id}`);
+              }
+            }
           }
 
-          const idMatch = url.match(/\/(release|master)\/(\d+)/);
-          if (idMatch) {
-            const type = idMatch[1] === 'release' ? 'releases' : 'masters';
-            const id = idMatch[2];
-            try {
-              const res = await fetch(`https://api.discogs.com/${type}/${id}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
-              if (res.ok) {
-                const details = await res.json();
+          // Search Discogs database if no details fetched yet
+          if (!itemData && artist !== 'Desconocido' && title !== 'Desconocido') {
+            const searchName = `${artist} ${title}`;
+            const res = await fetch(`https://api.discogs.com/database/search?q=${encodeURIComponent(searchName)}&format=${format}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+            if (res.ok) {
+              const searchData = await res.json();
+              const bestMatch = searchData.results && searchData.results[0];
+              if (bestMatch) {
                 itemData = {
-                  artist: details.artists ? details.artists[0].name : (urlArtist || artist),
-                  title: details.title || (urlTitle || title),
-                  cover: details.images && details.images.length > 0 ? details.images[0].resource_url : '',
-                  year: details.year ? details.year.toString() : '',
-                  label: details.labels && details.labels.length > 0 ? details.labels[0].name : '',
-                  catno: details.labels && details.labels.length > 0 ? details.labels[0].catno : '',
-                  discogsId: details.id
+                  artist: bestMatch.title.split(' - ')[0] || artist,
+                  title: bestMatch.title.split(' - ')[1] || bestMatch.title || title,
+                  cover: bestMatch.cover_image || '',
+                  year: bestMatch.year || '',
+                  label: bestMatch.label ? bestMatch.label[0] : '',
+                  catno: bestMatch.catno || '',
+                  discogsId: bestMatch.id
                 };
               }
-            } catch (e) {
-              console.error(`Fallo fetch directo para link ${id}`);
             }
           }
-        }
 
-        // Search Discogs database if no details fetched yet
-        if (!itemData && artist !== 'Desconocido' && title !== 'Desconocido') {
-          const searchName = `${artist} ${title}`;
-          const res = await fetch(`https://api.discogs.com/database/search?q=${encodeURIComponent(searchName)}&format=${format}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
-          if (res.ok) {
-            const searchData = await res.json();
-            const bestMatch = searchData.results && searchData.results[0];
-            if (bestMatch) {
-              itemData = {
-                artist: bestMatch.title.split(' - ')[0] || artist,
-                title: bestMatch.title.split(' - ')[1] || bestMatch.title || title,
-                cover: bestMatch.cover_image || '',
-                year: bestMatch.year || '',
-                label: bestMatch.label ? bestMatch.label[0] : '',
-                catno: bestMatch.catno || '',
-                discogsId: bestMatch.id
-              };
-            }
+          if (!itemData) {
+            itemData = { artist, title, cover: '', year: '', label: '', catno: '' };
           }
+
+          const newItem = {
+            ...itemData,
+            artist: repairTextEncoding(itemData.artist || ''),
+            title: repairTextEncoding(itemData.title || ''),
+            label: repairTextEncoding(itemData.label || ''),
+            price,
+            qty,
+            grade,
+            gradeCover: grade,
+            format,
+            status: price > 0 ? 'disponible' : 'borrador',
+            dateAdded: new Date().toISOString(),
+            url
+          };
+
+          const stockCol = collection(db, 'users', user.uid, 'stock');
+          await addDoc(stockCol, newItem);
+
+          setImportLogs((prev) => [
+            { 
+              msg: `✅ Importado: ${newItem.artist} - ${newItem.title} (${newItem.format})` + 
+                   (itemData.discogsId ? '' : ' [Cargado manualmente]'), 
+              type: itemData.discogsId ? 'success' : 'warning' 
+            },
+            ...prev
+          ]);
+
+        } catch (err) {
+          console.error("Error importing line: ", err);
+          setImportLogs((prev) => [
+            { msg: `❌ Error en fila ${i+1}: ${artist} - ${title}`, type: 'error' },
+            ...prev
+          ]);
         }
 
-        if (!itemData) {
-          itemData = { artist, title, cover: '', year: '', label: '', catno: '' };
-        }
-
-        const newItem = {
-          ...itemData,
-          artist: repairTextEncoding(itemData.artist || ''),
-          title: repairTextEncoding(itemData.title || ''),
-          label: repairTextEncoding(itemData.label || ''),
-          price,
-          qty,
-          grade,
-          gradeCover: grade,
-          format,
-          status: price > 0 ? 'disponible' : 'borrador',
-          dateAdded: new Date().toISOString(),
-          url
-        };
-
-        const stockCol = collection(db, 'users', user.uid, 'stock');
-        await addDoc(stockCol, newItem);
-
-        setImportLogs((prev) => [
-          { 
-            msg: `✅ Importado: ${newItem.artist} - ${newItem.title} (${newItem.format})` + 
-                 (itemData.discogsId ? '' : ' [Cargado manualmente]'), 
-            type: itemData.discogsId ? 'success' : 'warning' 
-          },
-          ...prev
-        ]);
-
-      } catch (err) {
-        console.error("Error importing line: ", err);
-        setImportLogs((prev) => [
-          { msg: `❌ Error en fila ${i+1}: ${artist} - ${title}`, type: 'error' },
-          ...prev
-        ]);
+        // Discogs rate limit delay (1.5 seconds)
+        await new Promise((r) => setTimeout(r, 1500));
       }
 
-      // Discogs rate limit delay (1.5 seconds)
-      await new Promise((r) => setTimeout(r, 1500));
+      setImportProgress((prev) => ({ ...prev, status: '¡Importación finalizada!' }));
+    } catch (err) {
+      console.error("Error global de importación: ", err);
+    } finally {
+      setIsImporting(false);
+      await releaseWakeLock();
     }
-
-    setImportProgress((prev) => ({ ...prev, status: '¡Importación finalizada!' }));
-    setIsImporting(false);
   };
 
   const closeImportModal = () => {
@@ -993,8 +1043,19 @@ export default function DashboardPage() {
     setSyncLogs([]);
     setSyncProgress({ current: 0, total: 0, status: `Buscando colección de @${discogsUser}...` });
 
+    // Activar bloqueo de suspensión de pantalla
+    await requestWakeLock();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de tiempo de espera
+
     try {
-      const res = await fetch(`https://api.discogs.com/users/${discogsUser}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`);
+      const res = await fetch(
+        `https://api.discogs.com/users/${discogsUser}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
         throw new Error("No se pudo acceder a tu colección. ¿Es pública en tu perfil de Discogs?");
       }
@@ -1006,6 +1067,7 @@ export default function DashboardPage() {
       if (total === 0) {
         setSyncProgress({ current: 0, total: 0, status: 'La colección de Discogs está vacía.' });
         setIsSyncing(false);
+        await releaseWakeLock();
         return;
       }
 
@@ -1066,8 +1128,8 @@ export default function DashboardPage() {
           status: `Procesando ${i + 1} de ${total}... (${addedCount} agregados, ${skippedCount} saltados)` 
         });
 
-        // Throttle to respect Discogs rate limits (500ms)
-        await new Promise((r) => setTimeout(r, 500));
+        // Throttle to respect Discogs rate limits (800ms)
+        await new Promise((r) => setTimeout(r, 800));
       }
 
       setSyncProgress({ 
@@ -1078,13 +1140,17 @@ export default function DashboardPage() {
 
     } catch (err: any) {
       console.error("Error syncing Discogs:", err);
+      clearTimeout(timeoutId);
+      const isAbort = err.name === 'AbortError';
+      const errorMsg = isAbort ? 'Tiempo de espera agotado al conectar con Discogs (15s).' : err.message;
       setSyncLogs((prev) => [
-        { msg: `❌ Error: ${err.message}`, type: 'error' },
+        { msg: `❌ Error: ${errorMsg}`, type: 'error' },
         ...prev
       ]);
-      setSyncProgress((prev) => ({ ...prev, status: 'Error al sincronizar.' }));
+      setSyncProgress((prev) => ({ ...prev, status: isAbort ? 'Tiempo de espera agotado.' : 'Error al sincronizar.' }));
     } finally {
       setIsSyncing(false);
+      await releaseWakeLock();
     }
   };
 

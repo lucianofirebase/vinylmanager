@@ -77,6 +77,47 @@ export default function OnboardingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
+  // Ref for Wake Lock to keep screen awake on mobile
+  const wakeLockRef = React.useRef<any>(null);
+
+  const requestWakeLock = async () => {
+    if (typeof window !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Screen Wake Lock active');
+      } catch (err) {
+        console.warn('Wake Lock request failed:', err);
+      }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Screen Wake Lock released');
+      } catch (err) {
+        console.warn('Wake Lock release failed:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isSyncing) {
+        await requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch((e: any) => console.warn(e));
+      }
+    };
+  }, [isSyncing]);
+
   // Prefill username if possible
   useEffect(() => {
     if (user?.displayName && !username) {
@@ -164,8 +205,19 @@ export default function OnboardingPage() {
     setIsSyncing(true);
     setSyncProgress({ current: 0, total: 0, status: `Buscando colección de @${discogsUsername}...` });
 
+    // Activar bloqueo de suspensión de pantalla
+    await requestWakeLock();
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de tiempo de espera
+
     try {
-      const res = await fetch(`https://api.discogs.com/users/${discogsUsername.trim()}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`);
+      const res = await fetch(
+        `https://api.discogs.com/users/${discogsUsername.trim()}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`,
+        { signal: controller.signal }
+      );
+      clearTimeout(timeoutId);
+
       if (!res.ok) {
         throw new Error("No se pudo acceder a tu colección. ¿Es pública?");
       }
@@ -178,6 +230,7 @@ export default function OnboardingPage() {
         setSyncProgress({ current: 0, total: 0, status: 'La colección está vacía o no tiene álbumes públicos.' });
         setIsSyncing(false);
         setSyncDone(true);
+        await releaseWakeLock();
         return;
       }
 
@@ -218,8 +271,8 @@ export default function OnboardingPage() {
           status: `Guardando ${i + 1} de ${total}...` 
         });
 
-        // Throttle
-        await new Promise((r) => setTimeout(r, 400));
+        // Throttle - Aumentamos el delay a 800ms para evitar límites de la API de Discogs y mostrar el progreso
+        await new Promise((r) => setTimeout(r, 800));
       }
 
       setSyncProgress({ 
@@ -230,26 +283,56 @@ export default function OnboardingPage() {
       setSyncDone(true);
     } catch (err: any) {
       console.error(err);
-      setSyncProgress({ current: 0, total: 0, status: 'Hubo un error al intentar sincronizar.' });
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        setSyncProgress({ current: 0, total: 0, status: 'Tiempo de espera agotado al conectar con Discogs (15s).' });
+      } else {
+        setSyncProgress({ current: 0, total: 0, status: `Error: ${err.message || 'No se pudo sincronizar.'}` });
+      }
     } finally {
       setIsSyncing(false);
+      await releaseWakeLock();
     }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert('La imagen es demasiado grande. El límite es de 2MB.');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUploadedAvatar(reader.result as string);
-        setAvatarType('upload');
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert('La imagen es demasiado grande. El límite es de 10MB.');
+      return;
     }
+
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      img.onload = () => {
+        const MAX = 400; // avatar: small square, no need for full res
+        let { width, height } = img;
+        if (width > MAX || height > MAX) {
+          if (width > height) {
+            height = Math.round((height * MAX) / width);
+            width = MAX;
+          } else {
+            width = Math.round((width * MAX) / height);
+            height = MAX;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressed = canvas.toDataURL('image/jpeg', 0.80);
+          setUploadedAvatar(compressed);
+          setAvatarType('upload');
+        }
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const toggleInterest = (id: string) => {
@@ -297,7 +380,7 @@ export default function OnboardingPage() {
       router.push('/dashboard');
     } catch (err: any) {
       console.error('Error al finalizar onboarding:', err);
-      setSubmitError('Hubo un error al guardar tu perfil. Por favor, vuelve a intentarlo.');
+      setSubmitError(err.message || 'Hubo un error al guardar tu perfil. Por favor, vuelve a intentarlo.');
       setIsSubmitting(false);
     }
   };
@@ -681,11 +764,6 @@ export default function OnboardingPage() {
                       <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
                         Estamos personalizando tu experiencia VinylStock y guardando tus datos en la base de datos.
                       </p>
-                      {submitError && (
-                        <div className="mt-4 text-red-400 text-xs bg-red-500/10 border border-red-500/25 p-3 rounded-lg max-w-xs">
-                          {submitError}
-                        </div>
-                      )}
                     </div>
                   )}
 
@@ -695,6 +773,13 @@ export default function OnboardingPage() {
                       Selecciona las áreas que deseas priorizar dentro de tu panel (puedes elegir varias).
                     </p>
                   </div>
+
+                  {submitError && (
+                    <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/25 p-3 rounded-lg flex flex-col gap-1 animate-fade-in">
+                      <span className="font-semibold text-red-300">Error al guardar perfil:</span>
+                      <span className="break-all">{submitError}</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
                     {INTERESTS_PRESETS.map((item) => {
