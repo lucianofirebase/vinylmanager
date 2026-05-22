@@ -31,6 +31,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -88,16 +89,26 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       <div className="absolute bottom-0 left-1/4 w-[600px] h-[600px] rounded-full bg-purple-500/5 blur-[150px] pointer-events-none" />
 
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 lg:w-72 shrink-0 flex-col border-r border-white/5 glass-panel h-screen sticky top-0 z-20">
+      <aside className={`hidden md:flex shrink-0 flex-col border-r border-white/5 glass-panel h-screen sticky top-0 z-20 transition-all duration-300 ${isCollapsed ? 'w-20' : 'w-64 lg:w-72'}`}>
+        {/* Collapse Toggle */}
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="absolute -right-3 top-6 bg-[#0f172a] border border-white/10 rounded-full p-1 text-gray-400 hover:text-white z-50 hover:bg-white/5 transition-colors"
+        >
+          {isCollapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
+        </button>
+
         {/* Brand header */}
-        <Link href="/dashboard" className="h-16 px-6 border-b border-white/5 flex items-center gap-3 select-none hover:bg-white/5 transition-all cursor-pointer">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-spin-slow">
+        <Link href="/dashboard" className={`h-16 border-b border-white/5 flex items-center select-none hover:bg-white/5 transition-all cursor-pointer ${isCollapsed ? 'justify-center px-0' : 'px-6 gap-3'}`}>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-spin-slow shrink-0">
             <span className="font-bold text-white text-sm">💿</span>
           </div>
-          <div>
-            <h1 className="font-bold text-white tracking-tight leading-none text-base">VinylStock</h1>
-            <span className="text-[10px] text-indigo-400 font-medium tracking-widest uppercase">Pro Edition</span>
-          </div>
+          {!isCollapsed && (
+            <div className="overflow-hidden">
+              <h1 className="font-bold text-white tracking-tight leading-none text-base truncate">VinylStock</h1>
+              <span className="text-[10px] text-indigo-400 font-medium tracking-widest uppercase">Pro Edition</span>
+            </div>
+          )}
         </Link>
 
         {/* Navigation Items */}
@@ -109,64 +120,71 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               <Link
                 key={item.path}
                 href={item.path}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all ${
                   isActive 
                     ? 'bg-gradient-to-r from-indigo-600/20 to-purple-600/10 border-l-2 border-indigo-500 text-white shadow-sm shadow-indigo-500/5' 
                     : 'text-gray-400 hover:text-white hover:bg-white/5'
-                } ${item.path === '/settings' ? 'mt-auto' : ''}`}
+                } ${item.name === 'Configuración' ? 'mt-auto' : ''} ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+                title={item.name}
               >
                 <Icon className={`w-4.5 h-4.5 ${isActive ? 'text-indigo-400' : 'text-gray-400'}`} />
-                <span>{item.name}</span>
+                {!isCollapsed && <span>{item.name === 'Configuración' ? '' : item.name}</span>}
+                {!isCollapsed && item.name === 'Configuración' && <span>Configuración</span>}
               </Link>
             );
           })}
         </nav>
         {/* System Status Mockup */}
-        <div className="px-4 pb-6 space-y-4 select-none">
-          <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2">Estado del Sistema</h4>
-          
-          <div className="bg-slate-900/40 rounded-xl p-3 border border-white/5 space-y-3">
-            <div>
-              <div className="flex justify-between items-center mb-1.5">
-                <span className="text-xs text-gray-400 font-medium">Almacenamiento</span>
-                <span className="text-[10px] font-bold text-gray-500">14MB / 100MB</span>
+        {!isCollapsed && (
+          <div className="px-4 pb-6 space-y-4 select-none">
+            <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2">Estado del Sistema</h4>
+            
+            <div className="bg-slate-900/40 rounded-xl p-3 border border-white/5 space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs text-gray-400 font-medium">Almacenamiento</span>
+                  <span className="text-[10px] font-bold text-gray-500">14MB / 100MB</span>
+                </div>
+                <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: '14%' }}></div>
+                </div>
               </div>
-              <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: '14%' }}></div>
-              </div>
-            </div>
 
-            <div className="pt-2 border-t border-white/5">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] text-gray-500 font-medium">Última Sync Discogs</span>
-                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  Hoy 14:00
-                </span>
+              <div className="pt-2 border-t border-white/5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] text-gray-500 font-medium">Última Sync Discogs</span>
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                    Hoy 14:00
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* User Card */}
-        <div className="p-4 border-t border-white/5 bg-slate-900/30 flex flex-col gap-3">
-          <div className="flex items-center gap-3">
-            {renderAvatar("w-10 h-10")}
-            <div className="flex-1 overflow-hidden">
-              <p className="text-sm font-bold text-white truncate leading-snug">
-                @{userData?.username || 'usuario'}
-              </p>
-              <p className="text-[11px] text-gray-500 truncate leading-none">
-                {userData?.email}
-              </p>
-            </div>
+        <div className={`border-t border-white/5 bg-slate-900/30 flex flex-col gap-3 ${isCollapsed ? 'p-3 items-center' : 'p-4'}`}>
+          <div className={`flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'}`}>
+            {renderAvatar(isCollapsed ? "w-10 h-10 shrink-0" : "w-10 h-10")}
+            {!isCollapsed && (
+              <div className="flex-1 overflow-hidden">
+                <p className="text-sm font-bold text-white truncate leading-snug">
+                  @{userData?.username || 'usuario'}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate leading-none">
+                  {userData?.email}
+                </p>
+              </div>
+            )}
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/10 transition-all"
+            title="Cerrar sesión"
+            className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-semibold text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-transparent hover:border-red-500/10 transition-all ${isCollapsed ? 'px-0' : 'px-3'}`}
           >
-            <LogOut className="w-3.5 h-3.5" />
-            <span>Cerrar sesión</span>
+            <LogOut className="w-3.5 h-3.5 shrink-0" />
+            {!isCollapsed && <span>Cerrar sesión</span>}
           </button>
         </div>
       </aside>

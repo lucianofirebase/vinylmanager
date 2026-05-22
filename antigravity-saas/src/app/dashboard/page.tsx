@@ -148,6 +148,7 @@ export default function DashboardPage() {
   
   // Autocomplete and Discogs Search states inside Add/Edit Modal
   const [discogsSearchQuery, setDiscogsSearchQuery] = useState('');
+  const [discogsSearchFormat, setDiscogsSearchFormat] = useState('All');
   const [discogsSearchResults, setDiscogsSearchResults] = useState<any[]>([]);
   const [isSearchingDiscogs, setIsSearchingDiscogs] = useState(false);
 
@@ -732,7 +733,10 @@ export default function DashboardPage() {
     if (!discogsSearchQuery.trim()) return;
     setIsSearchingDiscogs(true);
     try {
-      const url = `https://api.discogs.com/database/search?q=${encodeURIComponent(discogsSearchQuery)}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&type=release`;
+      let url = `https://api.discogs.com/database/search?q=${encodeURIComponent(discogsSearchQuery)}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}&type=release`;
+      if (discogsSearchFormat !== 'All') {
+        url += `&format=${encodeURIComponent(discogsSearchFormat)}`;
+      }
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -1743,23 +1747,35 @@ export default function DashboardPage() {
                           <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
                             Buscar Álbum o Artista
                           </label>
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                              <input
-                                type="text"
-                                placeholder="Ej: The Beatles Abbey Road, Pink Floyd, Daft Punk..."
-                                value={discogsSearchQuery}
-                                onChange={(e) => setDiscogsSearchQuery(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && handleDiscogsSearch()}
-                                className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white placeholder-gray-500 transition-all"
-                              />
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <div className="flex gap-2 flex-1">
+                              <div className="relative flex-1">
+                                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Ej: The Beatles Abbey Road, Pink Floyd, Daft Punk..."
+                                  value={discogsSearchQuery}
+                                  onChange={(e) => setDiscogsSearchQuery(e.target.value)}
+                                  onKeyDown={(e) => e.key === 'Enter' && handleDiscogsSearch()}
+                                  className="w-full pl-10 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white placeholder-gray-500 transition-all"
+                                />
+                              </div>
+                              <select
+                                value={discogsSearchFormat}
+                                onChange={(e) => setDiscogsSearchFormat(e.target.value)}
+                                className="bg-[#0f172a] sm:bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-indigo-500 cursor-pointer"
+                              >
+                                <option value="All" className="bg-[#0f172a]">Todos</option>
+                                <option value="Vinyl" className="bg-[#0f172a]">Vinyl</option>
+                                <option value="CD" className="bg-[#0f172a]">CD</option>
+                                <option value="Cassette" className="bg-[#0f172a]">Cassette</option>
+                              </select>
                             </div>
                             <button
                               type="button"
                               onClick={handleDiscogsSearch}
                               disabled={isSearchingDiscogs}
-                              className="btn-premium py-2.5 px-5 text-xs font-bold shrink-0 flex items-center gap-2"
+                              className="btn-premium py-2.5 px-5 text-xs font-bold shrink-0 flex items-center justify-center gap-2 sm:w-auto w-full"
                             >
                               {isSearchingDiscogs ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
