@@ -101,8 +101,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
         {/* Brand header */}
         <Link href="/dashboard" className={`h-16 border-b border-white/5 flex items-center select-none hover:bg-white/5 transition-all cursor-pointer ${isCollapsed ? 'justify-center px-0' : 'px-6 gap-3'}`}>
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 animate-spin-slow shrink-0">
-            <span className="font-bold text-white text-sm">💿</span>
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20 shrink-0">
+            <Disc className="w-4.5 h-4.5 text-white animate-spin-slow" strokeWidth={1.5} />
           </div>
           {!isCollapsed && (
             <div className="overflow-hidden">
@@ -222,8 +222,8 @@ export default function DashboardShell({ children }: DashboardShellProps) {
       {/* Mobile Header */}
       <div className="md:hidden w-full h-16 border-b border-white/5 glass-panel fixed top-0 inset-x-0 z-30 px-4 flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-80 transition-all cursor-pointer">
-            <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-md animate-spin-slow">
-              <span className="font-bold text-white text-xs">💿</span>
+            <div className="w-7.5 h-7.5 rounded-lg bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-md">
+              <Disc className="w-3.5 h-3.5 text-white animate-spin-slow" strokeWidth={1.5} />
             </div>
             <span className="font-bold text-white tracking-tight text-sm">VinylStock</span>
           </Link>

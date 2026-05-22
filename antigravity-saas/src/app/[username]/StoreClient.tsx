@@ -361,64 +361,66 @@ export default function StoreClient({ username }: { username: string }) {
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-            {filteredStock.map((item) => (
+             {filteredStock.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => {
                   setPreviewItem(item);
                   setActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
                 }}
-                className="glass-card rounded-2xl overflow-hidden cursor-pointer border border-white/5 hover:border-white/10 transition-all flex flex-col group relative"
+                className="p-2 rounded-[2rem] bg-white/5 border border-white/10 hover:border-indigo-500/25 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group flex flex-col relative hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)]"
               >
-                <div className="aspect-square w-full bg-slate-900 flex items-center justify-center relative overflow-hidden border-b border-white/5">
-                  {item.cover ? (
-                    <img 
-                      src={item.cover} 
-                      alt={item.title} 
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex flex-col items-center gap-2 text-gray-600">
-                      <Music className="w-12 h-12" />
-                    </div>
-                  )}
-
-                  <div className="absolute bottom-3 right-3 flex flex-col gap-2 items-end">
-                    {item.status === 'reservado' && (
-                      <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-lg backdrop-blur-md">
-                        Reservado
-                      </span>
+                <div className="flex-1 flex flex-col overflow-hidden bg-[#0d1326] rounded-[calc(2rem-0.5rem)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-white/5 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
+                  <div className="aspect-square w-full bg-slate-900 flex items-center justify-center relative overflow-hidden border-b border-white/5">
+                    {item.cover ? (
+                      <img 
+                        src={item.cover} 
+                        alt={item.title} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-gray-600">
+                        <Music className="w-12 h-12" />
+                      </div>
                     )}
-                    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format || 'Vinyl')}`}>
-                      {item.format || 'Vinyl'}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                  <div className="space-y-1">
-                    <h4 className="text-xs font-black text-indigo-400 tracking-wider uppercase leading-none truncate">
-                      {item.artist}
-                    </h4>
-                    <h3 className="text-base font-bold text-white leading-tight line-clamp-2">
-                      {item.title}
-                    </h3>
-                  </div>
-
-                  <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                    <span className="text-xs text-gray-500 font-medium">
-                      Estado: <strong className="text-gray-300">{item.grade}</strong>
-                    </span>
-                    <div className="text-right">
-                      <span className="text-lg font-black text-emerald-400">
-                        {formatCurrency(item.price, owner.currency)}
-                      </span>
-                      {item.qty > 1 && (
-                        <span className="text-[10px] text-gray-500 font-bold block -mt-1">
-                          x{item.qty} disponibles
+                    <div className="absolute bottom-3 right-3 flex flex-col gap-2 items-end">
+                      {item.status === 'reservado' && (
+                        <span className="px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider bg-amber-500/10 text-amber-400 border-amber-500/20 shadow-lg backdrop-blur-md">
+                          Reservado
                         </span>
                       )}
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format || 'Vinyl')}`}>
+                        {item.format || 'Vinyl'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
+                    <div className="space-y-1">
+                      <h4 className="text-xs font-black text-indigo-400 tracking-wider uppercase leading-none truncate">
+                        {item.artist}
+                      </h4>
+                      <h3 className="text-base font-bold text-white leading-tight line-clamp-2">
+                        {item.title}
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                      <span className="text-xs text-gray-500 font-medium">
+                        Estado: <strong className="text-gray-300">{item.grade}</strong>
+                      </span>
+                      <div className="text-right">
+                        <span className="text-lg font-black text-emerald-400">
+                          {formatCurrency(item.price, owner.currency)}
+                        </span>
+                        {item.qty > 1 && (
+                          <span className="text-[10px] text-gray-500 font-bold block -mt-1">
+                            x{item.qty} disponibles
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

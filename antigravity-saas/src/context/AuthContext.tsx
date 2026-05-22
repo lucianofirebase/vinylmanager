@@ -5,7 +5,7 @@ import { User, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/aut
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { useRouter, usePathname } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Disc } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserData {
@@ -194,7 +194,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                 className="mb-8 flex items-center justify-center"
               >
                 <div className="relative flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/30">
-                  <span className="text-3xl font-bold text-white select-none">💿</span>
+                  <Disc className="w-8 h-8 text-white animate-spin-slow" strokeWidth={1.5} />
                   <div className="absolute inset-0 rounded-2xl border border-white/20 animate-ping opacity-25 duration-1000" />
                 </div>
               </motion.div>

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { motion } from 'framer-motion';
-import { LogIn, ShieldAlert, Sparkles } from 'lucide-react';
+import { LogIn, ShieldAlert, Sparkles, Disc } from 'lucide-react';
 
 export default function LoginPage() {
   const { loginWithGoogle, user, loading } = useAuth();
@@ -50,7 +50,7 @@ export default function LoginPage() {
           {/* Logo Section */}
           <div className="flex flex-col items-center mb-8">
             <div className="flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 to-purple-600 shadow-lg shadow-indigo-500/25 mb-4">
-              <span className="text-2xl font-bold text-white select-none">💿</span>
+              <Disc className="w-7 h-7 text-white animate-spin-slow" strokeWidth={1.5} />
             </div>
             
             <h2 className="text-3xl font-extrabold tracking-tight text-white font-sans select-none">
