@@ -1120,7 +1120,7 @@ export default function DashboardPage() {
             )}
             <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2 select-none">
               <span className="text-indigo-400">💿</span>
-              <span>Mi Inventario de Vinilos</span>
+              <span>Mi Inventario</span>
             </h2>
             <p className="text-gray-450 text-sm mt-1">
               Gestiona tu colección, stock de ventas, importaciones y sincronización en tiempo real.
@@ -1128,54 +1128,56 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button 
-              onClick={() => {
-                if (!userData?.username) {
-                  alert("Primero debes configurar tu nombre de usuario en Configuración.");
-                  return;
-                }
-                window.open(`/${userData.username}`, '_blank');
-              }}
-              className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
-              title="Ver mi Tienda Pública"
-            >
-              <Store className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ver mi Tienda</span>
-            </button>
             {activeTab === 'tienda' && (
-              <button 
-                onClick={async () => {
-                  if (!userData?.username) {
-                    alert("Primero debes configurar tu nombre de usuario en Configuración.");
-                    return;
-                  }
-                  const url = `${window.location.origin}/${userData.username}`;
-                  
-                  if (navigator.share) {
-                    try {
-                      await navigator.share({
-                        title: 'Mi Tienda | VinylStock',
-                        text: '¡Mira mi catálogo de vinilos disponibles!',
-                        url: url,
-                      });
-                    } catch (e) {
-                      console.error('Error compartiendo', e);
+              <>
+                <button 
+                  onClick={() => {
+                    if (!userData?.username) {
+                      alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                      return;
                     }
-                  } else {
-                    try {
-                      await navigator.clipboard.writeText(url);
-                      alert("¡Enlace copiado! " + url);
-                    } catch (e) {
-                      console.error(e);
+                    window.open(`/${userData.username}`, '_blank');
+                  }}
+                  className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+                  title="Ver mi Tienda Pública"
+                >
+                  <Store className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Ver mi Tienda</span>
+                </button>
+                <button 
+                  onClick={async () => {
+                    if (!userData?.username) {
+                      alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                      return;
                     }
-                  }
-                }}
-                className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
-                title="Compartir Tienda Pública"
-              >
-                <Share2 className="w-3.5 h-3.5 text-indigo-400" />
-                <span className="hidden sm:inline">Compartir Tienda</span>
-              </button>
+                    const url = `${window.location.origin}/${userData.username}`;
+                    
+                    if (navigator.share) {
+                      try {
+                        await navigator.share({
+                          title: 'Mi Tienda | VinylStock',
+                          text: '¡Mira mi catálogo de música disponible!',
+                          url: url,
+                        });
+                      } catch (e) {
+                        console.error('Error compartiendo', e);
+                      }
+                    } else {
+                      try {
+                        await navigator.clipboard.writeText(url);
+                        alert("¡Enlace copiado! " + url);
+                      } catch (e) {
+                        console.error(e);
+                      }
+                    }
+                  }}
+                  className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+                  title="Compartir Tienda Pública"
+                >
+                  <Share2 className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="hidden sm:inline">Compartir Tienda</span>
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1404,14 +1406,14 @@ export default function DashboardPage() {
             <AlertCircle className="w-12 h-12 text-gray-500 mx-auto" />
             <h3 className="text-lg font-bold text-white">Catálogo vacío</h3>
             <p className="text-gray-400 text-sm">
-              No se encontraron discos que coincidan con los filtros seleccionados o no has agregado ningún vinilo todavía.
+              No se encontraron artículos que coincidan con los filtros seleccionados o no has agregado ningún artículo todavía.
             </p>
             <button 
               onClick={openAddModal}
               className="btn-premium py-2 px-4 text-xs font-semibold inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Añadir primer vinilo</span>
+              <span>Añadir primer item</span>
             </button>
           </div>
         ) : viewMode === 'grid' ? (
@@ -1632,14 +1634,14 @@ export default function DashboardPage() {
                     )}
                     <button
                       onClick={(e) => openEditModal(item, e)}
-                      title="Editar vinilo"
+                      title="Editar"
                       className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-all"
                     >
                       <Edit2 className="w-4 h-4" />
                     </button>
                     <button
                       onClick={(e) => handleDeleteItem(item.id, e)}
-                      title="Eliminar vinilo"
+                      title="Eliminar"
                       className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-450 hover:text-red-400 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -1683,7 +1685,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-between border-b border-white/5 pb-4">
                     <h3 className="text-xl font-bold text-white tracking-tight flex items-center gap-2 select-none">
                       <span className="text-indigo-400">💿</span>
-                      <span>{editingItem ? 'Editar Vinilo' : 'Añadir Nuevo Vinilo'}</span>
+                      <span>{editingItem ? 'Editar Item' : 'Añadir'}</span>
                     </h3>
                     <button 
                       onClick={() => setIsAddEditOpen(false)}
@@ -1871,7 +1873,7 @@ export default function DashboardPage() {
                         ) : (
                           <div className="pb-2 border-b border-white/5">
                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-                              {editingItem ? 'Editando información del vinilo' : 'Cargando datos manualmente'}
+                              {editingItem ? 'Editando información' : 'Cargando datos manualmente'}
                             </h4>
                           </div>
                         )}
@@ -1970,7 +1972,9 @@ export default function DashboardPage() {
                           {/* Grading & Details */}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl">
                             <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Disco</label>
+                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
+                                {formFormat === 'CD' ? 'Estado CD' : formFormat === 'Cassette' ? 'Estado Cassette' : 'Estado Disco'}
+                              </label>
                               <div className="relative">
                                 <select
                                   value={formGrade}
@@ -2048,7 +2052,7 @@ export default function DashboardPage() {
                           {/* Real Photos */}
                           <div className="space-y-2">
                             <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center justify-between">
-                              <span>Fotos Reales del Vinilo</span>
+                              <span>Fotos Reales</span>
                               <span className={`font-mono ${photosList.length >= 5 ? 'text-amber-400' : 'text-gray-600'}`}>
                                 {photosList.length}/5
                               </span>
@@ -2892,8 +2896,12 @@ export default function DashboardPage() {
 
                       {/* Condition indicators on image */}
                       <div className="absolute bottom-4 right-4 bg-black/80 backdrop-blur-md text-[10px] font-bold text-gray-200 px-3 py-1.5 rounded-lg border border-white/10 flex gap-3 shadow-lg">
-                        <span>Disco: <strong className="text-emerald-400">{previewModalItem.grade}</strong></span>
-                        <span>Tapa: <strong className="text-emerald-400">{previewModalItem.gradeCover || previewModalItem.grade}</strong></span>
+                        <span>
+                          {previewModalItem.format === 'CD' ? 'Estado CD' : previewModalItem.format === 'Cassette' ? 'Estado Cassette' : 'Estado Disco'}: <strong className="text-emerald-400">{previewModalItem.grade}</strong>
+                        </span>
+                        {previewModalItem.format !== 'Cassette' && (
+                          <span>Tapa: <strong className="text-emerald-400">{previewModalItem.gradeCover || previewModalItem.grade}</strong></span>
+                        )}
                       </div>
                     </div>
 

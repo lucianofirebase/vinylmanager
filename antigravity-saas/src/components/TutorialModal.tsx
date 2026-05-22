@@ -25,22 +25,22 @@ interface TutorialModalProps {
 const TUTORIAL_STEPS = [
   {
     id: 'add',
-    title: 'Añadir Discos',
-    description: 'Usa el buscador integrado para encontrar tu vinilo en Discogs y autocompletar la información, o añádelos manualmente en segundos.',
+    title: 'Añadir Colección',
+    description: 'Usa el buscador integrado para encontrar tu música en Discogs y autocompletar la información, o añádela manualmente en segundos.',
     icon: Search,
     color: 'from-blue-500 to-indigo-500'
   },
   {
     id: 'instagram',
     title: 'Generador para Instagram',
-    description: 'Selecciona un disco y crea automáticamente una publicación estética lista para compartir en tus historias o feed de Instagram.',
+    description: 'Selecciona un artículo y crea automáticamente una publicación estética lista para compartir en tus historias o feed de Instagram.',
     icon: Instagram,
     color: 'from-pink-500 to-rose-500'
   },
   {
     id: 'showroom',
     title: 'Showroom Público',
-    description: 'Cada disco tiene un enlace público único. Compártelo con tus clientes para que vean las fotos, escuchen el audio y te contacten por WhatsApp.',
+    description: 'Cada artículo tiene un enlace público único. Compártelo con tus clientes para que vean las fotos, escuchen el audio y te contacten por WhatsApp.',
     icon: Share2,
     color: 'from-emerald-500 to-teal-500'
   }

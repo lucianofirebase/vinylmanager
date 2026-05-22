@@ -288,7 +288,7 @@ export default function StoreClient({ username }: { username: string }) {
               
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
                 <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-white shadow-lg">
-                  {stock.length} Discos
+                  {stock.length} Items
                 </span>
                 <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-white shadow-lg">
                   Envíos a todo el país
@@ -327,7 +327,7 @@ export default function StoreClient({ username }: { username: string }) {
             </div>
             <input
               type="text"
-              placeholder="Buscar por artista, disco o sello..."
+              placeholder="Buscar por artista, título o sello..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-900/50 border border-white/10 text-white placeholder-gray-500 focus:bg-slate-900/80 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-xl"
@@ -356,7 +356,7 @@ export default function StoreClient({ username }: { username: string }) {
         {filteredStock.length === 0 ? (
           <div className="text-center py-20">
             <Disc className="w-16 h-16 text-gray-700 mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-gray-300">No se encontraron discos</h3>
+            <h3 className="text-xl font-bold text-gray-300">No se encontraron artículos</h3>
             <p className="text-gray-500 mt-2">Intenta con otra búsqueda o el vendedor no tiene stock disponible en este momento.</p>
           </div>
         ) : (
@@ -512,13 +512,17 @@ export default function StoreClient({ username }: { username: string }) {
                       </h4>
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <span className="text-gray-500 block mb-1">Estado Disco:</span>
+                          <span className="text-gray-500 block mb-1">
+                            {previewItem.format === 'CD' ? 'Estado CD' : previewItem.format === 'Cassette' ? 'Estado Cassette' : 'Estado Disco'}:
+                          </span>
                           <span className="font-bold text-white">{previewItem.grade || 'VG+'}</span>
                         </div>
-                        <div>
-                          <span className="text-gray-500 block mb-1">Estado Tapa:</span>
-                          <span className="font-bold text-white">{previewItem.gradeCover || 'VG+'}</span>
-                        </div>
+                        {previewItem.format !== 'Cassette' && (
+                          <div>
+                            <span className="text-gray-500 block mb-1">Estado Tapa:</span>
+                            <span className="font-bold text-white">{previewItem.gradeCover || 'VG+'}</span>
+                          </div>
+                        )}
                         <div>
                           <span className="text-gray-500 block mb-1">Sello:</span>
                           <span className="font-bold text-white">{previewItem.label || 'N/A'}</span>
@@ -543,7 +547,7 @@ export default function StoreClient({ username }: { username: string }) {
                   <div className="pt-6 border-t border-white/5">
                     {owner.whatsappPhone ? (
                       <a
-                        href={`https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(`Hola! Me interesa este disco de tu tienda pública: ${previewItem.artist} - ${previewItem.title}`)}`}
+                        href={`https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(`Hola! Me interesa este ${previewItem.format === 'CD' ? 'CD' : previewItem.format === 'Cassette' ? 'Cassette' : 'disco'} de tu tienda pública: ${previewItem.artist} - ${previewItem.title}`)}`}
                         target="_blank"
                         rel="noreferrer"
                         className="w-full btn-primary-premium py-4 rounded-xl flex items-center justify-center gap-2 text-lg font-bold shadow-xl shadow-indigo-500/20"

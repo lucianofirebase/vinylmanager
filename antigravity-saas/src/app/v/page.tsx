@@ -181,12 +181,19 @@ function ShowcaseContent() {
     if (!vinyl) return '';
     const formattedPrice = formatCurrency(vinyl.price, seller?.currency || 'USD');
     const pageUrl = typeof window !== 'undefined' ? window.location.href : '';
+    const itemType = vinyl.format === 'CD' ? 'CD' : vinyl.format === 'Cassette' ? 'Cassette' : 'disco';
+    const itemEmoji = vinyl.format === 'CD' ? '💿' : vinyl.format === 'Cassette' ? '📼' : '📀';
     
-    let text = `¡Hola! Vi este disco en tu catálogo de *VinylStock* y me interesa:\n\n`;
-    text += `💿 *${vinyl.title.toUpperCase()}*\n`;
+    let text = `¡Hola! Vi este ${itemType} en tu catálogo de *VinylStock* y me interesa:\n\n`;
+    text += `${itemEmoji} *${vinyl.title.toUpperCase()}*\n`;
     text += `👤 Artista: *${vinyl.artist}*\n`;
     text += `💰 Precio: *${formattedPrice}*\n`;
-    text += `📀 Estado Disco: ${vinyl.grade} | Tapa: ${vinyl.gradeCover}\n\n`;
+    if (vinyl.format === 'Cassette') {
+      text += `📀 Estado Cassette: ${vinyl.grade}\n\n`;
+    } else {
+      const typeLabel = vinyl.format === 'CD' ? 'CD' : 'Disco';
+      text += `📀 Estado ${typeLabel}: ${vinyl.grade} | Tapa: ${vinyl.gradeCover}\n\n`;
+    }
     text += `👉 Enlace: ${pageUrl}`;
     
     return encodeURIComponent(text);
@@ -207,7 +214,7 @@ function ShowcaseContent() {
         <AlertCircle className="w-12 h-12 text-red-400 mx-auto" />
         <h3 className="text-lg font-bold text-white">Catálogo no disponible</h3>
         <p className="text-gray-400 text-sm leading-relaxed">
-          {error || 'No pudimos encontrar el disco solicitado. Puede haber sido vendido o removido por el vendedor.'}
+          {error || 'No pudimos encontrar el artículo solicitado. Puede haber sido vendido o removido por el vendedor.'}
         </p>
         <div className="pt-2">
           <Link href="/login" className="btn-premium py-2 px-6 text-xs inline-block">
@@ -245,7 +252,7 @@ function ShowcaseContent() {
           ) : (
             <>
               <Share2 className="w-4 h-4 text-gray-400" />
-              <span>Compartir Disco</span>
+              <span>Compartir {vinyl.format === 'CD' ? 'CD' : vinyl.format === 'Cassette' ? 'Cassette' : 'Disco'}</span>
             </>
           )}
         </button>
@@ -277,8 +284,10 @@ function ShowcaseContent() {
 
             {/* Condition indicators on image */}
             <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md text-[10px] font-bold text-gray-200 px-3 py-1.5 rounded-lg border border-white/5 flex gap-3">
-              <span>Disco: <strong className="text-emerald-400">{vinyl.grade}</strong></span>
-              <span>Tapa: <strong className="text-emerald-400">{vinyl.gradeCover}</strong></span>
+              <span>{vinyl.format === 'CD' ? 'CD' : vinyl.format === 'Cassette' ? 'Cassette' : 'Disco'}: <strong className="text-emerald-400">{vinyl.grade}</strong></span>
+              {vinyl.format !== 'Cassette' && (
+                <span>Tapa: <strong className="text-emerald-400">{vinyl.gradeCover}</strong></span>
+              )}
             </div>
           </div>
 
@@ -373,7 +382,9 @@ function ShowcaseContent() {
 
             {/* Specifications Box */}
             <div className="glass-card rounded-2xl p-4 border border-white/5 space-y-3">
-              <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider border-b border-white/5 pb-2">Especificaciones del Disco</h4>
+              <h4 className="text-xs font-bold text-gray-300 uppercase tracking-wider border-b border-white/5 pb-2">
+                Especificaciones del {vinyl.format === 'CD' ? 'CD' : vinyl.format === 'Cassette' ? 'Cassette' : 'Disco'}
+              </h4>
               
               <div className="grid grid-cols-2 gap-4 text-xs">
                 <div>
@@ -400,12 +411,16 @@ function ShowcaseContent() {
                   <div className="space-y-1 mt-1 text-[11px]">
                     <div className="flex items-center gap-2">
                       <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold font-mono text-[9px] w-8 text-center">{vinyl.grade}</span>
-                      <span className="text-gray-300">Vinilo: {getConditionText(vinyl.grade || 'VG+')}</span>
+                      <span className="text-gray-300">
+                        {vinyl.format === 'CD' ? 'CD' : vinyl.format === 'Cassette' ? 'Cassette' : 'Disco'}: {getConditionText(vinyl.grade || 'VG+')}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold font-mono text-[9px] w-8 text-center">{vinyl.gradeCover}</span>
-                      <span className="text-gray-300">Carátula: {getConditionText(vinyl.gradeCover || vinyl.grade || 'VG+')}</span>
-                    </div>
+                    {vinyl.format !== 'Cassette' && (
+                      <div className="flex items-center gap-2">
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold font-mono text-[9px] w-8 text-center">{vinyl.gradeCover}</span>
+                        <span className="text-gray-300">Carátula: {getConditionText(vinyl.gradeCover || vinyl.grade || 'VG+')}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -134,6 +134,35 @@ export default function DashboardShell({ children }: DashboardShellProps) {
               </Link>
             );
           })}
+
+          {(pathname === '/dashboard') && (
+            <div className="pt-4 mt-2 border-t border-white/5 flex flex-col gap-1.5">
+              <button
+                onClick={() => window.dispatchEvent(new Event('openSyncDiscogs'))}
+                className={`flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5 ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+                title="Sincronizar Discogs"
+              >
+                <RefreshCw className="w-4.5 h-4.5 text-indigo-400" />
+                {!isCollapsed && <span>Sincronizar Discogs</span>}
+              </button>
+              <button
+                onClick={() => window.dispatchEvent(new Event('openImportExcel'))}
+                className={`flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5 ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+                title="Importar Excel"
+              >
+                <FileSpreadsheet className="w-4.5 h-4.5 text-emerald-400" />
+                {!isCollapsed && <span>Importar Excel</span>}
+              </button>
+              <button
+                onClick={() => window.dispatchEvent(new Event('openTutorial'))}
+                className={`flex items-center gap-3 py-3 rounded-xl text-sm font-medium transition-all text-gray-400 hover:text-white hover:bg-white/5 ${isCollapsed ? 'justify-center px-0' : 'px-4'}`}
+                title="Ver Tutorial"
+              >
+                <HelpCircle className="w-4.5 h-4.5 text-gray-400" />
+                {!isCollapsed && <span>Ayuda / Tutorial</span>}
+              </button>
+            </div>
+          )}
         </nav>
         {/* System Status Mockup */}
         {!isCollapsed && (
