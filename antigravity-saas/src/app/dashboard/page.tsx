@@ -42,6 +42,7 @@ import {
   ArrowLeft,
   Camera,
   Link as LinkIcon,
+  Disc,
   FileText,
   Calendar,
   Layers,
