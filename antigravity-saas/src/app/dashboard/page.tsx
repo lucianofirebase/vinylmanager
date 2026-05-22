@@ -45,12 +45,14 @@ import {
   Disc,
   FileText,
   Calendar,
-  Layers
+  Layers,
+  HelpCircle
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
 import InstagramCardGenerator from '../../components/InstagramCardGenerator';
 import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
+import TutorialModal from '../../components/TutorialModal';
 
 // Discogs credentials from previous legacy configuration
 const DISCOGS_KEY = 'kTXBUunaWzBTXwJZlRga';
@@ -106,6 +108,17 @@ export default function DashboardPage() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isInstagramOpen, setIsInstagramOpen] = useState(false);
   const [instagramVinyl, setInstagramVinyl] = useState<VinylItem | null>(null);
+
+  // Tutorial Modal
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isFirstTimeTutorial, setIsFirstTimeTutorial] = useState(false);
+
+  useEffect(() => {
+    if (userData && userData.tutorialCompleted === false) {
+      setIsFirstTimeTutorial(true);
+      setIsTutorialOpen(true);
+    }
+  }, [userData]);
 
   const openInstagramModal = (item: VinylItem, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -973,6 +986,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
+            <button 
+              onClick={() => { setIsFirstTimeTutorial(false); setIsTutorialOpen(true); }}
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              title="Ver Tutorial"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
             <button 
               onClick={() => setIsSyncOpen(true)}
               className="btn-secondary-premium py-2 px-4 text-xs font-semibold flex items-center gap-2"
@@ -2691,6 +2711,13 @@ export default function DashboardPage() {
           vinyl={instagramVinyl}
           currency={userData?.currency || 'USD'}
           shopName={userData?.username || 'mi_tienda'}
+        />
+
+        {/* MODAL: TUTORIAL */}
+        <TutorialModal 
+          isOpen={isTutorialOpen} 
+          onClose={() => setIsTutorialOpen(false)} 
+          isFirstTime={isFirstTimeTutorial} 
         />
       </div>
     </DashboardShell>

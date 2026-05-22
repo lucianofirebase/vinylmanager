@@ -20,7 +20,8 @@ import {
   Cpu,
   Coins,
   Compass,
-  AlertCircle
+  AlertCircle,
+  Disc
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -58,6 +59,7 @@ export default function OnboardingPage() {
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
 
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+  const [discogsUsername, setDiscogsUsername] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -173,7 +175,9 @@ export default function OnboardingPage() {
         avatar: finalAvatar,
         avatarType: avatarType,
         interests: selectedInterests,
+        discogsUsername: discogsUsername.trim() || null,
         onboardingComplete: true,
+        tutorialCompleted: false, // New users start with tutorial pending
         updatedAt: new Date(),
       }, { merge: true });
 
@@ -219,7 +223,7 @@ export default function OnboardingPage() {
           <motion.div 
             className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
             initial={{ width: '0%' }}
-            animate={{ width: `${(step / 5) * 100}%` }}
+            animate={{ width: `${(step / 6) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -377,8 +381,34 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 4: INTERESTS */}
+              {/* STEP 4: DISCOGS INTEGRATION */}
               {step === 4 && (
+                <div className="flex flex-col flex-1 py-2">
+                  <h3 className="text-2xl font-bold text-white mb-2">Conecta tu cuenta de Discogs</h3>
+                  <p className="text-gray-400 text-sm mb-6">
+                    Si tienes una cuenta de Discogs, ingrésala aquí. En el futuro, esto nos permitirá sincronizar automáticamente tu colección y obtener los valores de mercado.
+                    <br /><br />
+                    <span className="italic text-gray-500">Puedes omitir este paso si no tienes cuenta o quieres hacerlo más adelante.</span>
+                  </p>
+
+                  <div className="relative mt-2">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                      <Disc className="w-5 h-5" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Usuario de Discogs (opcional)"
+                      value={discogsUsername}
+                      onChange={(e) => setDiscogsUsername(e.target.value)}
+                      className="w-full !pl-12 input-premium text-lg tracking-wide font-medium"
+                      autoFocus
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 5: INTERESTS */}
+              {step === 5 && (
                 <div className="flex flex-col flex-1 py-2">
                   <h3 className="text-2xl font-bold text-white mb-2">Tus preferencias</h3>
                   <p className="text-gray-400 text-sm mb-4">
@@ -418,8 +448,8 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 5: FINALIZING */}
-              {step === 5 && (
+              {/* STEP 6: FINALIZING */}
+              {step === 6 && (
                 <div className="flex flex-col items-center text-center justify-center flex-1 py-4">
                   {isSubmitting ? (
                     <>
@@ -453,7 +483,7 @@ export default function OnboardingPage() {
 
           {/* Action buttons */}
           <div className="flex items-center justify-between border-t border-white/5 pt-6 mt-6">
-            {step > 1 && step < 5 ? (
+            {step > 1 && step < 6 ? (
               <button
                 onClick={handleBack}
                 disabled={isSubmitting}
@@ -466,7 +496,7 @@ export default function OnboardingPage() {
               <div />
             )}
 
-            {step < 5 ? (
+            {step < 6 ? (
               <button
                 onClick={handleNext}
                 disabled={step === 2 && (!isUsernameAvailable || isUsernameChecking)}

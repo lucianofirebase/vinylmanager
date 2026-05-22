@@ -19,9 +19,10 @@ interface UserData {
   createdAt?: any;
   avatar?: string | null;
   avatarType?: 'preset' | 'upload' | null;
-  discogsUser?: string | null;
+  discogsUsername?: string | null;
   currency?: string | null;
   whatsappPhone?: string | null;
+  tutorialCompleted?: boolean;
 }
 
 interface AuthContextType {

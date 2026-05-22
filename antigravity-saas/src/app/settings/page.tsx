@@ -55,7 +55,7 @@ export default function SettingsPage() {
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
 
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
-  const [discogsUser, setDiscogsUser] = useState('');
+  const [discogsUsername, setDiscogsUsername] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -66,7 +66,7 @@ export default function SettingsPage() {
   useEffect(() => {
     if (userData) {
       setUsername(userData.username || '');
-      setDiscogsUser(userData.discogsUser || '');
+      setDiscogsUsername(userData.discogsUsername || '');
       setCurrency(userData.currency || 'USD');
       setWhatsappPhone(userData.whatsappPhone || '');
       
@@ -198,7 +198,7 @@ export default function SettingsPage() {
       // 2. Update user profile document
       await setDoc(doc(db, 'users', user.uid), {
         username: cleanUsername,
-        discogsUser: discogsUser.trim(),
+        discogsUsername: discogsUsername.trim() || null,
         currency: currency,
         whatsappPhone: whatsappPhone.trim(),
         avatar: finalAvatar,
@@ -346,8 +346,8 @@ export default function SettingsPage() {
                 <input
                   type="text"
                   placeholder="Tu usuario de Discogs"
-                  value={discogsUser}
-                  onChange={(e) => setDiscogsUser(e.target.value)}
+                  value={discogsUsername}
+                  onChange={(e) => setDiscogsUsername(e.target.value)}
                   className="w-full !pl-10 !pr-10 input-premium font-medium"
                 />
               </div>
