@@ -846,7 +846,7 @@ export default function DashboardPage() {
   // Discogs Collection Sincronizador
   const startDiscogsSync = async () => {
     if (!user || !userData) return;
-    const discogsUser = (userData as any).discogsUser;
+    const discogsUser = (userData as any)?.discogsUsername;
 
     if (!discogsUser) {
       alert("Primero debes configurar tu usuario de Discogs en la página de Configuración.");
@@ -1059,27 +1059,31 @@ export default function DashboardPage() {
             <h3 className="text-3xl font-black text-white">{totalItems} <span className="text-xs text-gray-500 font-semibold">discos</span></h3>
           </div>
 
-          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
-            <div className="flex items-center gap-4 mb-3">
-              <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
-                <Check className="w-5 h-5" />
+          {activeTab === 'tienda' && (
+            <>
+              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <Check className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Disponibles para Venta</span>
+                </div>
+                <h3 className="text-3xl font-black text-white">{availableItems} <span className="text-xs text-gray-500 font-semibold">items</span></h3>
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Disponibles para Venta</span>
-            </div>
-            <h3 className="text-3xl font-black text-white">{availableItems} <span className="text-xs text-gray-500 font-semibold">items</span></h3>
-          </div>
 
-          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
-            <div className="flex items-center gap-4 mb-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
-                <TrendingUp className="w-5 h-5" />
+              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
+                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Valor de Stock</span>
+                </div>
+                <h3 className="text-3xl font-black text-white">{formatCurrency(totalValue, userData?.currency)}</h3>
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Valor de Stock</span>
-            </div>
-            <h3 className="text-3xl font-black text-white">{formatCurrency(totalValue, userData?.currency)}</h3>
-          </div>
+            </>
+          )}
         </div>
 
         {/* Toolbar & Filters */}
@@ -1293,9 +1297,11 @@ export default function DashboardPage() {
                       <span className="text-xs text-gray-500 font-medium">
                         Estado: <strong className="text-gray-300 font-semibold">{item.grade}</strong>
                       </span>
-                      <span className="text-lg font-black text-emerald-400">
-                        {formatCurrency(item.price, userData?.currency)}
-                      </span>
+                      {activeTab === 'tienda' && (
+                        <span className="text-lg font-black text-emerald-400">
+                          {formatCurrency(item.price, userData?.currency)}
+                        </span>
+                      )}
                     </div>
 
                   </div>
@@ -1323,8 +1329,8 @@ export default function DashboardPage() {
               <div className="col-span-4 pl-2">Álbum / Artista</div>
               <div className="col-span-2">Formato</div>
               <div className="col-span-2">Estado</div>
-              <div className="col-span-2">Precio</div>
-              <div className="col-span-1 text-right pr-2">Acciones</div>
+              {activeTab === 'tienda' && <div className="col-span-2">Precio</div>}
+              <div className={`text-right pr-2 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-3'}`}>Acciones</div>
             </div>
 
             {sortedStock.map((item) => {
@@ -1379,18 +1385,22 @@ export default function DashboardPage() {
                     </span>
                   </div>
 
-                  <div className="col-span-2 font-black text-emerald-400">
-                    {formatCurrency(item.price, userData?.currency)}
-                  </div>
+                  {activeTab === 'tienda' && (
+                    <div className="col-span-2 font-black text-emerald-400">
+                      {formatCurrency(item.price, userData?.currency)}
+                    </div>
+                  )}
 
-                  <div className="col-span-1 text-right pr-2 flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={(e) => openInstagramModal(item, e)}
-                      title="Compartir en Instagram"
-                      className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
-                    >
-                      <Instagram className="w-4 h-4" />
-                    </button>
+                  <div className={`text-right pr-2 flex items-center justify-end gap-1.5 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-3'}`} onClick={(e) => e.stopPropagation()}>
+                    {activeTab === 'tienda' && (
+                      <button
+                        onClick={(e) => openInstagramModal(item, e)}
+                        title="Compartir en Instagram"
+                        className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
+                      >
+                        <Instagram className="w-4 h-4" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => openEditModal(item, e)}
                       title="Editar vinilo"
@@ -2235,7 +2245,7 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-3 p-4.5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 text-indigo-200 text-xs">
                     <Sparkles className="w-5 h-5 shrink-0 text-indigo-400" />
                     <p>
-                      Esta herramienta descargará hasta 100 álbumes de tu colección pública de Discogs vinculada (cuenta: <strong className="text-white">@{ (userData as any)?.discogsUser || 'No configurado' }</strong>). Los nuevos discos se agregarán automáticamente a tu inventario bajo la categoría <strong className="text-white">"Colección"</strong> sin alterar los precios o ítems existentes.
+                      Esta herramienta descargará hasta 100 álbumes de tu colección pública de Discogs vinculada (cuenta: <strong className="text-white">@{ (userData as any)?.discogsUsername || 'No configurado' }</strong>). Los nuevos discos se agregarán automáticamente a tu inventario bajo la categoría <strong className="text-white">"Colección"</strong> sin alterar los precios o ítems existentes.
                     </p>
                   </div>
 
@@ -2570,12 +2580,14 @@ export default function DashboardPage() {
                     >
                       <Edit2 className="w-3.5 h-3.5 text-indigo-400" /> Editar
                     </button>
-                    <button
-                      onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
-                      className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
-                    >
-                      <Instagram className="w-3.5 h-3.5 text-indigo-400" /> Compartir
-                    </button>
+                    {previewModalItem.status !== 'coleccion' && (
+                      <button
+                        onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
+                        className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
+                      >
+                        <Instagram className="w-3.5 h-3.5 text-indigo-400" /> Compartir
+                      </button>
+                    )}
                     <button
                       onClick={(e) => { handleDeleteItem(previewModalItem.id, e); }}
                       className="px-3 py-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold border border-red-500/20 transition-all text-xs flex items-center"
@@ -2656,21 +2668,23 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Price section */}
-                      <div className="flex items-baseline gap-2 pb-2">
-                        <span className="text-3xl font-extrabold text-emerald-400">
-                          {formatCurrency(previewModalItem.price, userData?.currency)}
-                        </span>
-                        {previewModalItem.status !== 'disponible' && (
-                          <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded uppercase">
-                            {previewModalItem.status}
+                      {previewModalItem.status !== 'coleccion' && (
+                        <div className="flex items-baseline gap-2 pb-2">
+                          <span className="text-3xl font-extrabold text-emerald-400">
+                            {formatCurrency(previewModalItem.price, userData?.currency)}
                           </span>
-                        )}
-                        {previewModalItem.qty > 1 && (
-                          <span className="text-xs text-gray-500 font-bold ml-2">
-                            x{previewModalItem.qty} disponibles
-                          </span>
-                        )}
-                      </div>
+                          {previewModalItem.status !== 'disponible' && (
+                            <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold px-2 py-0.5 rounded uppercase">
+                              {previewModalItem.status}
+                            </span>
+                          )}
+                          {previewModalItem.qty > 1 && (
+                            <span className="text-xs text-gray-500 font-bold ml-2">
+                              x{previewModalItem.qty} disponibles
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Specifications Box */}
                       <div className="glass-card rounded-xl p-4 border border-white/5 space-y-3 bg-slate-900/50">

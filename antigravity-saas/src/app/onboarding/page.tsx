@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, addDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { 
   ChevronRight, 
@@ -21,7 +21,8 @@ import {
   Coins,
   Compass,
   AlertCircle,
-  Disc
+  Disc,
+  RefreshCw
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -60,6 +61,12 @@ export default function OnboardingPage() {
 
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [discogsUsername, setDiscogsUsername] = useState('');
+  
+  // Sync states
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
+  const [syncDone, setSyncDone] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -123,13 +130,105 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (step === 2 && (!isUsernameAvailable || isUsernameChecking)) return;
+    
     setDirection(1);
-    setStep((prev) => prev + 1);
+    
+    // Si pasamos del paso 4 (Discogs) y NO hay usuario, saltamos el paso 5 (Sync)
+    if (step === 4 && !discogsUsername.trim()) {
+      setStep(6);
+    } else {
+      setStep((prev) => prev + 1);
+    }
   };
 
   const handleBack = () => {
     setDirection(-1);
-    setStep((prev) => prev - 1);
+    
+    // Si volvemos del paso 6 (Intereses) y no hay usuario, volvemos al paso 4
+    if (step === 6 && !discogsUsername.trim()) {
+      setStep(4);
+    } else {
+      setStep((prev) => prev - 1);
+    }
+  };
+
+  // Sync logic
+  const handleSyncDiscogs = async () => {
+    if (!user || !discogsUsername.trim()) return;
+
+    setIsSyncing(true);
+    setSyncProgress({ current: 0, total: 0, status: `Buscando colección de @${discogsUsername}...` });
+
+    try {
+      const res = await fetch(`https://api.discogs.com/users/${discogsUsername.trim()}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`);
+      if (!res.ok) {
+        throw new Error("No se pudo acceder a tu colección. ¿Es pública?");
+      }
+
+      const data = await res.json();
+      const releases = data.releases || [];
+      const total = releases.length;
+
+      if (total === 0) {
+        setSyncProgress({ current: 0, total: 0, status: 'La colección está vacía.' });
+        setIsSyncing(false);
+        setSyncDone(true);
+        return;
+      }
+
+      setSyncProgress({ current: 0, total, status: 'Importando...' });
+
+      let addedCount = 0;
+
+      for (let i = 0; i < releases.length; i++) {
+        const rel = releases[i];
+        const info = rel.basic_information;
+
+        const newItem = {
+          artist: info.artists[0]?.name || 'Unknown',
+          title: info.title || 'Unknown',
+          label: info.labels && info.labels.length > 0 ? info.labels[0].name : '',
+          year: info.year ? info.year.toString() : '',
+          catno: info.labels && info.labels.length > 0 ? info.labels[0].catno : '',
+          cover: info.cover_image || '',
+          format: info.formats && info.formats.length > 0 ? info.formats[0].name : 'Vinyl',
+          price: 0,
+          qty: 1,
+          grade: 'VG+',
+          gradeCover: 'VG+',
+          status: 'coleccion',
+          dateAdded: new Date().toISOString(),
+          discogsId: rel.id,
+          url: `https://www.discogs.com/release/${rel.id}`
+        };
+
+        const stockCol = collection(db, 'users', user.uid, 'stock');
+        await addDoc(stockCol, newItem);
+
+        addedCount++;
+
+        setSyncProgress({ 
+          current: i + 1, 
+          total, 
+          status: `Guardando ${i + 1} de ${total}...` 
+        });
+
+        // Throttle
+        await new Promise((r) => setTimeout(r, 400));
+      }
+
+      setSyncProgress({ 
+        current: total, 
+        total, 
+        status: `¡Listo! ${addedCount} discos sincronizados.` 
+      });
+      setSyncDone(true);
+    } catch (err: any) {
+      console.error(err);
+      setSyncProgress({ current: 0, total: 0, status: 'Hubo un error al intentar sincronizar.' });
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,7 +322,7 @@ export default function OnboardingPage() {
           <motion.div 
             className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
             initial={{ width: '0%' }}
-            animate={{ width: `${(step / 6) * 100}%` }}
+            animate={{ width: `${(step / 7) * 100}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
@@ -407,8 +506,62 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 5: INTERESTS */}
+              {/* STEP 5: SYNC DISCOGS */}
               {step === 5 && (
+                <div className="flex flex-col flex-1 py-2 items-center justify-center text-center">
+                  <h3 className="text-2xl font-bold text-white mb-2">Sincroniza tu colección ahora</h3>
+                  <p className="text-gray-400 text-sm mb-6 max-w-sm">
+                    Podemos importar tu colección de Discogs directamente a tu inventario. Esto puede tardar un par de minutos si tu colección es grande.
+                  </p>
+
+                  <div className="flex flex-col items-center justify-center w-full max-w-sm space-y-4">
+                    {isSyncing ? (
+                      <div className="w-full text-center space-y-4">
+                        <Loader2 className="w-10 h-10 text-indigo-400 animate-spin mx-auto" />
+                        <div className="w-full bg-white/5 rounded-full h-2 overflow-hidden border border-white/10">
+                          <div 
+                            className="bg-indigo-500 h-full transition-all duration-300"
+                            style={{ width: `${syncProgress.total > 0 ? (syncProgress.current / syncProgress.total) * 100 : 0}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-indigo-300 font-semibold">{syncProgress.status}</p>
+                      </div>
+                    ) : syncDone ? (
+                      <div className="w-full text-center space-y-4">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30">
+                          <Check className="w-6 h-6" />
+                        </div>
+                        <p className="text-emerald-400 font-bold text-sm">{syncProgress.status}</p>
+                        <button
+                          onClick={handleNext}
+                          className="btn-premium py-2 px-6 text-sm"
+                        >
+                          Continuar
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={handleSyncDiscogs}
+                          className="btn-premium py-3 px-6 text-sm w-full flex items-center justify-center gap-2"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          Sincronizar ahora
+                        </button>
+                        <button
+                          onClick={handleNext}
+                          className="py-2 text-sm text-gray-500 hover:text-white transition-colors"
+                        >
+                          Omitir por ahora
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 6: INTERESTS */}
+              {step === 6 && (
                 <div className="flex flex-col flex-1 py-2">
                   <h3 className="text-2xl font-bold text-white mb-2">Tus preferencias</h3>
                   <p className="text-gray-400 text-sm mb-4">
@@ -448,8 +601,8 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 6: FINALIZING */}
-              {step === 6 && (
+              {/* STEP 7: FINALIZING */}
+              {step === 7 && (
                 <div className="flex flex-col items-center text-center justify-center flex-1 py-4">
                   {isSubmitting ? (
                     <>
@@ -483,7 +636,7 @@ export default function OnboardingPage() {
 
           {/* Action buttons */}
           <div className="flex items-center justify-between border-t border-white/5 pt-6 mt-6">
-            {step > 1 && step < 6 ? (
+            {step > 1 && step < 7 && !(step === 5 && isSyncing) && !(step === 5 && syncDone) ? (
               <button
                 onClick={handleBack}
                 disabled={isSubmitting}
@@ -496,7 +649,7 @@ export default function OnboardingPage() {
               <div />
             )}
 
-            {step < 6 ? (
+            {step < 7 && step !== 5 ? (
               <button
                 onClick={handleNext}
                 disabled={step === 2 && (!isUsernameAvailable || isUsernameChecking)}
@@ -505,7 +658,7 @@ export default function OnboardingPage() {
                 <span>Continuar</span>
                 <ChevronRight className="w-4.5 h-4.5" />
               </button>
-            ) : (
+            ) : step === 7 ? (
               !isSubmitting && (
                 <button
                   onClick={handleSubmit}
@@ -515,7 +668,7 @@ export default function OnboardingPage() {
                   <ChevronRight className="w-4.5 h-4.5" />
                 </button>
               )
-            )}
+            ) : null}
           </div>
         </div>
       </div>
