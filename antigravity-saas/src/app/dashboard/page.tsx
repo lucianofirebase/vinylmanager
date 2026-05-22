@@ -1146,17 +1146,44 @@ export default function DashboardPage() {
               <span>Importar Excel</span>
             </button>
             <button 
+              onClick={() => {
+                if (!userData?.username) {
+                  alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                  return;
+                }
+                window.open(`/${userData.username}`, '_blank');
+              }}
+              className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+              title="Ver mi Tienda Pública"
+            >
+              <Store className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ver mi Tienda</span>
+            </button>
+            <button 
               onClick={async () => {
                 if (!userData?.username) {
                   alert("Primero debes configurar tu nombre de usuario en Configuración.");
                   return;
                 }
                 const url = `${window.location.origin}/${userData.username}`;
-                try {
-                  await navigator.clipboard.writeText(url);
-                  alert("¡Enlace copiado! " + url);
-                } catch (e) {
-                  console.error(e);
+                
+                if (navigator.share) {
+                  try {
+                    await navigator.share({
+                      title: 'Mi Tienda | VinylStock',
+                      text: '¡Mira mi catálogo de vinilos disponibles!',
+                      url: url,
+                    });
+                  } catch (e) {
+                    console.error('Error compartiendo', e);
+                  }
+                } else {
+                  try {
+                    await navigator.clipboard.writeText(url);
+                    alert("¡Enlace copiado! " + url);
+                  } catch (e) {
+                    console.error(e);
+                  }
                 }
               }}
               className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
@@ -1165,37 +1192,41 @@ export default function DashboardPage() {
               <Share2 className="w-3.5 h-3.5 text-indigo-400" />
               <span>Compartir Tienda</span>
             </button>
-            <button 
-              onClick={openAddModal}
-              className="btn-premium py-2 px-4.5 text-xs font-semibold flex items-center gap-2"
-            >
-              <Plus className="w-4.5 h-4.5" />
-              <span>Añadir Disco</span>
-            </button>
           </div>
         </div>
 
         {/* Tabs Separator */}
-        <div className="flex items-center gap-2 border-b border-white/10 pb-px mt-2">
-          <button
-            onClick={() => setActiveTab('tienda')}
-            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
-              activeTab === 'tienda' 
-                ? 'border-indigo-400 text-indigo-400' 
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
+        <div className="flex items-center justify-between border-b border-white/10 pb-px mt-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setActiveTab('tienda')}
+              className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === 'tienda' 
+                  ? 'border-indigo-400 text-indigo-400' 
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              Mi Tienda
+            </button>
+            <button
+              onClick={() => setActiveTab('coleccion')}
+              className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
+                activeTab === 'coleccion' 
+                  ? 'border-indigo-400 text-indigo-400' 
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              Mi Colección
+            </button>
+          </div>
+          
+          <button 
+            onClick={openAddModal}
+            className="btn-premium py-1.5 px-4 text-xs font-semibold flex items-center gap-2 mb-1"
           >
-            Mi Tienda
-          </button>
-          <button
-            onClick={() => setActiveTab('coleccion')}
-            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
-              activeTab === 'coleccion' 
-                ? 'border-indigo-400 text-indigo-400' 
-                : 'border-transparent text-gray-400 hover:text-white'
-            }`}
-          >
-            Mi Colección
+            <Plus className="w-4 h-4" />
+            <span className="hidden sm:inline">Añadir Disco</span>
+            <span className="sm:hidden">Añadir</span>
           </button>
         </div>
 
