@@ -1159,7 +1159,7 @@ export default function DashboardPage() {
                   console.error(e);
                 }
               }}
-              className="hidden md:flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
+              className="flex btn-secondary-premium py-2 px-4 text-xs font-semibold items-center gap-2"
               title="Copiar enlace de Tienda Pública"
             >
               <Share2 className="w-3.5 h-3.5 text-indigo-400" />
