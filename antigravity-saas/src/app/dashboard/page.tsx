@@ -48,7 +48,8 @@ import {
   Layers,
   HelpCircle,
   Store,
-  Archive
+  Archive,
+  DollarSign
 } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency, repairTextEncoding, getDiscogsIdFromCoverUrl } from '../../lib/utils';
@@ -471,19 +472,83 @@ export default function DashboardPage() {
   // Bulk Actions
   const handleBulkSell = async () => {
     if (!user || selectedIds.size === 0) return;
-    if (!confirm(`¿Estás seguro de marcar como VENDIDOS los ${selectedIds.size} discos seleccionados?`)) return;
+    if (!confirm(`¿Estás seguro de registrar la venta de los ${selectedIds.size} discos seleccionados?`)) return;
 
     try {
       const batch = writeBatch(db);
+      const salesCol = collection(db, 'users', user.uid, 'sales');
+      
       selectedIds.forEach((id) => {
+        const item = stock.find(i => i.id === id);
+        if (!item) return;
+
         const docRef = doc(db, 'users', user.uid, 'stock', id);
-        batch.update(docRef, { status: 'vendido' });
+        if (item.qty > 1) {
+          batch.update(docRef, { qty: item.qty - 1 });
+        } else {
+          batch.update(docRef, { status: 'vendido' });
+        }
+
+        const newSaleRef = doc(salesCol);
+        batch.set(newSaleRef, {
+          vinylId: item.id,
+          artist: item.artist,
+          title: item.title,
+          cover: item.cover,
+          format: item.format,
+          priceSold: Number(item.price) || 0,
+          qtySold: 1,
+          dateSold: new Date().toISOString()
+        });
       });
       await batch.commit();
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Error bulk selling:", err);
       alert("Ocurrió un error al vender en lote.");
+    }
+  };
+
+  const handleSellItem = async (item: VinylItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    if (!user) return;
+    
+    try {
+      const batch = writeBatch(db);
+      const docRef = doc(db, 'users', user.uid, 'stock', item.id);
+      
+      if (item.qty > 1) {
+        batch.update(docRef, { qty: item.qty - 1 });
+      } else {
+        batch.update(docRef, { status: 'vendido' });
+      }
+
+      const salesCol = collection(db, 'users', user.uid, 'sales');
+      const newSaleRef = doc(salesCol);
+      batch.set(newSaleRef, {
+        vinylId: item.id,
+        artist: item.artist,
+        title: item.title,
+        cover: item.cover,
+        format: item.format,
+        priceSold: Number(item.price) || 0,
+        qtySold: 1,
+        dateSold: new Date().toISOString()
+      });
+
+      await batch.commit();
+
+      if (previewModalItem?.id === item.id) {
+        if (item.qty <= 1) {
+          setPreviewModalItem(null);
+        } else {
+          setPreviewModalItem({ ...item, qty: item.qty - 1 });
+        }
+      }
+
+    } catch (err) {
+      console.error("Error selling item:", err);
+      alert("Error al registrar la venta.");
     }
   };
 
@@ -1455,13 +1520,22 @@ export default function DashboardPage() {
                       {activeTab === 'coleccion' ? <Store className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
                     </button>
                     {activeTab === 'tienda' && (
-                      <button
-                        onClick={(e) => openInstagramModal(item, e)}
-                        title="Compartir en Instagram"
-                        className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
-                      >
-                        <Instagram className="w-4 h-4" />
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => handleSellItem(item, e)}
+                          title="Vender 1 Unidad"
+                          className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 transition-all"
+                        >
+                          <DollarSign className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={(e) => openInstagramModal(item, e)}
+                          title="Compartir en Instagram"
+                          className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
+                        >
+                          <Instagram className="w-4 h-4" />
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={(e) => openEditModal(item, e)}
@@ -2655,13 +2729,22 @@ export default function DashboardPage() {
                       <span className="hidden sm:inline">Editar</span>
                     </button>
                     {previewModalItem.status !== 'coleccion' && (
-                      <button
-                        onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
-                        className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
-                      >
-                        <Instagram className="w-3.5 h-3.5 text-indigo-400" /> 
-                        <span className="hidden sm:inline">Compartir</span>
-                      </button>
+                      <>
+                        <button
+                          onClick={(e) => { handleSellItem(previewModalItem, e); }}
+                          className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
+                        >
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-400" /> 
+                          <span className="hidden sm:inline">Vender</span>
+                        </button>
+                        <button
+                          onClick={(e) => { setPreviewModalItem(null); openInstagramModal(previewModalItem, e); }}
+                          className="btn-secondary-premium px-3 py-1.5 text-xs flex gap-2 items-center"
+                        >
+                          <Instagram className="w-3.5 h-3.5 text-indigo-400" /> 
+                          <span className="hidden sm:inline">Compartir</span>
+                        </button>
+                      </>
                     )}
                     <button
                       onClick={(e) => { handleDeleteItem(previewModalItem.id, e); }}

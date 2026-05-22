@@ -17,7 +17,8 @@ import {
   MessageSquare,
   HelpCircle,
   RefreshCw,
-  FileSpreadsheet
+  FileSpreadsheet,
+  TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -33,6 +34,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Historial de Ventas', path: '/dashboard/ventas', icon: TrendingUp },
     { name: 'WhatsApp Marketing', path: '/whatsapp', icon: MessageSquare },
     { name: 'Configuración', path: '/settings', icon: Settings },
   ];
