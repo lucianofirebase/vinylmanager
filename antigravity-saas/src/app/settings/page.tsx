@@ -76,7 +76,7 @@ export default function SettingsPage() {
       setCurrency(userData.currency || 'USD');
       setWhatsappPhone(userData.whatsappPhone || '');
       
-      setIsPublicStore(userData.isPublicStore ?? true);
+      setIsPublicStore(userData.isPublicStore ?? false);
       setStoreName(userData.storeName || '');
       setStoreBio(userData.storeBio || '');
       

@@ -1096,6 +1096,24 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
+            {userData?.isPublicStore === false && (
+              <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center gap-4 justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
+                    <AlertCircle className="w-4 h-4 text-indigo-400" />
+                  </div>
+                  <p className="text-sm text-indigo-200">
+                    Tu tienda está <strong className="text-white">privada</strong>. Actívala para empezar a vender.
+                  </p>
+                </div>
+                <Link 
+                  href="/settings"
+                  className="px-4 py-2 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold transition-colors whitespace-nowrap"
+                >
+                  Activar Tienda
+                </Link>
+              </div>
+            )}
             <h2 className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-2 select-none">
               <span className="text-indigo-400">💿</span>
               <span>Mi Inventario de Vinilos</span>
@@ -1133,7 +1151,7 @@ export default function DashboardPage() {
                   alert("Primero debes configurar tu nombre de usuario en Configuración.");
                   return;
                 }
-                const url = `${window.location.origin}/store?u=${userData.username}`;
+                const url = `${window.location.origin}/${userData.username}`;
                 try {
                   await navigator.clipboard.writeText(url);
                   alert("¡Enlace copiado! " + url);
@@ -1183,39 +1201,59 @@ export default function DashboardPage() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
-            <div className="flex items-center gap-4 mb-3">
-              <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400">
-                <Music className="w-5 h-5" />
+          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-indigo-500/10">
+            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
+                  <Music className="w-5 h-5" />
+                </div>
+                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Total en Catálogo</span>
               </div>
-              <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total en Catálogo</span>
             </div>
-            <h3 className="text-3xl font-black text-white">{totalItems} <span className="text-xs text-gray-500 font-semibold">discos</span></h3>
+            <div className="flex items-end justify-between">
+              <h3 className="text-4xl font-black text-white">{totalItems} <span className="text-sm text-gray-500 font-semibold">discos</span></h3>
+              <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                <TrendingUp className="w-3 h-3" />
+                <span>+5% este mes</span>
+              </div>
+            </div>
           </div>
 
           {activeTab === 'tienda' && (
             <>
-              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
-                    <Check className="w-5 h-5" />
+              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-emerald-500/10">
+                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                      <Check className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Disponibles Venta</span>
                   </div>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Disponibles para Venta</span>
                 </div>
-                <h3 className="text-3xl font-black text-white">{availableItems} <span className="text-xs text-gray-500 font-semibold">items</span></h3>
+                <div className="flex items-end justify-between">
+                  <h3 className="text-4xl font-black text-white">{availableItems} <span className="text-sm text-gray-500 font-semibold">items</span></h3>
+                  <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    <TrendingUp className="w-3 h-3" />
+                    <span>+2 recientes</span>
+                  </div>
+                </div>
               </div>
 
-              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group">
-                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
-                <div className="flex items-center gap-4 mb-3">
-                  <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400">
-                    <TrendingUp className="w-5 h-5" />
+              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-amber-500/10">
+                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                      <TrendingUp className="w-5 h-5" />
+                    </div>
+                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Valor de Stock</span>
                   </div>
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Valor de Stock</span>
                 </div>
-                <h3 className="text-3xl font-black text-white">{formatCurrency(totalValue, userData?.currency)}</h3>
+                <div className="flex items-end justify-between">
+                  <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">{formatCurrency(totalValue, userData?.currency)}</h3>
+                </div>
               </div>
             </>
           )}
@@ -1373,8 +1411,8 @@ export default function DashboardPage() {
                     setPreviewModalItem(item);
                     setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
                   }}
-                  className={`glass-card rounded-2xl overflow-hidden cursor-pointer border transition-all flex flex-col group relative ${
-                    isSelected ? 'border-indigo-500/50 bg-indigo-950/5' : 'border-white/5 hover:border-white/10'
+                  className={`glass-card rounded-2xl overflow-hidden cursor-pointer border transition-all duration-300 flex flex-col group relative hover:-translate-y-1 hover:shadow-[0_8px_30px_rgba(99,102,241,0.2)] ${
+                    isSelected ? 'border-indigo-500/50 bg-indigo-950/5' : 'border-white/5 hover:border-indigo-500/30'
                   }`}
                 >
                   {/* Select Checkbox Indicator */}
@@ -1407,14 +1445,29 @@ export default function DashboardPage() {
 
                     {/* Format and Status Badges */}
                     <div className="absolute bottom-3 right-3 flex gap-2">
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border ${getFormatBadgeColor(item.format)}`}>
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format)}`}>
                         {item.format}
                       </span>
                       {activeTab === 'tienda' && (
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
+                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider shadow-lg backdrop-blur-md ${getStatusBadgeColor(item.status)}`}>
                           {item.status}
                         </span>
                       )}
+                    </div>
+
+                    {/* Hover Quick Actions */}
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingItem(item);
+                          setIsAddEditOpen(true);
+                        }}
+                        className="p-3 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white shadow-xl hover:scale-110 transition-all"
+                        title="Editar"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                      </button>
                     </div>
                   </div>
 

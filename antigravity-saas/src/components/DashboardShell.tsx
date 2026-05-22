@@ -121,6 +121,32 @@ export default function DashboardShell({ children }: DashboardShellProps) {
             );
           })}
         </nav>
+        {/* System Status Mockup */}
+        <div className="px-4 pb-6 space-y-4 select-none">
+          <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-2">Estado del Sistema</h4>
+          
+          <div className="bg-slate-900/40 rounded-xl p-3 border border-white/5 space-y-3">
+            <div>
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="text-xs text-gray-400 font-medium">Almacenamiento</span>
+                <span className="text-[10px] font-bold text-gray-500">14MB / 100MB</span>
+              </div>
+              <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                <div className="bg-indigo-500 h-1.5 rounded-full" style={{ width: '14%' }}></div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/5">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] text-gray-500 font-medium">Última Sync Discogs</span>
+                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  Hoy 14:00
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* User Card */}
         <div className="p-4 border-t border-white/5 bg-slate-900/30 flex flex-col gap-3">

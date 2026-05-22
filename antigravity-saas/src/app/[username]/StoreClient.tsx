@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
 import { collection, query, getDocs, doc, getDoc, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { formatCurrency } from '../../lib/utils';
@@ -62,16 +61,13 @@ const getFormatBadgeColor = (format: string) => {
   }
 };
 
-function StoreContent() {
-  const searchParams = useSearchParams();
-  const rawUsername = searchParams.get('u');
-  const username = rawUsername ? decodeURIComponent(rawUsername).toLowerCase() : null;
-
+export default function StoreClient({ username }: { username: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [owner, setOwner] = useState<StoreOwner | null>(null);
   const [stock, setStock] = useState<VinylItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filterFormat, setFilterFormat] = useState('Todos');
   
   const [previewItem, setPreviewItem] = useState<VinylItem | null>(null);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
@@ -162,11 +158,14 @@ function StoreContent() {
   // Filtering
   const filteredStock = stock.filter((item) => {
     const term = searchQuery.toLowerCase();
-    return (
+    const matchesSearch = 
       (item.artist || '').toLowerCase().includes(term) ||
       (item.title || '').toLowerCase().includes(term) ||
-      (item.label || '').toLowerCase().includes(term)
-    );
+      (item.label || '').toLowerCase().includes(term);
+      
+    const matchesFormat = filterFormat === 'Todos' || (item.format || 'Vinyl').toLowerCase() === filterFormat.toLowerCase();
+    
+    return matchesSearch && matchesFormat;
   });
 
   const handleShare = async () => {
@@ -197,9 +196,31 @@ function StoreContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center text-white space-y-4">
-        <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-        <p className="text-gray-400 font-medium tracking-wide">Cargando tienda...</p>
+      <div className="min-h-screen bg-[#030712] text-white p-4 sm:p-6 lg:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Hero Skeleton */}
+          <div className="w-full h-64 md:h-80 rounded-3xl bg-slate-900/50 border border-white/5 animate-pulse mb-12 flex items-center p-8 md:p-12">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full bg-slate-800 shrink-0" />
+            <div className="ml-8 space-y-4 flex-1">
+              <div className="h-10 bg-slate-800 rounded-lg w-1/3" />
+              <div className="h-4 bg-slate-800 rounded w-1/2" />
+              <div className="flex gap-3 pt-4">
+                <div className="h-10 bg-slate-800 rounded-xl w-32" />
+                <div className="h-10 bg-slate-800 rounded-xl w-32" />
+              </div>
+            </div>
+          </div>
+          
+          {/* Search Skeleton */}
+          <div className="w-full max-w-3xl mx-auto h-14 bg-slate-900/50 rounded-2xl mb-10 animate-pulse" />
+
+          {/* Grid Skeleton */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+            {[...Array(10)].map((_, i) => (
+              <div key={i} className="aspect-[3/4] bg-slate-900/50 rounded-2xl border border-white/5 animate-pulse" />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -234,44 +255,73 @@ function StoreContent() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 mb-16 text-center md:text-left">
-          <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-white/10 shadow-2xl overflow-hidden shrink-0">
-            {renderAvatar()}
+        {/* Hero Section */}
+        <div className="relative rounded-3xl overflow-hidden mb-12 shadow-2xl border border-white/5">
+          {/* Background Blur */}
+          <div className="absolute inset-0 bg-slate-900">
+            {stock.length > 0 && (stock[0].cover || stock[0].photos?.[0]) ? (
+              <img 
+                src={stock[0].cover || stock[0].photos?.[0]} 
+                alt="Store background" 
+                className="w-full h-full object-cover opacity-30 blur-2xl scale-110"
+              />
+            ) : (
+              <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/80 to-transparent" />
           </div>
-          <div className="flex-1 space-y-4">
-            <div className="space-y-1">
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white">
-                {owner.storeName || `@${owner.username}`}
-              </h1>
-              {owner.storeName && (
-                <p className="text-indigo-400 font-bold tracking-widest uppercase text-sm">
-                  @{owner.username}
-                </p>
-              )}
+
+          <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#030712] shadow-2xl overflow-hidden shrink-0 bg-slate-800 z-10">
+              {renderAvatar()}
             </div>
             
-            {owner.storeBio && (
-              <p className="text-gray-400 max-w-2xl text-lg leading-relaxed mx-auto md:mx-0">
-                {owner.storeBio}
-              </p>
-            )}
+            <div className="flex-1 text-center md:text-left space-y-3 z-10">
+              <h1 className="text-4xl md:text-5xl font-black tracking-tight text-white drop-shadow-lg">
+                {owner.storeName || `@${owner.username}`}
+              </h1>
+              {owner.storeBio && (
+                <p className="text-gray-300 max-w-2xl text-lg leading-relaxed drop-shadow">
+                  {owner.storeBio}
+                </p>
+              )}
+              
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
+                <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-white shadow-lg">
+                  {stock.length} Discos
+                </span>
+                <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-white shadow-lg">
+                  Envíos a todo el país
+                </span>
+              </div>
+            </div>
 
-            <div className="flex items-center justify-center md:justify-start gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-center gap-3 z-10 w-full md:w-auto mt-4 md:mt-0">
+              {owner.whatsappPhone && (
+                <a
+                  href={`https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(`Hola! Vengo de tu tienda online VinylStock.`)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="w-full sm:w-auto btn-primary-premium px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl shadow-indigo-500/20 whitespace-nowrap"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>Contactar</span>
+                </a>
+              )}
               <button 
                 onClick={handleShare}
-                className="btn-secondary-premium px-5 py-2.5 rounded-full flex items-center gap-2"
+                className="w-full sm:w-auto btn-secondary-premium px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-gray-400" />}
-                <span className="text-sm font-bold">{copied ? 'Enlace Copiado' : 'Compartir Tienda'}</span>
+                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-white" />}
+                <span>{copied ? 'Copiado' : 'Compartir'}</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Search Bar */}
-        <div className="mb-10 max-w-2xl mx-auto">
-          <div className="relative group">
+        {/* Search & Filters */}
+        <div className="mb-10 space-y-4">
+          <div className="relative group max-w-3xl mx-auto">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
               <Search className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-400 transition-colors" />
             </div>
@@ -282,6 +332,23 @@ function StoreContent() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="block w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-900/50 border border-white/10 text-white placeholder-gray-500 focus:bg-slate-900/80 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-xl"
             />
+          </div>
+          
+          {/* Quick Filters */}
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {['Todos', 'Vinyl', 'CD', 'Cassette'].map(f => (
+              <button 
+                key={f}
+                onClick={() => setFilterFormat(f)}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  filterFormat === f 
+                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
+                    : 'bg-slate-900/40 border-white/5 text-gray-400 hover:text-white hover:border-white/20'
+                }`}
+              >
+                {f}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -508,14 +575,4 @@ function StoreContent() {
   );
 }
 
-export default function PublicStorePage() {
-  return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-[#030712] flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-indigo-500 animate-spin" />
-      </div>
-    }>
-      <StoreContent />
-    </Suspense>
-  );
-}
+
