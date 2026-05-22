@@ -609,10 +609,9 @@ export default function DashboardPage() {
       await updateDoc(docRef, { status: newStatus });
       setStock((prev) => prev.map((v) => v.id === item.id ? { ...v, status: newStatus } : v));
       
-      // Also update PreviewModal if it's open
-      if (previewModalItem && previewModalItem.id === item.id) {
-        setPreviewModalItem((prev) => prev ? { ...prev, status: newStatus } : null);
-      }
+      // Close preview modal and switch tab
+      setPreviewModalItem(null);
+      setActiveTab(newStatus === 'coleccion' ? 'coleccion' : 'tienda');
     } catch (err) {
       console.error("Error al mover el item", err);
     }
