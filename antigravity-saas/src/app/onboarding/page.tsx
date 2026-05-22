@@ -265,10 +265,16 @@ export default function OnboardingPage() {
 
         addedCount++;
 
+        const remainingItems = total - (i + 1);
+        const estSec = Math.round(remainingItems * 0.9);
+        const mins = Math.floor(estSec / 60);
+        const secs = estSec % 60;
+        const timeStr = estSec > 0 ? (mins > 0 ? ` (~${mins}m ${secs}s restantes)` : ` (~${secs}s restantes)`) : '';
+
         setSyncProgress({ 
           current: i + 1, 
           total, 
-          status: `Guardando ${i + 1} de ${total}...` 
+          status: `Guardando ${i + 1} de ${total}...${timeStr}` 
         });
 
         // Throttle - Aumentamos el delay a 800ms para evitar límites de la API de Discogs y mostrar el progreso

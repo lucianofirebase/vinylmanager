@@ -905,7 +905,13 @@ export default function DashboardPage() {
         const grade = columnMapping.grade !== undefined ? row[columnMapping.grade]?.trim() || 'VG+' : 'VG+';
         const format = columnMapping.format !== undefined ? row[columnMapping.format]?.trim() || 'Vinyl' : 'Vinyl';
 
-        setImportProgress({ current: i + 1, total, status: `Procesando: ${artist} - ${title}` });
+        const remainingImport = total - (i + 1);
+        const estSecImport = Math.round(remainingImport * 2.2);
+        const minsImport = Math.floor(estSecImport / 60);
+        const secsImport = estSecImport % 60;
+        const timeStrImport = estSecImport > 0 ? (minsImport > 0 ? ` (~${minsImport}m ${secsImport}s restantes)` : ` (~${secsImport}s restantes)`) : '';
+
+        setImportProgress({ current: i + 1, total, status: `Procesando: ${artist} - ${title}${timeStrImport}` });
 
         try {
           let itemData: any = null;
@@ -1122,10 +1128,16 @@ export default function DashboardPage() {
           ]);
         }
 
+        const remainingItems = total - (i + 1);
+        const estSec = Math.round(remainingItems * 0.9);
+        const mins = Math.floor(estSec / 60);
+        const secs = estSec % 60;
+        const timeStr = estSec > 0 ? (mins > 0 ? ` (~${mins}m ${secs}s restantes)` : ` (~${secs}s restantes)`) : '';
+
         setSyncProgress({ 
           current: i + 1, 
           total, 
-          status: `Procesando ${i + 1} de ${total}... (${addedCount} agregados, ${skippedCount} saltados)` 
+          status: `Procesando ${i + 1} de ${total}...${timeStr} (${addedCount} agregados, ${skippedCount} saltados)` 
         });
 
         // Throttle to respect Discogs rate limits (800ms)
