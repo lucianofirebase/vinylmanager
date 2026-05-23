@@ -18,24 +18,15 @@ import {
   Settings as SettingsIcon,
   Sparkles,
   Music,
-  LineChart,
-  Cpu,
-  Coins,
-  Compass,
   ChevronDown,
   Phone,
   MapPin,
   X,
-  Trash2
+  Trash2,
+  Coins
 } from 'lucide-react';
 
-const INTERESTS_PRESETS = [
-  { id: 'vinyls', label: 'Coleccionismo de Vinilos', icon: Music, desc: 'Gestión y catalogación de discos' },
-  { id: 'analytics', label: 'Analíticas y Estadísticas', icon: LineChart, desc: 'Seguimiento del valor de colección' },
-  { id: 'automation', label: 'Automatizaciones', icon: Cpu, desc: 'Flujos de trabajo y alertas automáticas' },
-  { id: 'finance', label: 'Finanzas & Precios', icon: Coins, desc: 'Historial de compras y valoración' },
-  { id: 'community', label: 'Exploración y Comunidad', icon: Compass, desc: 'Compartir colecciones y descubrir música' },
-];
+
 
 const GRADIENT_PRESETS = [
   'linear-gradient(135deg, #f43f5e, #fb7185)',
@@ -65,7 +56,7 @@ export default function SettingsPage() {
   const [selectedPresetIdx, setSelectedPresetIdx] = useState(0);
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
 
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
+
   const [discogsUsername, setDiscogsUsername] = useState('');
   const [currency, setCurrency] = useState('USD');
   const [whatsappPhone, setWhatsappPhone] = useState('');
@@ -113,7 +104,7 @@ export default function SettingsPage() {
         }
       }
       
-      setSelectedInterests(userData.interests || []);
+
     }
   }, [userData]);
 
@@ -194,11 +185,7 @@ export default function SettingsPage() {
     reader.readAsDataURL(file);
   };
 
-  const toggleInterest = (id: string) => {
-    setSelectedInterests((prev) => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
+
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -235,7 +222,6 @@ export default function SettingsPage() {
         whatsappPhone: whatsappPhone.trim(),
         avatar: finalAvatar,
         avatarType: avatarType,
-        interests: selectedInterests,
         isPublicStore: isPublicStore,
         storeName: storeName.trim(),
         storeBio: storeBio.trim(),
@@ -650,32 +636,7 @@ export default function SettingsPage() {
               <p className="text-[10px] text-gray-500">Tu dirección de correo electrónico está vinculada a tu cuenta de Google Auth y no se puede modificar.</p>
             </div>
 
-            {/* Interests checklist */}
-            <div className="space-y-3 pt-2 border-t border-white/5">
-              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Áreas de Interés</label>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {INTERESTS_PRESETS.map((item) => {
-                  const Icon = item.icon;
-                  const isSelected = selectedInterests.includes(item.id);
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => toggleInterest(item.id)}
-                      className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer select-none transition-all ${
-                        isSelected 
-                          ? 'bg-indigo-500/10 border-indigo-500/40 text-white' 
-                          : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-white/10'
-                      }`}
-                    >
-                      <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-gray-400'}`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-semibold">{item.label}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+
 
             {/* Form actions and responses */}
             <div className="border-t border-white/5 pt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

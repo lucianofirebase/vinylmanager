@@ -16,10 +16,6 @@ import {
   Camera, 
   Loader2,
   Music,
-  LineChart,
-  Cpu,
-  Coins,
-  Compass,
   AlertCircle,
   Disc,
   RefreshCw,
@@ -28,16 +24,11 @@ import {
   Store,
   Headphones,
   ShoppingBag,
-  MapPin
+  MapPin,
+  Coins
 } from 'lucide-react';
 
-const INTERESTS_PRESETS = [
-  { id: 'vinyls', label: 'Coleccionismo de Vinilos', icon: Music, desc: 'Gestión y catalogación de discos' },
-  { id: 'analytics', label: 'Analíticas y Estadísticas', icon: LineChart, desc: 'Seguimiento del valor de colección' },
-  { id: 'automation', label: 'Automatizaciones', icon: Cpu, desc: 'Flujos de trabajo y alertas automáticas' },
-  { id: 'finance', label: 'Finanzas & Precios', icon: Coins, desc: 'Historial de compras y valoración' },
-  { id: 'community', label: 'Exploración y Comunidad', icon: Compass, desc: 'Compartir colecciones y descubrir música' },
-];
+
 
 const GRADIENT_PRESETS = [
   'linear-gradient(135deg, #f43f5e, #fb7185)',
@@ -60,8 +51,8 @@ export default function OnboardingPage() {
   const isSeller = userRole === 'vendedor' || userRole === 'ambos';
 
   // Total steps depends on role: collectors skip showroom config step
-  // Steps: 1=welcome, 2=role, 3=username(+store if seller), 4=avatar, 5=showroom(seller)/discogs(collector), 6=discogs(seller)/prefs(collector), 7=prefs(seller only)
-  const TOTAL_STEPS = isSeller ? 7 : 6;
+  // Steps: 1=welcome, 2=role, 3=username(+store if seller), 4=avatar, 5=showroom(seller)/discogs(collector), 6=discogs(seller)
+  const TOTAL_STEPS = isSeller ? 6 : 5;
 
   // Form states
   const [username, setUsername] = useState('');
@@ -72,8 +63,6 @@ export default function OnboardingPage() {
   const [avatarType, setAvatarType] = useState<'preset' | 'upload'>('preset');
   const [selectedPresetIdx, setSelectedPresetIdx] = useState(0);
   const [uploadedAvatar, setUploadedAvatar] = useState<string | null>(null);
-
-  const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [discogsUsername, setDiscogsUsername] = useState('');
   const [storeName, setStoreName] = useState('');
   const [storeBio, setStoreBio] = useState('');
@@ -366,11 +355,7 @@ export default function OnboardingPage() {
     reader.readAsDataURL(file);
   };
 
-  const toggleInterest = (id: string) => {
-    setSelectedInterests((prev) => 
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
+
 
   const handleSubmit = async () => {
     if (!user) return;
@@ -392,7 +377,6 @@ export default function OnboardingPage() {
         username: cleanUsername,
         avatar: finalAvatar,
         avatarType: avatarType,
-        interests: selectedInterests,
         discogsUsername: discogsUsername.trim() || null,
         role: userRole || 'coleccionista',
         // Seller-specific fields (empty for pure collectors)
@@ -457,6 +441,16 @@ export default function OnboardingPage() {
         {/* Wizard Card */}
         <div className="w-full glass-card rounded-3xl p-8 sm:p-10 relative overflow-hidden min-h-[460px] flex flex-col justify-between">
           <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-purple-500/40 to-transparent" />
+
+          {isSubmitting && (
+            <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-center rounded-3xl p-8">
+              <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mb-6" />
+              <h3 className="text-2xl font-bold text-white mb-2">Configurando tu entorno...</h3>
+              <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
+                Estamos personalizando tu experiencia VinylStock y guardando tus datos en la base de datos.
+              </p>
+            </div>
+          )}
           
           <AnimatePresence initial={false} custom={direction} mode="wait">
             <motion.div
@@ -807,21 +801,32 @@ export default function OnboardingPage() {
                           </div>
                           {storeAddress.trim() && (
                             <div className="mt-3 rounded-2xl overflow-hidden border border-white/5 bg-slate-900/40 animate-fade-in">
+                              <div className="flex items-center justify-between p-3 border-b border-white/5 bg-slate-950/20">
+                                <span className="text-[10px] text-gray-400 truncate max-w-[200px]">{storeAddress.trim()}</span>
+                                <a
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(storeAddress.trim())}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1"
+                                >
+                                  Ver en Google Maps →
+                                </a>
+                              </div>
                               {mapLoadError ? (
-                            <div className="p-4 text-sm text-red-400">Mapa no disponible. Desactiva los bloqueadores de anuncios o verifica tu conexión.</div>
-                          ) : (
-                            <iframe
-                              src={`https://maps.google.com/maps?q=${encodeURIComponent(storeAddress.trim())}&output=embed`}
-                              width="100%"
-                              height="150"
-                              style={{ border: 0 }}
-                              allowFullScreen
-                              loading="lazy"
-                              referrerPolicy="no-referrer-when-downgrade"
-                              className="block"
-                              onError={() => setMapLoadError(true)}
-                            />
-                          )}
+                                <div className="p-4 text-xs text-red-400">Mapa no disponible. Desactiva los bloqueadores de anuncios o verifica tu conexión.</div>
+                              ) : (
+                                <iframe
+                                  src={`https://maps.google.com/maps?q=${encodeURIComponent(storeAddress.trim())}&output=embed`}
+                                  width="100%"
+                                  height="150"
+                                  style={{ border: 0 }}
+                                  allowFullScreen
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer-when-downgrade"
+                                  className="block"
+                                  onError={() => setMapLoadError(true)}
+                                />
+                              )}
                             </div>
                           )}
                         </div>
@@ -902,62 +907,7 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 6 (collector) or 7 (seller): PREFERENCES + FINALIZAR */}
-              {((step === 6 && !isSeller) || (step === 7 && isSeller)) && (
-                <div className="flex flex-col flex-1 py-2 space-y-4 relative">
-                  {isSubmitting && (
-                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center text-center rounded-2xl">
-                      <Loader2 className="w-12 h-12 text-indigo-400 animate-spin mb-6" />
-                      <h3 className="text-2xl font-bold text-white mb-2">Configurando tu entorno...</h3>
-                      <p className="text-gray-400 text-sm max-w-xs leading-relaxed">
-                        Estamos personalizando tu experiencia VinylStock y guardando tus datos en la base de datos.
-                      </p>
-                    </div>
-                  )}
-                  <div>
-                    <h3 className="text-2xl font-bold text-white mb-1">Tus Preferencias</h3>
-                    <p className="text-gray-400 text-xs">
-                      Seleccioná las áreas que deseás priorizar dentro de tu panel (podés elegir varias).
-                    </p>
-                  </div>
-                  {submitError && (
-                    <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/25 p-3 rounded-lg flex flex-col gap-1 animate-fade-in">
-                      <span className="font-semibold text-red-300">Error al guardar perfil:</span>
-                      <span className="break-all">{submitError}</span>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 gap-2.5 max-h-[260px] overflow-y-auto pr-1">
-                    {INTERESTS_PRESETS.map((item) => {
-                      const IconComponent = item.icon;
-                      const isSelected = selectedInterests.includes(item.id);
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => toggleInterest(item.id)}
-                          className={`flex items-center gap-3 p-2.5 rounded-xl border cursor-pointer select-none transition-all ${
-                            isSelected 
-                              ? 'bg-indigo-500/10 border-indigo-500/40 text-white' 
-                              : 'bg-white/5 border-white/5 text-gray-300 hover:bg-white/10 hover:border-white/10'
-                          }`}
-                        >
-                          <div className={`p-1.5 rounded-lg ${isSelected ? 'bg-indigo-500/20 text-indigo-300' : 'bg-white/5 text-gray-400'}`}>
-                            <IconComponent className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 text-left">
-                            <div className="text-xs font-semibold">{item.label}</div>
-                            <div className="text-[10px] text-gray-400">{item.desc}</div>
-                          </div>
-                          {isSelected && (
-                            <div className="w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center shrink-0">
-                              <Check className="w-3 h-3 text-white" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+
             </motion.div>
           </AnimatePresence>
 

@@ -15,7 +15,6 @@ interface UserData {
   photoURL: string | null;
   username?: string;
   onboardingComplete?: boolean;
-  interests?: string[];
   createdAt?: any;
   avatar?: string | null;
   avatarType?: 'preset' | 'upload' | null;
