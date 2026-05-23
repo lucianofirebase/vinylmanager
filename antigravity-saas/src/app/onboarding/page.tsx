@@ -27,7 +27,8 @@ import {
   ChevronDown,
   Store,
   Headphones,
-  ShoppingBag
+  ShoppingBag,
+  MapPin
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -79,6 +80,8 @@ export default function OnboardingPage() {
   const [currency, setCurrency] = useState('USD');
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [isPublicStore, setIsPublicStore] = useState(true);
+  const [hasPhysicalStore, setHasPhysicalStore] = useState(false);
+  const [storeAddress, setStoreAddress] = useState('');
 
   // Sync states
   const [isSyncing, setIsSyncing] = useState(false);
@@ -386,6 +389,7 @@ export default function OnboardingPage() {
         isPublicStore: isSeller ? isPublicStore : false,
         storeName: isSeller ? (storeName.trim() || `Tienda de ${cleanUsername}`) : null,
         storeBio: isSeller ? (storeBio.trim() || '¡Bienvenido a mi showroom de vinilos!') : null,
+        storeAddress: (isSeller && hasPhysicalStore) ? (storeAddress.trim() || null) : null,
         onboardingComplete: true,
         tutorialCompleted: false,
         updatedAt: new Date(),
@@ -747,6 +751,44 @@ export default function OnboardingPage() {
                         />
                         <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
                       </label>
+                    </div>
+
+                    {/* Tienda Física Toggle */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/5 bg-slate-900/50">
+                        <div className="pr-4">
+                          <h4 className="text-xs font-bold text-white mb-0.5">¿Tenés tienda física?</h4>
+                          <p className="text-[10px] text-gray-500">Configurá la ubicación física para que tus compradores la vean en tu catálogo.</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer"
+                            checked={hasPhysicalStore}
+                            onChange={(e) => setHasPhysicalStore(e.target.checked)}
+                          />
+                          <div className="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-500"></div>
+                        </label>
+                      </div>
+
+                      {hasPhysicalStore && (
+                        <div className="space-y-1.5 animate-fade-in">
+                          <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Ubicación Física de la Tienda</label>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                              <MapPin className="w-4 h-4 text-indigo-400" />
+                            </div>
+                            <input
+                              type="text"
+                              placeholder="Ej: Sarandí 700, Montevideo, Uruguay"
+                              value={storeAddress}
+                              onChange={(e) => setStoreAddress(e.target.value)}
+                              className="w-full !pl-11 input-premium text-sm font-medium"
+                              required={hasPhysicalStore}
+                            />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
