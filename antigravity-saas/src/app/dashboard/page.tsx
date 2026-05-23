@@ -1268,11 +1268,46 @@ export default function DashboardPage() {
         await new Promise((r) => setTimeout(r, 800));
       }
 
-      setSyncProgress({ 
-        current: total, 
-        total, 
-        status: `Sincronización finalizada. Nuevos: ${addedCount}, Saltados: ${skippedCount}` 
-      });
+      setSyncProgress({ current: total, total, status: `Sincronización finalizada. Nuevos: ${addedCount}, Saltados: ${skippedCount}` });
+        // After adding new releases, update missing genres/styles for existing items with discogsId
+        const itemsToUpdate = stock.filter(item =>
+          item.discogsId && (!item.genres || item.genres.length === 0)
+        );
+        if (itemsToUpdate.length > 0) {
+          setSyncLogs(prev => [
+            { msg: `🔄 Actualizando géneros de ${itemsToUpdate.length} discos existentes...`, type: 'add' },
+            ...prev
+          ]);
+          for (let i = 0; i < itemsToUpdate.length; i++) {
+            const item = itemsToUpdate[i];
+            try {
+              let response = await fetch(`https://api.discogs.com/releases/${item.discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+              if (response.status === 429) {
+                setSyncLogs(prev => [
+                  { msg: `⚠️ Límite de API de Discogs alcanzado. Pausando 8s...`, type: 'skip' },
+                  ...prev
+                ]);
+                await new Promise(r => setTimeout(r, 8000));
+                response = await fetch(`https://api.discogs.com/releases/${item.discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+              }
+              if (response.ok) {
+                const details = await response.json();
+                const genres = details.genres || [];
+                const styles = details.styles || [];
+                const docRef = doc(db, 'users', user.uid, 'stock', item.id);
+                await updateDoc(docRef, { genres, styles });
+                setSyncLogs(prev => [
+                  { msg: `✅ Géneros actualizados: ${item.artist} - ${item.title}`, type: 'add' },
+                  ...prev
+                ]);
+              }
+            } catch (e) {
+              console.error('Error updating genres for', item.id, e);
+            }
+            // Throttle to respect rate limits
+            await new Promise(r => setTimeout(r, 800));
+          }
+        }
 
     } catch (err: any) {
       console.error("Error syncing Discogs:", err);
@@ -1290,103 +1325,7 @@ export default function DashboardPage() {
     }
   };
 
-  const startUpdateExistingGenres = async () => {
-    if (!user) return;
-    
-    // Obtener los discos del stock local que tienen discogsId pero no tienen genres o styles definidos (o vacíos)
-    const itemsToUpdate = stock.filter(item => 
-      item.discogsId && 
-      (!item.genres || item.genres.length === 0)
-    );
 
-    if (itemsToUpdate.length === 0) {
-      alert("No hay discos existentes con ID de Discogs pendientes de actualizar géneros.");
-      return;
-    }
-
-    setIsSyncing(true);
-    setSyncLogs([]);
-    setSyncProgress({ current: 0, total: itemsToUpdate.length, status: 'Iniciando actualización de géneros...' });
-
-    // Activar bloqueo de suspensión de pantalla
-    await requestWakeLock();
-
-    let updatedCount = 0;
-    let errorCount = 0;
-
-    for (let i = 0; i < itemsToUpdate.length; i++) {
-      const item = itemsToUpdate[i];
-      const discogsId = item.discogsId;
-
-      const remainingItems = itemsToUpdate.length - (i + 1);
-      const estSec = Math.round(remainingItems * 2.3);
-      const mins = Math.floor(estSec / 60);
-      const secs = estSec % 60;
-      const timeStr = estSec > 0 ? (mins > 0 ? ` (~${mins}m ${secs}s restantes)` : ` (~${secs}s restantes)`) : '';
-
-      setSyncProgress({ 
-        current: i + 1, 
-        total: itemsToUpdate.length, 
-        status: `Actualizando: ${item.artist} - ${item.title}${timeStr}...` 
-      });
-
-      try {
-        let response = await fetch(`https://api.discogs.com/releases/${discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
-        
-        // Manejar Rate Limit 429
-        if (response.status === 429) {
-          setSyncLogs((prev) => [
-            { msg: `⚠️ Límite de API de Discogs alcanzado. Pausando por 8 segundos...`, type: 'skip' },
-            ...prev
-          ]);
-          await new Promise((resolve) => setTimeout(resolve, 8000));
-          response = await fetch(`https://api.discogs.com/releases/${discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
-        }
-
-        if (response.ok) {
-          const details = await response.json();
-          const genres = details.genres || [];
-          const styles = details.styles || [];
-
-          // Actualizar en Firestore
-          const docRef = doc(db, 'users', user.uid, 'stock', item.id);
-          await updateDoc(docRef, {
-            genres,
-            styles
-          });
-
-          updatedCount++;
-          setSyncLogs((prev) => [
-            { msg: `✅ Actualizado: ${item.artist} - ${item.title} (${genres.slice(0, 2).join(', ')})`, type: 'add' },
-            ...prev
-          ]);
-        } else {
-          errorCount++;
-          setSyncLogs((prev) => [
-            { msg: `❌ Falló (API error ${response.status}): ${item.artist} - ${item.title}`, type: 'error' },
-            ...prev
-          ]);
-        }
-      } catch (err: any) {
-        errorCount++;
-        setSyncLogs((prev) => [
-          { msg: `❌ Falló (error de red): ${item.artist} - ${item.title}`, type: 'error' },
-          ...prev
-        ]);
-      }
-
-      // Esperar 1.2 segundos para respetar el límite de 60 peticiones/min de Discogs
-      await new Promise((resolve) => setTimeout(resolve, 1200));
-    }
-
-    setSyncProgress({ 
-      current: itemsToUpdate.length, 
-      total: itemsToUpdate.length, 
-      status: `Actualización finalizada. Éxitos: ${updatedCount}, Errores: ${errorCount}` 
-    });
-    setIsSyncing(false);
-    await releaseWakeLock();
-  };
 
   const getFormatBadgeColor = (format: string) => {
     if (format === 'CD') return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
@@ -2992,14 +2931,6 @@ export default function DashboardPage() {
                       >
                         <RefreshCw className="w-4 h-4" />
                         <span>Sincronizar Colección (Nuevos)</span>
-                      </button>
-
-                      <button
-                        onClick={startUpdateExistingGenres}
-                        className="bg-slate-800 hover:bg-slate-700 text-white border border-white/10 rounded-2xl py-2.5 px-6 text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98]"
-                      >
-                        <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
-                        <span>Actualizar Géneros de Existentes</span>
                       </button>
                     </div>
                   )}

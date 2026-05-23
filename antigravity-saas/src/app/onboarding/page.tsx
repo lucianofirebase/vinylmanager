@@ -81,6 +81,7 @@ export default function OnboardingPage() {
   const [whatsappPhone, setWhatsappPhone] = useState('');
   const [isPublicStore, setIsPublicStore] = useState(true);
   const [hasPhysicalStore, setHasPhysicalStore] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState(false);
   const [storeAddress, setStoreAddress] = useState('');
 
   // Sync states
@@ -270,7 +271,9 @@ export default function OnboardingPage() {
           status: 'coleccion',
           dateAdded: new Date().toISOString(),
           discogsId: rel.id,
-          url: `https://www.discogs.com/release/${rel.id}`
+          url: `https://www.discogs.com/release/${rel.id}`,
+          genres: info.genres || [],
+          styles: info.styles || []
         };
 
         const stockCol = collection(db, 'users', user.uid, 'stock');
@@ -789,16 +792,21 @@ export default function OnboardingPage() {
                           </div>
                           {storeAddress.trim() && (
                             <div className="mt-3 rounded-2xl overflow-hidden border border-white/5 bg-slate-900/40 animate-fade-in">
-                              <iframe
-                                src={`https://maps.google.com/maps?q=${encodeURIComponent(storeAddress.trim())}&output=embed`}
-                                width="100%"
-                                height="150"
-                                style={{ border: 0 }}
-                                allowFullScreen
-                                loading="lazy"
-                                referrerPolicy="no-referrer-when-downgrade"
-                                className="block"
-                              />
+                              {mapLoadError ? (
+                            <div className="p-4 text-sm text-red-400">Mapa no disponible. Desactiva los bloqueadores de anuncios o verifica tu conexión.</div>
+                          ) : (
+                            <iframe
+                              src={`https://maps.google.com/maps?q=${encodeURIComponent(storeAddress.trim())}&output=embed`}
+                              width="100%"
+                              height="150"
+                              style={{ border: 0 }}
+                              allowFullScreen
+                              loading="lazy"
+                              referrerPolicy="no-referrer-when-downgrade"
+                              className="block"
+                              onError={() => setMapLoadError(true)}
+                            />
+                          )}
                             </div>
                           )}
                         </div>

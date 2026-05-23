@@ -79,6 +79,7 @@ export default function StoreClient({ username }: { username: string }) {
   const [previewItem, setPreviewItem] = useState<VinylItem | null>(null);
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [mapLoadError, setMapLoadError] = useState(false);
 
   useEffect(() => {
     if (!username) return;
@@ -486,16 +487,23 @@ export default function StoreClient({ username }: { username: string }) {
                       Ver mapa →
                     </a>
                   </div>
-                  <iframe
-                    src={`https://maps.google.com/maps?q=${encodeURIComponent((owner as any).storeAddress)}&output=embed`}
-                    width="100%"
-                    height="200"
-                    style={{ border: 0 }}
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    className="block"
-                  />
+                  {mapLoadError ? (
+                    <div className="p-4 text-xs text-red-400 border-t border-white/5 bg-slate-900/40">
+                      Mapa no disponible. Desactiva los bloqueadores de anuncios o verifica tu conexión.
+                    </div>
+                  ) : (
+                    <iframe
+                      src={`https://maps.google.com/maps?q=${encodeURIComponent((owner as any).storeAddress)}&output=embed`}
+                      width="100%"
+                      height="200"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      referrerPolicy="no-referrer-when-downgrade"
+                      className="block"
+                      onError={() => setMapLoadError(true)}
+                    />
+                  )}
                 </div>
               )}
               
