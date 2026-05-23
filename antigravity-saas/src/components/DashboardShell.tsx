@@ -19,7 +19,8 @@ import {
   HelpCircle,
   RefreshCw,
   FileSpreadsheet,
-  TrendingUp
+  TrendingUp,
+  Compass
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -34,10 +35,21 @@ export default function DashboardShell({ children }: DashboardShellProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  const getUserRole = (ud: typeof userData) => {
+    if (!ud) return 'coleccionista';
+    if ((ud as any).role) return (ud as any).role;
+    return (ud as any).storeName || (ud as any).isPublicStore !== undefined ? 'ambos' : 'coleccionista';
+  };
+  const userRole = getUserRole(userData);
+  const isSeller = userRole === 'vendedor' || userRole === 'ambos';
+
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
-    { name: 'Historial de Ventas', path: '/dashboard/ventas', icon: TrendingUp },
-    { name: 'WhatsApp Marketing', path: '/whatsapp', icon: MessageSquare },
+    ...(isSeller ? [
+      { name: 'Historial de Ventas', path: '/dashboard/ventas', icon: TrendingUp },
+      { name: 'WhatsApp Marketing', path: '/whatsapp', icon: MessageSquare },
+    ] : []),
+    { name: 'Explorar Tiendas', path: '/explorar', icon: Compass },
     { name: 'Configuración', path: '/settings', icon: Settings },
   ];
 

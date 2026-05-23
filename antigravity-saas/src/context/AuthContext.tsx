@@ -26,6 +26,8 @@ interface UserData {
   isPublicStore?: boolean;
   storeName?: string;
   storeBio?: string;
+  storeAddress?: string;
+  role?: 'vendedor' | 'coleccionista' | 'ambos';
 }
 
 interface AuthContextType {

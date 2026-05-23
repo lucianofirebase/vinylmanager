@@ -85,6 +85,15 @@ interface VinylItem {
 
 export default function DashboardPage() {
   const { user, userData } = useAuth();
+
+  // Role helper — fallback for existing users without role field
+  const getUserRole = (ud: typeof userData) => {
+    if (!ud) return 'coleccionista';
+    if ((ud as any).role) return (ud as any).role;
+    return (ud as any).storeName || (ud as any).isPublicStore !== undefined ? 'ambos' : 'coleccionista';
+  };
+  const userRole = getUserRole(userData);
+  const isSeller = userRole === 'vendedor' || userRole === 'ambos';
   
   // Real-time stock state
   const [stock, setStock] = useState<VinylItem[]>([]);
@@ -98,6 +107,7 @@ export default function DashboardPage() {
 
   // Filter and search states
   const [activeTab, setActiveTab] = useState<'tienda' | 'coleccion'>('tienda');
+  const [addContext, setAddContext] = useState<'tienda' | 'coleccion'>('tienda');
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState('All');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -113,6 +123,14 @@ export default function DashboardPage() {
   const [isSyncOpen, setIsSyncOpen] = useState(false);
   const [isInstagramOpen, setIsInstagramOpen] = useState(false);
   const [instagramVinyl, setInstagramVinyl] = useState<VinylItem | null>(null);
+
+  // Move to Store Modal State
+  const [isMoveToStoreOpen, setIsMoveToStoreOpen] = useState(false);
+  const [moveToStoreItem, setMoveToStoreItem] = useState<VinylItem | null>(null);
+  const [movePrice, setMovePrice] = useState(0);
+  const [moveStatus, setMoveStatus] = useState<'disponible' | 'reservado'>('disponible');
+  const [moveQty, setMoveQty] = useState(1);
+  const [moveGrade, setMoveGrade] = useState('VG+');
 
   // Tutorial Modal
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
@@ -137,6 +155,12 @@ export default function DashboardPage() {
     if (userData && userData.tutorialCompleted === false) {
       setIsFirstTimeTutorial(true);
       setIsTutorialOpen(true);
+    }
+  }, [userData]);
+
+  useEffect(() => {
+    if (userData && !isSeller) {
+      setActiveTab('coleccion');
     }
   }, [userData]);
 
@@ -629,7 +653,9 @@ export default function DashboardPage() {
   };
 
   // Add/Edit Form Handlers
-  const openAddModal = () => {
+  const openAddModal = (context: 'tienda' | 'coleccion' = 'tienda') => {
+    setAddContext(context);
+    const initialStatus = context === 'coleccion' ? 'coleccion' : 'disponible';
     setEditingItem(null);
     setSelectedDiscogsItem(null);
     setFormStep(1);
@@ -644,7 +670,7 @@ export default function DashboardPage() {
     setFormCatno('');
     setFormYear('');
     setFormCover('');
-    setFormStatus('disponible');
+    setFormStatus(initialStatus);
     setPhotosList([]);
     setPhotoUrlInput('');
     setFailedImages(new Set());
@@ -751,10 +777,15 @@ export default function DashboardPage() {
     e.stopPropagation();
     if (!user) return;
     
-    // Si movemos a la tienda, abrimos el modal de edición para pedir precio/cantidad
+    // Si movemos a la tienda, abrimos el modal simplificado de "Mover a Tienda"
     if (item.status === 'coleccion') {
       setPreviewModalItem(null);
-      openEditModal({ ...item, status: 'disponible' }, e);
+      setMoveToStoreItem(item);
+      setMovePrice(0);
+      setMoveStatus('disponible');
+      setMoveQty(item.qty || 1);
+      setMoveGrade(item.grade || 'VG+');
+      setIsMoveToStoreOpen(true);
       return;
     }
 
@@ -767,7 +798,36 @@ export default function DashboardPage() {
       setPreviewModalItem(null);
       setActiveTab('coleccion');
     } catch (err) {
-      console.error("Error al mover el item", err);
+      console.error("Error al mover el item a la colección:", err);
+    }
+  };
+
+  const handleSaveMoveToStore = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !moveToStoreItem) return;
+    try {
+      const docRef = doc(db, 'users', user.uid, 'stock', moveToStoreItem.id);
+      await updateDoc(docRef, {
+        status: moveStatus,
+        price: Number(movePrice),
+        qty: Number(moveQty),
+        grade: moveGrade,
+      });
+      
+      setStock((prev) => prev.map((v) => v.id === moveToStoreItem.id ? { 
+        ...v, 
+        status: moveStatus,
+        price: Number(movePrice),
+        qty: Number(moveQty),
+        grade: moveGrade,
+      } : v));
+      
+      setIsMoveToStoreOpen(false);
+      setMoveToStoreItem(null);
+      setActiveTab('tienda');
+    } catch (err) {
+      console.error("Error al mover el disco a la tienda:", err);
+      alert("Hubo un error al mover el disco.");
     }
   };
 
@@ -819,6 +879,12 @@ export default function DashboardPage() {
     setFormYear(result.year || '');
     setFormDiscogsId(result.id);
     setFormUrl(`https://www.discogs.com${result.uri || ''}`);
+
+    // Respect the format filter the user searched with
+    const resolvedFormat = discogsSearchFormat !== 'All'
+      ? discogsSearchFormat
+      : (result.formats?.[0]?.name || 'Vinyl');
+    setFormFormat(resolvedFormat);
 
     if (result.label && result.label.length > 0) {
       setFormLabel(result.label[0]);
@@ -1195,7 +1261,7 @@ export default function DashboardPage() {
         {/* Welcome Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            {userData?.isPublicStore === false && (
+            {isSeller && userData?.isPublicStore === false && (
               <div className="mb-6 p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex flex-col sm:flex-row items-center gap-4 justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
@@ -1223,7 +1289,7 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-wrap gap-3">
-            {activeTab === 'tienda' && (
+            {isSeller && activeTab === 'tienda' && (
               <>
                 <button 
                   onClick={() => {
@@ -1280,16 +1346,18 @@ export default function DashboardPage() {
         {/* Tabs Separator */}
         <div className="flex items-center justify-between border-b border-white/10 pb-px mt-2">
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setActiveTab('tienda')}
-              className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
-                activeTab === 'tienda' 
-                  ? 'border-indigo-400 text-indigo-400' 
-                  : 'border-transparent text-gray-400 hover:text-white'
-              }`}
-            >
-              Mi Tienda
-            </button>
+            {isSeller && (
+              <button
+                onClick={() => setActiveTab('tienda')}
+                className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
+                  activeTab === 'tienda' 
+                    ? 'border-indigo-400 text-indigo-400' 
+                    : 'border-transparent text-gray-400 hover:text-white'
+                }`}
+              >
+                Mi Tienda
+              </button>
+            )}
             <button
               onClick={() => setActiveTab('coleccion')}
               className={`py-2 px-4 text-sm font-semibold border-b-2 transition-all ${
@@ -1303,10 +1371,10 @@ export default function DashboardPage() {
           </div>
           
           <button 
-            onClick={openAddModal}
+            onClick={() => openAddModal(activeTab)}
             className="group btn-premium py-1 pl-4 pr-1 inline-flex items-center gap-2.5 rounded-full text-xs font-semibold shadow-md active:scale-[0.98] transition-all"
           >
-            <span>Añadir</span>
+            <span>{activeTab === 'coleccion' ? '+ Añadir a Colección' : '+ Añadir a Tienda'}</span>
             <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center group-hover:bg-white/20 transition-colors">
               <Plus className="w-3.5 h-3.5 text-white transition-transform group-hover:rotate-90 duration-300" />
             </div>
@@ -1510,11 +1578,11 @@ export default function DashboardPage() {
               No se encontraron artículos que coincidan con los filtros seleccionados o no has agregado ningún artículo todavía.
             </p>
             <button 
-              onClick={openAddModal}
+              onClick={() => openAddModal(activeTab)}
               className="btn-premium py-2 px-4 text-xs font-semibold inline-flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
-              <span>Añadir primer item</span>
+              <span>{activeTab === 'coleccion' ? 'Añadir a Colección' : 'Añadir a Tienda'}</span>
             </button>
           </div>
         ) : viewMode === 'grid' ? (
@@ -2009,8 +2077,8 @@ export default function DashboardPage() {
                           </div>
 
                           {/* Commercial Grid */}
-                          <div className={`grid grid-cols-2 ${formStatus === 'coleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl`}>
-                            {formStatus !== 'coleccion' && (
+                          <div className={`grid grid-cols-2 ${addContext === 'coleccion' || formStatus === 'coleccion' ? 'sm:grid-cols-2' : 'sm:grid-cols-4'} gap-4 bg-white/2 border border-white/5 p-4 rounded-2xl`}>
+                            {addContext !== 'coleccion' && formStatus !== 'coleccion' && (
                               <>
                                 <div className="space-y-1.5 col-span-1">
                                   <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
@@ -2053,22 +2121,24 @@ export default function DashboardPage() {
                                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
                               </div>
                             </div>
-                            <div className="space-y-1.5 col-span-1">
-                              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Venta</label>
-                              <div className="relative">
-                                <select
-                                  value={formStatus}
-                                  onChange={(e) => setFormStatus(e.target.value as any)}
-                                  className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
-                                >
-                                  <option value="disponible" className="bg-[#0c101d] text-white">Disponible</option>
-                                  <option value="coleccion" className="bg-[#0c101d] text-white">En Colección</option>
-                                  <option value="reservado" className="bg-[#0c101d] text-white">Reservado</option>
-                                  <option value="borrador" className="bg-[#0c101d] text-white">Borrador</option>
-                                </select>
-                                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                            {addContext !== 'coleccion' && (
+                              <div className="space-y-1.5 col-span-1">
+                                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Estado Venta</label>
+                                <div className="relative">
+                                  <select
+                                    value={formStatus}
+                                    onChange={(e) => setFormStatus(e.target.value as any)}
+                                    className="w-full bg-[#111827] border border-white/10 rounded-xl py-2 px-3 pr-8 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30 text-white appearance-none cursor-pointer"
+                                  >
+                                    <option value="disponible" className="bg-[#0c101d] text-white">Disponible</option>
+                                    <option value="coleccion" className="bg-[#0c101d] text-white">En Colección</option>
+                                    <option value="reservado" className="bg-[#0c101d] text-white">Reservado</option>
+                                    <option value="borrador" className="bg-[#0c101d] text-white">Borrador</option>
+                                  </select>
+                                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                                </div>
                               </div>
-                            </div>
+                            )}
                           </div>
 
                           {/* Grading & Details */}
@@ -2365,6 +2435,150 @@ export default function DashboardPage() {
                     )}
                   </AnimatePresence>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
+        {/* MODAL: MOVE TO STORE (SIMPLIFIED) */}
+        <AnimatePresence>
+          {isMoveToStoreOpen && moveToStoreItem && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => { setIsMoveToStoreOpen(false); setMoveToStoreItem(null); }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-[#0f172a] w-full max-w-md rounded-3xl relative border border-white/10 z-10 overflow-hidden shadow-2xl"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/5 relative">
+                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                    <span className="text-indigo-400">🏪</span>
+                    <span>Mover a Tienda</span>
+                  </h3>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Configura lo básico para publicar <span className="text-indigo-300 font-semibold">{moveToStoreItem.title}</span> de {moveToStoreItem.artist} en tu tienda.
+                  </p>
+                  <button 
+                    type="button"
+                    onClick={() => { setIsMoveToStoreOpen(false); setMoveToStoreItem(null); }}
+                    className="absolute right-6 top-6 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Form */}
+                <form onSubmit={handleSaveMoveToStore} className="p-6 space-y-4">
+                  {/* Price */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Precio de Venta</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 font-bold text-sm">
+                        $
+                      </div>
+                      <input
+                        type="number"
+                        step="any"
+                        placeholder="0.00"
+                        value={movePrice || ''}
+                        onChange={(e) => setMovePrice(parseFloat(e.target.value) || 0)}
+                        className="w-full !pl-9 input-premium text-sm font-semibold text-emerald-400"
+                        required
+                        min="0"
+                        autoFocus
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-500">Deja en 0 si no deseas definir precio aún.</p>
+                  </div>
+
+                  {/* Quantity & Format Status */}
+                  <div className="grid grid-cols-2 gap-4">
+                    {/* Quantity */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cantidad</label>
+                      <input
+                        type="number"
+                        value={moveQty}
+                        onChange={(e) => setMoveQty(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full input-premium text-sm font-medium"
+                        required
+                        min="1"
+                      />
+                    </div>
+
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Disponibilidad</label>
+                      <div className="relative">
+                        <select
+                          value={moveStatus}
+                          onChange={(e) => setMoveStatus(e.target.value as any)}
+                          className="w-full input-premium text-sm font-medium appearance-none cursor-pointer bg-[#0b0f19]"
+                        >
+                          <option value="disponible">Disponible</option>
+                          <option value="reservado">Reservado</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Media Format specific Grade/Condition */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">
+                      {moveToStoreItem.format === 'CD' ? 'Estado del CD' : moveToStoreItem.format === 'Cassette' ? 'Estado del Cassette' : 'Estado del Disco'}
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={moveGrade}
+                        onChange={(e) => setMoveGrade(e.target.value)}
+                        className="w-full input-premium text-sm font-medium appearance-none cursor-pointer bg-[#0b0f19]"
+                      >
+                        <option value="Mint (M)">Mint (M) - Impecable</option>
+                        <option value="Near Mint (NM)">Near Mint (NM) - Casi Nuevo</option>
+                        <option value="Very Good Plus (VG+)">Very Good Plus (VG+) - Muy Bueno</option>
+                        <option value="Very Good (VG)">Very Good (VG) - Bueno</option>
+                        <option value="Good Plus (G+)">Good Plus (G+) - Regular+</option>
+                        <option value="Good (G)">Good (G) - Regular</option>
+                        <option value="Fair (F)">Fair (F) - Malo</option>
+                        <option value="Poor (P)">Poor (P) - Muy Malo</option>
+                      </select>
+                      <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-450">
+                        <ChevronDown className="w-4 h-4" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="pt-4 border-t border-white/5 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setIsMoveToStoreOpen(false); setMoveToStoreItem(null); }}
+                      className="btn-secondary-premium px-4 py-2 text-xs"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn-premium px-5 py-2 text-xs flex items-center gap-1.5"
+                    >
+                      <Store className="w-3.5 h-3.5" />
+                      <span>Publicar en Tienda</span>
+                    </button>
+                  </div>
+                </form>
               </motion.div>
             </div>
           )}

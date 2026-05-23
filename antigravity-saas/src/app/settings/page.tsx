@@ -22,7 +22,8 @@ import {
   Coins,
   Compass,
   ChevronDown,
-  Phone
+  Phone,
+  MapPin
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -45,6 +46,13 @@ const GRADIENT_PRESETS = [
 export default function SettingsPage() {
   const { user, userData, refreshUserData } = useAuth();
 
+  const getUserRole = (ud: typeof userData) => {
+    if (!ud) return 'coleccionista';
+    if ((ud as any).role) return (ud as any).role;
+    return (ud as any).storeName || (ud as any).isPublicStore !== undefined ? 'ambos' : 'coleccionista';
+  };
+  const isSeller = getUserRole(userData) !== 'coleccionista';
+
   const [username, setUsername] = useState('');
   const [isUsernameChecking, setIsUsernameChecking] = useState(false);
   const [isUsernameAvailable, setIsUsernameAvailable] = useState<boolean | null>(null);
@@ -63,6 +71,7 @@ export default function SettingsPage() {
   const [isPublicStore, setIsPublicStore] = useState(true);
   const [storeName, setStoreName] = useState('');
   const [storeBio, setStoreBio] = useState('');
+  const [storeAddress, setStoreAddress] = useState('');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -79,6 +88,7 @@ export default function SettingsPage() {
       setIsPublicStore(userData.isPublicStore ?? false);
       setStoreName(userData.storeName || '');
       setStoreBio(userData.storeBio || '');
+      setStoreAddress((userData as any)?.storeAddress || '');
       
       if (userData.avatarType === 'upload') {
         setAvatarType('upload');
@@ -217,6 +227,7 @@ export default function SettingsPage() {
         isPublicStore: isPublicStore,
         storeName: storeName.trim(),
         storeBio: storeBio.trim(),
+        storeAddress: storeAddress.trim() || null,
         updatedAt: new Date(),
       }, { merge: true });
 
@@ -450,6 +461,25 @@ export default function SettingsPage() {
                       className="w-full input-premium font-medium min-h-[80px] resize-none"
                     />
                   </div>
+
+                  {isSeller && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Ubicación Física de la Tienda</label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                          <MapPin className="w-4 h-4 text-indigo-400" />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Ej: Sarandi 700, Montevideo, Uruguay"
+                          value={storeAddress}
+                          onChange={(e) => setStoreAddress(e.target.value)}
+                          className="w-full !pl-11 input-premium text-sm font-medium"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-500">Se mostrará en tu tienda pública con un mapa de Google Maps.</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

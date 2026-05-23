@@ -285,6 +285,38 @@ export default function StoreClient({ username }: { username: string }) {
                   {owner.storeBio}
                 </p>
               )}
+
+              {(owner as any)?.storeAddress && (
+                <div className="mt-4 rounded-2xl overflow-hidden border border-white/5 bg-slate-900/40">
+                  <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/5">
+                    <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                      <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-semibold text-white">{(owner as any).storeAddress}</p>
+                      <p className="text-[10px] text-gray-500">Ubicación de la tienda</p>
+                    </div>
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((owner as any).storeAddress)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="ml-auto text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 whitespace-nowrap"
+                    >
+                      Ver mapa →
+                    </a>
+                  </div>
+                  <iframe
+                    src={`https://maps.google.com/maps?q=${encodeURIComponent((owner as any).storeAddress)}&output=embed`}
+                    width="100%"
+                    height="200"
+                    style={{ border: 0 }}
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="no-referrer-when-downgrade"
+                    className="block"
+                  />
+                </div>
+              )}
               
               <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 pt-2">
                 <span className="px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-white shadow-lg">
