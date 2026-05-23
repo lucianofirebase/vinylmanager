@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import DashboardShell from '../../components/DashboardShell';
 import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { reauthenticateWithPopup, GoogleAuthProvider } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User as UserIcon, 
@@ -269,37 +270,73 @@ export default function SettingsPage() {
     setDeleteError(null);
 
     try {
-      // 1. Delete username reservation
+      // 1. Reautenticar con Google para evitar el error 'auth/requires-recent-login'
+      try {
+        const provider = new GoogleAuthProvider();
+        await reauthenticateWithPopup(user, provider);
+      } catch (reauthErr: any) {
+        console.error('Error during reauthentication:', reauthErr);
+        // Si el usuario cierra el popup o falla, abortar el borrado físico de la base de datos
+        setDeleteError('Para eliminar tu cuenta, debes reautenticarte con Google. Por favor intenta de nuevo.');
+        setIsDeleting(false);
+        return;
+      }
+
+      // 2. Delete username reservation
       if (userData.username) {
-        await deleteDoc(doc(db, 'usernames', userData.username));
+        try {
+          const usernameDocRef = doc(db, 'usernames', userData.username);
+          const usernameDocSnap = await getDoc(usernameDocRef);
+          if (usernameDocSnap.exists()) {
+            await deleteDoc(usernameDocRef);
+          }
+        } catch (e) {
+          console.warn("Fallo al borrar usernames o ya borrado", e);
+        }
       }
 
-      // 2. Fetch and delete all stock items
-      const stockRef = collection(db, 'users', user.uid, 'stock');
-      const stockSnap = await getDocs(stockRef);
-      if (!stockSnap.empty) {
-        const batch = writeBatch(db);
-        stockSnap.forEach((d) => {
-          batch.delete(doc(db, 'users', user.uid, 'stock', d.id));
-        });
-        await batch.commit();
+      // 3. Fetch and delete all stock items
+      try {
+        const stockRef = collection(db, 'users', user.uid, 'stock');
+        const stockSnap = await getDocs(stockRef);
+        if (!stockSnap.empty) {
+          const batch = writeBatch(db);
+          stockSnap.forEach((d) => {
+            batch.delete(doc(db, 'users', user.uid, 'stock', d.id));
+          });
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn("Fallo al borrar stock o ya borrado", e);
       }
 
-      // 3. Fetch and delete all sales items (if any exist)
-      const salesRef = collection(db, 'users', user.uid, 'sales');
-      const salesSnap = await getDocs(salesRef);
-      if (!salesSnap.empty) {
-        const batch = writeBatch(db);
-        salesSnap.forEach((d) => {
-          batch.delete(doc(db, 'users', user.uid, 'sales', d.id));
-        });
-        await batch.commit();
+      // 4. Fetch and delete all sales items (if any exist)
+      try {
+        const salesRef = collection(db, 'users', user.uid, 'sales');
+        const salesSnap = await getDocs(salesRef);
+        if (!salesSnap.empty) {
+          const batch = writeBatch(db);
+          salesSnap.forEach((d) => {
+            batch.delete(doc(db, 'users', user.uid, 'sales', d.id));
+          });
+          await batch.commit();
+        }
+      } catch (e) {
+        console.warn("Fallo al borrar sales o ya borrado", e);
       }
 
-      // 4. Delete the main user doc in Firestore
-      await deleteDoc(doc(db, 'users', user.uid));
+      // 5. Delete the main user doc in Firestore
+      try {
+        const userDocRef = doc(db, 'users', user.uid);
+        const userDocSnap = await getDoc(userDocRef);
+        if (userDocSnap.exists()) {
+          await deleteDoc(userDocRef);
+        }
+      } catch (e) {
+        console.warn("Fallo al borrar doc de usuario o ya borrado", e);
+      }
 
-      // 5. Delete the authentication user in Firebase Auth
+      // 6. Delete the authentication user in Firebase Auth
       await user.delete();
 
       // Cierre de sesión explícito y limpieza de almacenamiento en navegador
