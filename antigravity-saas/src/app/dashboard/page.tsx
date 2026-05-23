@@ -182,6 +182,31 @@ export default function DashboardPage() {
   const [formArtist, setFormArtist] = useState('');
   const [formTitle, setFormTitle] = useState('');
   const [formPrice, setFormPrice] = useState('0');
+  const [priceError, setPriceError] = useState(false);
+  const [movePriceError, setMovePriceError] = useState(false);
+
+  // Custom Alert and Confirm states
+  const [appAlert, setAppAlert] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [appConfirm, setAppConfirm] = useState<{
+    message: string;
+    onConfirm: () => void;
+    onCancel?: () => void;
+  } | null>(null);
+
+  const showAlert = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setAppAlert({ message, type });
+  };
+
+  const showConfirm = (message: string, onConfirm: () => void, onCancel?: () => void) => {
+    setAppConfirm({ message, onConfirm, onCancel });
+  };
+
+  useEffect(() => {
+    if (appAlert) {
+      const timer = setTimeout(() => setAppAlert(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [appAlert]);
   const [formQty, setFormQty] = useState('1');
   const [formFormat, setFormFormat] = useState('Vinyl');
   const [formGrade, setFormGrade] = useState('VG+');
@@ -576,41 +601,45 @@ export default function DashboardPage() {
   // Bulk Actions
   const handleBulkSell = async () => {
     if (!user || selectedIds.size === 0) return;
-    if (!confirm(`¿Estás seguro de registrar la venta de los ${selectedIds.size} discos seleccionados?`)) return;
+    showConfirm(
+      `¿Estás seguro de registrar la venta de los ${selectedIds.size} discos seleccionados?`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          const salesCol = collection(db, 'users', user.uid, 'sales');
+          
+          selectedIds.forEach((id) => {
+            const item = stock.find(i => i.id === id);
+            if (!item) return;
 
-    try {
-      const batch = writeBatch(db);
-      const salesCol = collection(db, 'users', user.uid, 'sales');
-      
-      selectedIds.forEach((id) => {
-        const item = stock.find(i => i.id === id);
-        if (!item) return;
+            const docRef = doc(db, 'users', user.uid, 'stock', id);
+            if (item.qty > 1) {
+              batch.update(docRef, { qty: item.qty - 1 });
+            } else {
+              batch.update(docRef, { status: 'vendido' });
+            }
 
-        const docRef = doc(db, 'users', user.uid, 'stock', id);
-        if (item.qty > 1) {
-          batch.update(docRef, { qty: item.qty - 1 });
-        } else {
-          batch.update(docRef, { status: 'vendido' });
+            const newSaleRef = doc(salesCol);
+            batch.set(newSaleRef, {
+              vinylId: item.id,
+              artist: item.artist,
+              title: item.title,
+              cover: item.cover,
+              format: item.format,
+              priceSold: Number(item.price) || 0,
+              qtySold: 1,
+              dateSold: new Date().toISOString()
+            });
+          });
+          await batch.commit();
+          setSelectedIds(new Set());
+          showAlert("Ventas registradas con éxito.", "success");
+        } catch (err) {
+          console.error("Error bulk selling:", err);
+          showAlert("Ocurrió un error al vender en lote.", "error");
         }
-
-        const newSaleRef = doc(salesCol);
-        batch.set(newSaleRef, {
-          vinylId: item.id,
-          artist: item.artist,
-          title: item.title,
-          cover: item.cover,
-          format: item.format,
-          priceSold: Number(item.price) || 0,
-          qtySold: 1,
-          dateSold: new Date().toISOString()
-        });
-      });
-      await batch.commit();
-      setSelectedIds(new Set());
-    } catch (err) {
-      console.error("Error bulk selling:", err);
-      alert("Ocurrió un error al vender en lote.");
-    }
+      }
+    );
   };
 
   const handleSellItem = async (item: VinylItem, e?: React.MouseEvent) => {
@@ -648,31 +677,36 @@ export default function DashboardPage() {
 
     } catch (err) {
       console.error("Error selling item:", err);
-      alert("Error al registrar la venta.");
+      showAlert("Error al registrar la venta.", "error");
     }
   };
 
   const handleBulkDelete = async () => {
     if (!user || selectedIds.size === 0) return;
-    if (!confirm(`¿Estás seguro de ELIMINAR permanentemente los ${selectedIds.size} discos seleccionados?`)) return;
-
-    try {
-      const batch = writeBatch(db);
-      selectedIds.forEach((id) => {
-        const docRef = doc(db, 'users', user.uid, 'stock', id);
-        batch.delete(docRef);
-      });
-      await batch.commit();
-      setSelectedIds(new Set());
-    } catch (err) {
-      console.error("Error bulk deleting:", err);
-      alert("Ocurrió un error al eliminar en lote.");
-    }
+    showConfirm(
+      `¿Estás seguro de ELIMINAR permanentemente los ${selectedIds.size} discos seleccionados?`,
+      async () => {
+        try {
+          const batch = writeBatch(db);
+          selectedIds.forEach((id) => {
+            const docRef = doc(db, 'users', user.uid, 'stock', id);
+            batch.delete(docRef);
+          });
+          await batch.commit();
+          setSelectedIds(new Set());
+          showAlert("Discos eliminados con éxito.", "success");
+        } catch (err) {
+          console.error("Error bulk deleting:", err);
+          showAlert("Ocurrió un error al eliminar en lote.", "error");
+        }
+      }
+    );
   };
 
   // Add/Edit Form Handlers
   const openAddModal = (context: 'tienda' | 'coleccion' = 'tienda') => {
     setAddContext(context);
+    setPriceError(false);
     const initialStatus = context === 'coleccion' ? 'coleccion' : 'disponible';
     setEditingItem(null);
     setSelectedDiscogsItem(null);
@@ -704,6 +738,7 @@ export default function DashboardPage() {
   const openEditModal = (item: VinylItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingItem(item);
+    setPriceError(false);
     if (item.discogsId) {
       setSelectedDiscogsItem({
         title: item.title,
@@ -745,6 +780,15 @@ export default function DashboardPage() {
   const handleSaveItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    // RULE: Price cannot be 0 for store items
+    const isStoreStatus = formStatus === 'disponible' || formStatus === 'reservado';
+    const parsedPrice = Number(formPrice) || 0;
+    if (isStoreStatus && parsedPrice <= 0) {
+      setPriceError(true);
+      setFormStep(2);
+      return;
+    }
 
     const data: Omit<VinylItem, 'id'> = {
       artist: repairTextEncoding(formArtist.trim()),
@@ -793,7 +837,7 @@ export default function DashboardPage() {
       setIsAddEditOpen(false);
     } catch (err) {
       console.error("Error saving vinyl item:", err);
-      alert("Hubo un error al guardar el disco.");
+      showAlert("Hubo un error al guardar el disco.", "error");
     }
   };
 
@@ -806,6 +850,7 @@ export default function DashboardPage() {
       setPreviewModalItem(null);
       setMoveToStoreItem(item);
       setMovePrice(0);
+      setMovePriceError(false);
       setMoveStatus('disponible');
       setMoveQty(item.qty || 1);
       setMoveGrade(item.grade || 'VG+');
@@ -829,8 +874,15 @@ export default function DashboardPage() {
   const handleSaveMoveToStore = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !moveToStoreItem) return;
+
+    // RULE: Price cannot be 0 for store items
+    const priceVal = Math.max(0, Number(movePrice) || 0);
+    if (priceVal <= 0) {
+      setMovePriceError(true);
+      return;
+    }
+
     try {
-      const priceVal = Math.max(0, Number(movePrice) || 0);
       const qtyVal = Math.max(1, Number(moveQty) || 1);
 
       const docRef = doc(db, 'users', user.uid, 'stock', moveToStoreItem.id);
@@ -854,23 +906,27 @@ export default function DashboardPage() {
       setActiveTab('tienda');
     } catch (err) {
       console.error("Error al mover el disco a la tienda:", err);
-      alert("Hubo un error al mover el disco.");
+      showAlert("Hubo un error al mover el disco.", "error");
     }
   };
 
   const handleDeleteItem = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (!user) return;
-    if (!confirm("¿Seguro de que deseas eliminar este disco?")) return;
-
-    try {
-      const docRef = doc(db, 'users', user.uid, 'stock', id);
-      await deleteDoc(docRef);
-      if (previewModalItem?.id === id) setPreviewModalItem(null);
-    } catch (err) {
-      console.error("Error deleting vinyl item:", err);
-      alert("Error al eliminar.");
-    }
+    showConfirm(
+      "¿Seguro de que deseas eliminar este disco?",
+      async () => {
+        try {
+          const docRef = doc(db, 'users', user.uid, 'stock', id);
+          await deleteDoc(docRef);
+          if (previewModalItem?.id === id) setPreviewModalItem(null);
+          showAlert("Disco eliminado con éxito.", "success");
+        } catch (err) {
+          console.error("Error deleting vinyl item:", err);
+          showAlert("Error al eliminar.", "error");
+        }
+      }
+    );
   };
 
   // Search Discogs Autocomplete
@@ -947,7 +1003,7 @@ export default function DashboardPage() {
   const processImportPaste = () => {
     let text = importPasteText.trim();
     if (!text) {
-      alert("Por favor, pega el contenido copiado de tu Excel primero.");
+      showAlert("Por favor, pega el contenido copiado de tu Excel primero.", "error");
       return;
     }
 
@@ -977,7 +1033,7 @@ export default function DashboardPage() {
     const hasUrl = columnMapping.url !== undefined;
 
     if (!hasBasic && !hasUrl) {
-      alert("Debes asignar al menos las columnas de 'Artista' y 'Título', o la columna 'Link Discogs'.");
+      showAlert("Debes asignar al menos las columnas de 'Artista' y 'Título', o la columna 'Link Discogs'.", "error");
       return;
     }
 
@@ -1170,7 +1226,7 @@ export default function DashboardPage() {
     const discogsUser = (userData as any)?.discogsUsername;
 
     if (!discogsUser) {
-      alert("Primero debes configurar tu usuario de Discogs en la página de Configuración.");
+      showAlert("Primero debes configurar tu usuario de Discogs en la página de Configuración.", "error");
       return;
     }
 
@@ -1396,7 +1452,7 @@ export default function DashboardPage() {
                 <button 
                   onClick={() => {
                     if (!userData?.username) {
-                      alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                      showAlert("Primero debes configurar tu nombre de usuario en Configuración.", "error");
                       return;
                     }
                     window.open(`/${userData.username}`, '_blank');
@@ -1410,7 +1466,7 @@ export default function DashboardPage() {
                 <button 
                   onClick={async () => {
                     if (!userData?.username) {
-                      alert("Primero debes configurar tu nombre de usuario en Configuración.");
+                      showAlert("Primero debes configurar tu nombre de usuario en Configuración.", "error");
                       return;
                     }
                     const url = `${window.location.origin}/${userData.username}`;
@@ -1428,7 +1484,7 @@ export default function DashboardPage() {
                     } else {
                       try {
                         await navigator.clipboard.writeText(url);
-                        alert("¡Enlace copiado! " + url);
+                        showAlert("¡Enlace copiado! " + url, "success");
                       } catch (e) {
                         console.error(e);
                       }
@@ -2196,17 +2252,29 @@ export default function DashboardPage() {
                             {addContext !== 'coleccion' && formStatus !== 'coleccion' && (
                               <>
                                 <div className="space-y-1.5 col-span-1">
-                                  <label className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">
+                                  <label className={`text-[10px] font-bold uppercase tracking-widest block ${priceError ? 'text-red-400' : 'text-indigo-300'}`}>
                                     Precio ({userData?.currency || 'USD'})
                                   </label>
                                   <input
                                     type="number"
                                     value={formPrice}
-                                    onChange={(e) => setFormPrice(e.target.value)}
-                                    className="w-full input-premium py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500/20"
+                                    onChange={(e) => {
+                                      setFormPrice(e.target.value);
+                                      if (Number(e.target.value) > 0) setPriceError(false);
+                                    }}
+                                    className={`w-full input-premium py-2 text-sm focus:outline-none transition-all ${
+                                      priceError 
+                                        ? 'border-red-500/80 ring-2 ring-red-500/20 text-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                                        : 'focus:border-indigo-500 focus:ring-indigo-500/20'
+                                    }`}
                                     min="0"
                                     required
                                   />
+                                  {priceError && (
+                                    <p className="text-red-400 text-[9px] font-bold mt-1 animate-pulse">
+                                      El precio debe ser mayor a 0
+                                    </p>
+                                  )}
                                 </div>
                                 <div className="space-y-1.5 col-span-1">
                                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Cantidad</label>
@@ -2596,7 +2664,7 @@ export default function DashboardPage() {
                 <form onSubmit={handleSaveMoveToStore} className="p-6 space-y-4">
                   {/* Price */}
                   <div className="space-y-1.5">
-                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Precio de Venta</label>
+                    <label className={`text-[10px] font-bold uppercase tracking-widest block ${movePriceError ? 'text-red-400' : 'text-gray-400'}`}>Precio de Venta</label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 font-bold text-sm">
                         $
@@ -2604,16 +2672,30 @@ export default function DashboardPage() {
                       <input
                         type="number"
                         step="any"
-                        placeholder="0.00"
+                        placeholder="Ingresa precio"
                         value={movePrice || ''}
-                        onChange={(e) => setMovePrice(parseFloat(e.target.value) || 0)}
-                        className="w-full !pl-9 input-premium text-sm font-semibold text-emerald-400"
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value) || 0;
+                          setMovePrice(val);
+                          if (val > 0) setMovePriceError(false);
+                        }}
+                        className={`w-full !pl-9 input-premium text-sm font-semibold transition-all ${
+                          movePriceError 
+                            ? 'border-red-500/80 ring-2 ring-red-500/20 text-red-300 focus:border-red-500 focus:ring-red-500/20' 
+                            : 'text-emerald-400'
+                        }`}
                         required
                         min="0"
                         autoFocus
                       />
                     </div>
-                    <p className="text-[10px] text-gray-500">Deja en 0 si no deseas definir precio aún.</p>
+                    {movePriceError ? (
+                      <p className="text-red-400 text-[10px] font-bold animate-pulse">
+                        El precio de venta debe ser mayor a 0
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-gray-500">El precio de venta debe ser mayor a 0 para publicar en la tienda.</p>
+                    )}
                   </div>
 
                   {/* Quantity & Format Status */}
@@ -3488,6 +3570,93 @@ export default function DashboardPage() {
           onClose={() => setIsTutorialOpen(false)} 
           isFirstTime={isFirstTimeTutorial} 
         />
+
+        {/* Custom Toast Alert */}
+        <AnimatePresence>
+          {appAlert && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              className="fixed bottom-6 right-6 z-[100] max-w-sm glass-card border border-white/10 rounded-2xl p-4 shadow-2xl flex items-start gap-3 bg-[#0f172a]/95 backdrop-blur-md"
+            >
+              <div className={`p-1.5 rounded-lg shrink-0 ${
+                appAlert.type === 'error' ? 'bg-red-500/10 text-red-400 border border-red-500/20' :
+                appAlert.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20'
+              }`}>
+                <AlertCircle className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white leading-relaxed">{appAlert.message}</p>
+              </div>
+              <button 
+                onClick={() => setAppAlert(null)}
+                className="text-gray-400 hover:text-white shrink-0 -mt-1 -mr-1 p-1 hover:bg-white/5 rounded-lg transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Custom Confirm Modal */}
+        <AnimatePresence>
+          {appConfirm && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.6 }}
+                exit={{ opacity: 0 }}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                onClick={() => {
+                  if (appConfirm.onCancel) appConfirm.onCancel();
+                  setAppConfirm(null);
+                }}
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                className="bg-[#0f172a] w-full max-w-sm rounded-3xl relative border border-white/10 z-10 overflow-hidden shadow-2xl p-6 space-y-6"
+              >
+                <div className="space-y-2">
+                  <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+                    <HelpCircle className="w-5 h-5" />
+                  </div>
+                  <h4 className="text-base font-bold text-white">¿Confirmar acción?</h4>
+                  <p className="text-xs text-gray-405 leading-relaxed">
+                    {appConfirm.message}
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (appConfirm.onCancel) appConfirm.onCancel();
+                      setAppConfirm(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      appConfirm.onConfirm();
+                      setAppConfirm(null);
+                    }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/25 transition-all"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardShell>
   );

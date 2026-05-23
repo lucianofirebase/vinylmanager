@@ -91,6 +91,7 @@ export default function OnboardingPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
 
   // Ref for Wake Lock to keep screen awake on mobile
   const wakeLockRef = React.useRef<any>(null);
@@ -329,9 +330,10 @@ export default function OnboardingPage() {
     if (!file) return;
 
     if (file.size > 10 * 1024 * 1024) {
-      alert('La imagen es demasiado grande. El límite es de 10MB.');
+      setAvatarError('La imagen es demasiado grande. El límite es de 10MB.');
       return;
     }
+    setAvatarError(null);
 
     const img = new Image();
     const reader = new FileReader();
@@ -693,6 +695,12 @@ export default function OnboardingPage() {
                           <span>Seleccionar imagen</span>
                           <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
                         </label>
+                        {avatarError && (
+                          <p className="text-red-400 text-[10px] mt-2 font-semibold flex items-center gap-1.5 animate-pulse">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{avatarError}</span>
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
