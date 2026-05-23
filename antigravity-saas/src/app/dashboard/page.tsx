@@ -166,6 +166,11 @@ export default function DashboardPage() {
     }
   }, [userData]);
 
+  useEffect(() => {
+    setStatusFilter('All');
+    setSortBy('recent');
+  }, [activeTab]);
+
   const openInstagramModal = (item: VinylItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setInstagramVinyl(item);
@@ -558,18 +563,25 @@ export default function DashboardPage() {
 
   const sortedStock = [...filteredStock].sort((a, b) => {
     if (sortBy === 'recent') {
-      return new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime();
+      return new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime();
     }
     if (sortBy === 'price_asc') {
-      return a.price - b.price;
+      return Number(a.price || 0) - Number(b.price || 0);
     }
     if (sortBy === 'price_desc') {
-      return b.price - a.price;
+      return Number(b.price || 0) - Number(a.price || 0);
+    }
+    if (sortBy === 'artist_asc') {
+      return a.artist.localeCompare(b.artist);
+    }
+    if (sortBy === 'title_asc') {
+      return a.title.localeCompare(b.title);
     }
     return 0;
   });
 
   const [visibleCount, setVisibleCount] = useState(30);
+
   useEffect(() => {
     setVisibleCount(30);
   }, [searchQuery, formatFilter, statusFilter, activeTab, sortBy]);
@@ -1539,64 +1551,64 @@ export default function DashboardPage() {
           </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-indigo-500/10">
-            <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-indigo-500/20 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.2)]">
-                  <Music className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Total en Catálogo</span>
+        {/* Stats Section */}
+        <div className="flex flex-col sm:flex-row sm:justify-end gap-3">
+          <div className="glass-card rounded-xl p-3 px-4 relative overflow-hidden group hover:-translate-y-0.5 transition-all duration-300 shadow-md hover:shadow-indigo-500/5 sm:min-w-[180px] flex items-center justify-between gap-4 border border-white/5 bg-[#0f172a]/30">
+            <div className="absolute -top-12 -right-12 w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-400 shrink-0 shadow-[0_0_10px_rgba(99,102,241,0.1)]">
+                <Music className="w-4 h-4" />
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">Catálogo</span>
+                {totalItems > 0 && growthPercent > 0 && (
+                  <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-0.5 mt-0.5">
+                    +{growthPercent}%
+                  </span>
+                )}
               </div>
             </div>
-            <div className="flex items-end justify-between">
-              <h3 className="text-4xl font-black text-white">{totalItems} <span className="text-sm text-gray-500 font-semibold">discos</span></h3>
-              {totalItems > 0 && growthPercent > 0 && (
-                <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                  <TrendingUp className="w-3 h-3" />
-                  <span>+{growthPercent}% este mes</span>
-                </div>
-              )}
+            <div className="text-right shrink-0">
+              <span className="text-xl font-black text-white">{totalItems}</span>
+              <span className="text-[9px] text-gray-500 font-bold ml-1">discos</span>
             </div>
           </div>
 
           {activeTab === 'tienda' && (
             <>
-              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-emerald-500/10">
-                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-                      <Check className="w-5 h-5" />
-                    </div>
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Disponibles Venta</span>
+              <div className="glass-card rounded-xl p-3 px-4 relative overflow-hidden group hover:-translate-y-0.5 transition-all duration-300 shadow-md hover:shadow-emerald-500/5 sm:min-w-[180px] flex items-center justify-between gap-4 border border-white/5 bg-[#0f172a]/30">
+                <div className="absolute -top-12 -right-12 w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                    <Check className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">Disponibles</span>
+                    {availableItems > 0 && recentAvailableCount > 0 && (
+                      <span className="text-[9px] text-emerald-400 font-bold flex items-center gap-0.5 mt-0.5">
+                        +{recentAvailableCount} nuevos
+                      </span>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-end justify-between">
-                  <h3 className="text-4xl font-black text-white">{availableItems} <span className="text-sm text-gray-500 font-semibold">items</span></h3>
-                  {availableItems > 0 && recentAvailableCount > 0 && (
-                    <div className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      <TrendingUp className="w-3 h-3" />
-                      <span>+{recentAvailableCount} recientes</span>
-                    </div>
-                  )}
+                <div className="text-right shrink-0">
+                  <span className="text-xl font-black text-white">{availableItems}</span>
+                  <span className="text-[9px] text-gray-500 font-bold ml-1">items</span>
                 </div>
               </div>
 
-              <div className="glass-card rounded-2xl p-6 relative overflow-hidden group hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-amber-500/10">
-                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-10 blur-xl group-hover:opacity-20 transition-all" />
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-amber-500/20 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
-                      <TrendingUp className="w-5 h-5" />
-                    </div>
-                    <span className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Valor de Stock</span>
+              <div className="glass-card rounded-xl p-3 px-4 relative overflow-hidden group hover:-translate-y-0.5 transition-all duration-300 shadow-md hover:shadow-amber-500/5 sm:min-w-[180px] flex items-center justify-between gap-4 border border-white/5 bg-[#0f172a]/30">
+                <div className="absolute -top-12 -right-12 w-20 h-20 rounded-full bg-gradient-to-br from-amber-500 to-rose-500 opacity-5 blur-xl group-hover:opacity-10 transition-all" />
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.1)]">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-widest leading-none">Valor Stock</span>
                   </div>
                 </div>
-                <div className="flex items-end justify-between">
-                  <h3 className="text-3xl sm:text-4xl font-black text-white tracking-tight">{formatCurrency(totalValue, userData?.currency)}</h3>
+                <div className="text-right shrink-0">
+                  <span className="text-xl font-black text-white">{formatCurrency(totalValue, userData?.currency)}</span>
                 </div>
               </div>
             </>
@@ -1634,20 +1646,22 @@ export default function DashboardPage() {
             </div>
 
             {/* Status Filter */}
-            <div className="relative">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
-              >
-                <option value="All" className="bg-[#0f172a] text-white">Estados: Todos</option>
-                <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
-                <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
-                <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
-                <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
-              </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-            </div>
+            {activeTab !== 'coleccion' && (
+              <div className="relative">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
+                >
+                  <option value="All" className="bg-[#0f172a] text-white">Estados: Todos</option>
+                  <option value="disponible" className="bg-[#0f172a] text-white">Disponible</option>
+                  <option value="coleccion" className="bg-[#0f172a] text-white">En Colección</option>
+                  <option value="reservado" className="bg-[#0f172a] text-white">Reservado</option>
+                  <option value="borrador" className="bg-[#0f172a] text-white">Borrador</option>
+                </select>
+                <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              </div>
+            )}
 
             {/* Sort Filter */}
             <div className="relative">
@@ -1657,8 +1671,17 @@ export default function DashboardPage() {
                 className="w-full sm:w-auto appearance-none bg-white/5 border border-white/5 focus:border-indigo-500/50 hover:bg-white/10 rounded-xl text-sm font-medium py-2 pl-4 pr-10 focus:outline-none transition-all cursor-pointer"
               >
                 <option value="recent" className="bg-[#0f172a] text-white">Ordenar: Recientes</option>
-                <option value="price_asc" className="bg-[#0f172a] text-white">Precio: Menor a Mayor</option>
-                <option value="price_desc" className="bg-[#0f172a] text-white">Precio: Mayor a Menor</option>
+                {activeTab === 'tienda' ? (
+                  <>
+                    <option value="price_asc" className="bg-[#0f172a] text-white">Precio: Menor a Mayor</option>
+                    <option value="price_desc" className="bg-[#0f172a] text-white">Precio: Mayor a Menor</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="artist_asc" className="bg-[#0f172a] text-white">Artista: A-Z</option>
+                    <option value="title_asc" className="bg-[#0f172a] text-white">Título: A-Z</option>
+                  </>
+                )}
               </select>
               <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             </div>

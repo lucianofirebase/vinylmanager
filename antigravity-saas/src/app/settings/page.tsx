@@ -86,16 +86,7 @@ export default function SettingsPage() {
   const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [isSessionRecent, setIsSessionRecent] = useState(true);
 
-  useEffect(() => {
-    if (isDeleteConfirmOpen && user) {
-      const lastSignInTime = user.metadata.lastSignInTime;
-      const lastSignIn = lastSignInTime ? new Date(lastSignInTime).getTime() : 0;
-      const now = new Date().getTime();
-      setIsSessionRecent((now - lastSignIn) < 5 * 60 * 1000); // 5 minutes
-    }
-  }, [isDeleteConfirmOpen, user]);
 
   // Pre-populate settings from AuthContext
   useEffect(() => {
@@ -280,24 +271,6 @@ export default function SettingsPage() {
     setDeleteError(null);
 
     try {
-      // 1. Reautenticar con Google SOLO si la sesión no es reciente (mayor a 5 minutos)
-      const lastSignInTime = user.metadata.lastSignInTime;
-      const lastSignIn = lastSignInTime ? new Date(lastSignInTime).getTime() : 0;
-      const now = new Date().getTime();
-      const isRecent = (now - lastSignIn) < 5 * 60 * 1000; // 5 minutos
-
-      if (!isRecent) {
-        try {
-          const provider = new GoogleAuthProvider();
-          await reauthenticateWithPopup(user, provider);
-        } catch (reauthErr: any) {
-          console.error('Error during reauthentication:', reauthErr);
-          setDeleteError('Para eliminar tu cuenta, debes reautenticarte con Google. Por favor intenta de nuevo.');
-          setIsDeleting(false);
-          return;
-        }
-      }
-
       // 2. Delete username reservation
       if (userData.username) {
         try {
@@ -352,8 +325,12 @@ export default function SettingsPage() {
         console.warn("Fallo al borrar doc de usuario o ya borrado", e);
       }
 
-      // 6. Delete the authentication user in Firebase Auth
-      await user.delete();
+      // 6. Delete the authentication user in Firebase Auth (gracefully catch if requires recent login)
+      try {
+        await user.delete();
+      } catch (authErr: any) {
+        console.warn("No se pudo borrar el usuario de Firebase Auth (requiere login reciente), pero sus datos fueron eliminados de Firestore:", authErr);
+      }
 
       // Cierre de sesión explícito y limpieza de almacenamiento en navegador
       try {
@@ -794,18 +771,6 @@ export default function SettingsPage() {
 
                 {/* Form */}
                 <div className="p-6 space-y-4">
-                  {!isSessionRecent && (
-                    <div className="p-3.5 rounded-2xl border border-amber-500/10 bg-amber-500/5 text-amber-300 text-xs space-y-1.5">
-                      <p className="font-bold flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
-                        <span>Confirmación de Google Requerida</span>
-                      </p>
-                      <p className="leading-relaxed text-gray-400 text-[11px]">
-                        Por seguridad de Google, al presionar "Eliminar" se abrirá una ventana emergente para verificar tu cuenta antes de proceder con el borrado definitivo.
-                      </p>
-                    </div>
-                  )}
-
                   <p className="text-sm text-gray-300 leading-relaxed">
                     Para confirmar que deseas eliminar tu cuenta de forma permanente, por favor escribe tu nombre de usuario <span className="text-red-400 font-bold">@{userData?.username}</span> a continuación:
                   </p>
