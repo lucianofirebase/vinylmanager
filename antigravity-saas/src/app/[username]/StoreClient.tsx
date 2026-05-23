@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, getDocs, doc, getDoc, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { formatCurrency } from '../../lib/utils';
@@ -19,9 +19,11 @@ import {
   RefreshCw,
   ShoppingBag,
   Trash2,
-  Sparkles
+  Sparkles,
+  ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
 
 interface VinylItem {
@@ -69,6 +71,7 @@ const getFormatBadgeColor = (format: string, theme?: any) => {
 };
 
 export default function StoreClient({ username }: { username: string }) {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [owner, setOwner] = useState<StoreOwner | null>(null);
@@ -80,6 +83,54 @@ export default function StoreClient({ username }: { username: string }) {
   const [activePhoto, setActivePhoto] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [mapLoadError, setMapLoadError] = useState(false);
+
+  // Ref for Wake Lock to keep screen awake during loading
+  const wakeLockRef = useRef<any>(null);
+
+  const requestWakeLock = async () => {
+    if (typeof window !== 'undefined' && 'wakeLock' in navigator) {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        console.log('Screen Wake Lock active');
+      } catch (err) {
+        console.warn('Wake Lock request failed:', err);
+      }
+    }
+  };
+
+  const releaseWakeLock = async () => {
+    if (wakeLockRef.current) {
+      try {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Screen Wake Lock released');
+      } catch (err) {
+        console.warn('Wake Lock release failed:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && loading) {
+        await requestWakeLock();
+      }
+    };
+
+    if (loading) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch((e: any) => console.warn(e));
+      }
+    };
+  }, [loading]);
 
   useEffect(() => {
     if (!username) return;
@@ -247,6 +298,19 @@ export default function StoreClient({ username }: { username: string }) {
   };
 
   const handleShare = async () => {
+    if (typeof window === 'undefined') return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: owner ? `${owner.storeName || `@${owner.username}`} | VinylStock` : 'VinylStock',
+          text: owner ? `¡Explora el catálogo de vinilos de ${owner.storeName || `@${owner.username}`} en VinylStock!` : 'VinylStock',
+          url: window.location.href,
+        });
+        return;
+      } catch (err) {
+        console.error('Error sharing', err);
+      }
+    }
     try {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -437,6 +501,21 @@ export default function StoreClient({ username }: { username: string }) {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Volver a Explorar Button */}
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined' && window.history.length > 1) {
+              window.history.back();
+            } else {
+              router.push('/explorar');
+            }
+          }}
+          className="mb-6 inline-flex items-center gap-2.5 px-4.5 py-2.5 rounded-2xl bg-white/5 border border-white/5 text-xs font-bold text-gray-300 hover:text-white hover:bg-white/10 hover:border-white/20 transition-all select-none group"
+        >
+          <ArrowLeft className="w-4 h-4 text-indigo-400 group-hover:-translate-x-0.5 transition-transform" />
+          <span>Volver a Explorar</span>
+        </button>
+
         {/* Hero Section */}
         <div className="relative rounded-3xl overflow-hidden mb-12 shadow-2xl border border-white/5">
           {/* Background Blur */}

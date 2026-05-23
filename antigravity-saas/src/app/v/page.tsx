@@ -152,8 +152,20 @@ function ShowcaseContent() {
     fetchData();
   }, [uid, vinylId]);
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (typeof window === 'undefined') return;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: vinyl ? `${vinyl.title} - ${vinyl.artist} | VinylStock` : 'VinylStock',
+          text: vinyl ? `¡Mira este disco en VinylStock: ${vinyl.artist} - ${vinyl.title}!` : 'VinylStock',
+          url: window.location.href,
+        });
+        return;
+      } catch (err) {
+        console.error('Error sharing', err);
+      }
+    }
     navigator.clipboard.writeText(window.location.href);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

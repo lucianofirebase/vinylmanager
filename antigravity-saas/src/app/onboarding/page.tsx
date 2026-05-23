@@ -120,10 +120,17 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && isSyncing) {
+      if (document.visibilityState === 'visible' && (isSyncing || isSubmitting)) {
         await requestWakeLock();
       }
     };
+
+    if (isSyncing || isSubmitting) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
@@ -131,7 +138,7 @@ export default function OnboardingPage() {
         wakeLockRef.current.release().catch((e: any) => console.warn(e));
       }
     };
-  }, [isSyncing]);
+  }, [isSyncing, isSubmitting]);
 
   // Prefill username if possible
   useEffect(() => {

@@ -7,6 +7,7 @@ import DashboardShell from '../../components/DashboardShell';
 import { motion } from 'framer-motion';
 import { Search, Store, Disc, MapPin, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '../../context/AuthContext';
 
 interface PublicStore {
   uid: string;
@@ -19,6 +20,7 @@ interface PublicStore {
 }
 
 export default function ExplorarPage() {
+  const { user } = useAuth();
   const [stores, setStores] = useState<PublicStore[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -159,39 +161,54 @@ export default function ExplorarPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
               >
-                <Link
-                  href={`/${store.username}`}
-                  className="block glass-card rounded-2xl p-5 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all duration-200 group border border-white/5 h-full"
-                >
-                  <div className="flex items-start gap-3.5 mb-3">
-                    {renderAvatar(store)}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-bold text-white text-sm truncate group-hover:text-indigo-300 transition-colors">
-                        {store.storeName || store.username}
-                      </p>
-                      <p className="text-[10px] text-gray-500 truncate">@{store.username}</p>
-                    </div>
-                    <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-indigo-400 transition-colors shrink-0 mt-0.5" />
-                  </div>
+                {(() => {
+                  const isOwnStore = user && store.uid === user.uid;
+                  return (
+                    <Link
+                      href={`/${store.username}`}
+                      className={`block glass-card rounded-2xl p-5 hover:border-indigo-500/30 hover:bg-indigo-500/5 transition-all duration-200 group border h-full ${
+                        isOwnStore 
+                          ? 'border-indigo-500/35 bg-indigo-500/5 shadow-lg shadow-indigo-500/5' 
+                          : 'border-white/5'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3.5 mb-3">
+                        {renderAvatar(store)}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white text-sm truncate group-hover:text-indigo-300 transition-colors">
+                              {store.storeName || store.username}
+                            </span>
+                            {isOwnStore && (
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 uppercase tracking-widest shrink-0">
+                                Mi Tienda
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-gray-500 truncate">@{store.username}</p>
+                        </div>
+                        <ExternalLink className="w-4 h-4 text-gray-600 group-hover:text-indigo-400 transition-colors shrink-0 mt-0.5" />
+                      </div>
+                      {store.storeBio && (
+                        <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 mb-3">
+                          {store.storeBio}
+                        </p>
+                      )}
 
-                  {store.storeBio && (
-                    <p className="text-xs text-gray-400 leading-relaxed line-clamp-2 mb-3">
-                      {store.storeBio}
-                    </p>
-                  )}
+                      {store.storeAddress && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
+                          <MapPin className="w-3 h-3 text-indigo-400/60 shrink-0" />
+                          <span className="truncate">{store.storeAddress}</span>
+                        </div>
+                      )}
 
-                  {store.storeAddress && (
-                    <div className="flex items-center gap-1.5 text-[10px] text-gray-500">
-                      <MapPin className="w-3 h-3 text-indigo-400/60 shrink-0" />
-                      <span className="truncate">{store.storeAddress}</span>
-                    </div>
-                  )}
-
-                  <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-1.5 text-[10px] text-indigo-400/60">
-                    <Disc className="w-3 h-3" />
-                    <span>Ver catálogo completo</span>
-                  </div>
-                </Link>
+                      <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-1.5 text-[10px] text-indigo-400/60">
+                        <Disc className="w-3 h-3" />
+                        <span>Ver catálogo completo</span>
+                      </div>
+                    </Link>
+                  );
+                })()}
               </motion.div>
             ))}
           </motion.div>

@@ -270,21 +270,6 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => {
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'visible' && (isSyncing || isImporting)) {
-        await requestWakeLock();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      if (wakeLockRef.current) {
-        wakeLockRef.current.release().catch((e: any) => console.warn(e));
-      }
-    };
-  }, [isSyncing, isImporting]);
-
   // Database Repair modal states
   const [isRepairOpen, setIsRepairOpen] = useState(false);
   interface RepairedItemProposal {
@@ -302,6 +287,28 @@ export default function DashboardPage() {
   const [repairProposals, setRepairProposals] = useState<RepairedItemProposal[]>([]);
   const [isApplyingRepairs, setIsApplyingRepairs] = useState(false);
   const [repairLogs, setRepairLogs] = useState<string[]>([]);
+
+  useEffect(() => {
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && (isSyncing || isImporting || loading || isApplyingRepairs || isUploadingPhoto || isSearchingDiscogs)) {
+        await requestWakeLock();
+      }
+    };
+
+    if (isSyncing || isImporting || loading || isApplyingRepairs || isUploadingPhoto || isSearchingDiscogs) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (wakeLockRef.current) {
+        wakeLockRef.current.release().catch((e: any) => console.warn(e));
+      }
+    };
+  }, [isSyncing, isImporting, loading, isApplyingRepairs, isUploadingPhoto, isSearchingDiscogs]);
 
   const runNameRepairScan = async () => {
     setIsRepairOpen(true);
