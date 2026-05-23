@@ -787,6 +787,20 @@ export default function OnboardingPage() {
                               required={hasPhysicalStore}
                             />
                           </div>
+                          {storeAddress.trim() && (
+                            <div className="mt-3 rounded-2xl overflow-hidden border border-white/5 bg-slate-900/40 animate-fade-in">
+                              <iframe
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(storeAddress.trim())}&output=embed`}
+                                width="100%"
+                                height="150"
+                                style={{ border: 0 }}
+                                allowFullScreen
+                                loading="lazy"
+                                referrerPolicy="no-referrer-when-downgrade"
+                                className="block"
+                              />
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>

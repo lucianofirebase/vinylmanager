@@ -81,6 +81,8 @@ interface VinylItem {
   discogsPhotos?: string[];
   discogsId?: number;
   url?: string;
+  genres?: string[];
+  styles?: string[];
 }
 
 export default function DashboardPage() {
@@ -188,6 +190,8 @@ export default function DashboardPage() {
   const [formCatno, setFormCatno] = useState('');
   const [formYear, setFormYear] = useState('');
   const [formCover, setFormCover] = useState('');
+  const [formGenres, setFormGenres] = useState<string[]>([]);
+  const [formStyles, setFormStyles] = useState<string[]>([]);
   const [formStatus, setFormStatus] = useState<'disponible' | 'coleccion' | 'reservado' | 'vendido' | 'borrador'>('disponible');
   const [photosList, setPhotosList] = useState<string[]>([]);
   const [photoUrlInput, setPhotoUrlInput] = useState('');
@@ -677,6 +681,8 @@ export default function DashboardPage() {
     setFormCatno('');
     setFormYear('');
     setFormCover('');
+    setFormGenres([]);
+    setFormStyles([]);
     setFormStatus(initialStatus);
     setPhotosList([]);
     setPhotoUrlInput('');
@@ -716,6 +722,8 @@ export default function DashboardPage() {
     setFormCatno(item.catno || '');
     setFormYear(item.year || '');
     setFormCover(item.cover || '');
+    setFormGenres(item.genres || []);
+    setFormStyles(item.styles || []);
     setFormStatus(item.status);
     setPhotosList(item.photos || []);
     setPhotoUrlInput('');
@@ -746,7 +754,9 @@ export default function DashboardPage() {
       status: formStatus,
       photos: photosList,
       dateAdded: editingItem ? editingItem.dateAdded : new Date().toISOString(),
-      url: formUrl.trim()
+      url: formUrl.trim(),
+      genres: formGenres,
+      styles: formStyles
     };
 
     if (formDiscogsId) {
@@ -889,6 +899,8 @@ export default function DashboardPage() {
     setFormYear(result.year || '');
     setFormDiscogsId(result.id);
     setFormUrl(`https://www.discogs.com${result.uri || ''}`);
+    setFormGenres(result.genre || []);
+    setFormStyles(result.style || []);
 
     // Respect the format filter the user searched with
     const resolvedFormat = discogsSearchFormat !== 'All'
@@ -914,7 +926,9 @@ export default function DashboardPage() {
       year: result.year || '',
       label: result.label?.[0] || '',
       catno: result.catno || '',
-      id: result.id
+      id: result.id,
+      genres: result.genre || [],
+      styles: result.style || []
     });
 
     setDiscogsSearchResults([]);
@@ -1038,7 +1052,9 @@ export default function DashboardPage() {
                     year: details.year ? details.year.toString() : '',
                     label: details.labels && details.labels.length > 0 ? details.labels[0].name : '',
                     catno: details.labels && details.labels.length > 0 ? details.labels[0].catno : '',
-                    discogsId: details.id
+                    discogsId: details.id,
+                    genres: details.genres || [],
+                    styles: details.styles || []
                   };
                 }
               } catch (e) {
@@ -1062,7 +1078,9 @@ export default function DashboardPage() {
                   year: bestMatch.year || '',
                   label: bestMatch.label ? bestMatch.label[0] : '',
                   catno: bestMatch.catno || '',
-                  discogsId: bestMatch.id
+                  discogsId: bestMatch.id,
+                  genres: bestMatch.genre || [],
+                  styles: bestMatch.style || []
                 };
               }
             }
@@ -1219,7 +1237,9 @@ export default function DashboardPage() {
             status: 'coleccion',
             dateAdded: new Date().toISOString(),
             discogsId: rel.id,
-            url: `https://www.discogs.com/release/${rel.id}`
+            url: `https://www.discogs.com/release/${rel.id}`,
+            genres: info.genres || [],
+            styles: info.styles || []
           };
 
           const stockCol = collection(db, 'users', user.uid, 'stock');
@@ -1268,6 +1288,104 @@ export default function DashboardPage() {
       setIsSyncing(false);
       await releaseWakeLock();
     }
+  };
+
+  const startUpdateExistingGenres = async () => {
+    if (!user) return;
+    
+    // Obtener los discos del stock local que tienen discogsId pero no tienen genres o styles definidos (o vacíos)
+    const itemsToUpdate = stock.filter(item => 
+      item.discogsId && 
+      (!item.genres || item.genres.length === 0)
+    );
+
+    if (itemsToUpdate.length === 0) {
+      alert("No hay discos existentes con ID de Discogs pendientes de actualizar géneros.");
+      return;
+    }
+
+    setIsSyncing(true);
+    setSyncLogs([]);
+    setSyncProgress({ current: 0, total: itemsToUpdate.length, status: 'Iniciando actualización de géneros...' });
+
+    // Activar bloqueo de suspensión de pantalla
+    await requestWakeLock();
+
+    let updatedCount = 0;
+    let errorCount = 0;
+
+    for (let i = 0; i < itemsToUpdate.length; i++) {
+      const item = itemsToUpdate[i];
+      const discogsId = item.discogsId;
+
+      const remainingItems = itemsToUpdate.length - (i + 1);
+      const estSec = Math.round(remainingItems * 2.3);
+      const mins = Math.floor(estSec / 60);
+      const secs = estSec % 60;
+      const timeStr = estSec > 0 ? (mins > 0 ? ` (~${mins}m ${secs}s restantes)` : ` (~${secs}s restantes)`) : '';
+
+      setSyncProgress({ 
+        current: i + 1, 
+        total: itemsToUpdate.length, 
+        status: `Actualizando: ${item.artist} - ${item.title}${timeStr}...` 
+      });
+
+      try {
+        let response = await fetch(`https://api.discogs.com/releases/${discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+        
+        // Manejar Rate Limit 429
+        if (response.status === 429) {
+          setSyncLogs((prev) => [
+            { msg: `⚠️ Límite de API de Discogs alcanzado. Pausando por 8 segundos...`, type: 'skip' },
+            ...prev
+          ]);
+          await new Promise((resolve) => setTimeout(resolve, 8000));
+          response = await fetch(`https://api.discogs.com/releases/${discogsId}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+        }
+
+        if (response.ok) {
+          const details = await response.json();
+          const genres = details.genres || [];
+          const styles = details.styles || [];
+
+          // Actualizar en Firestore
+          const docRef = doc(db, 'users', user.uid, 'stock', item.id);
+          await updateDoc(docRef, {
+            genres,
+            styles
+          });
+
+          updatedCount++;
+          setSyncLogs((prev) => [
+            { msg: `✅ Actualizado: ${item.artist} - ${item.title} (${genres.slice(0, 2).join(', ')})`, type: 'add' },
+            ...prev
+          ]);
+        } else {
+          errorCount++;
+          setSyncLogs((prev) => [
+            { msg: `❌ Falló (API error ${response.status}): ${item.artist} - ${item.title}`, type: 'error' },
+            ...prev
+          ]);
+        }
+      } catch (err: any) {
+        errorCount++;
+        setSyncLogs((prev) => [
+          { msg: `❌ Falló (error de red): ${item.artist} - ${item.title}`, type: 'error' },
+          ...prev
+        ]);
+      }
+
+      // Esperar 1.2 segundos para respetar el límite de 60 peticiones/min de Discogs
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+
+    setSyncProgress({ 
+      current: itemsToUpdate.length, 
+      total: itemsToUpdate.length, 
+      status: `Actualización finalizada. Éxitos: ${updatedCount}, Errores: ${errorCount}` 
+    });
+    setIsSyncing(false);
+    await releaseWakeLock();
   };
 
   const getFormatBadgeColor = (format: string) => {
@@ -2867,13 +2985,21 @@ export default function DashboardPage() {
                   </div>
 
                   {!isSyncing && syncLogs.length === 0 && (
-                    <div className="flex justify-center py-6">
+                    <div className="flex flex-col sm:flex-row justify-center items-center gap-4 py-6">
                       <button
                         onClick={startDiscogsSync}
                         className="btn-premium py-2.5 px-6 text-xs font-bold flex items-center gap-2"
                       >
                         <RefreshCw className="w-4 h-4" />
-                        <span>Iniciar Sincronización</span>
+                        <span>Sincronizar Colección (Nuevos)</span>
+                      </button>
+
+                      <button
+                        onClick={startUpdateExistingGenres}
+                        className="bg-slate-800 hover:bg-slate-700 text-white border border-white/10 rounded-2xl py-2.5 px-6 text-xs font-bold flex items-center gap-2 transition-all active:scale-[0.98]"
+                      >
+                        <Sparkles className="w-4 h-4 text-indigo-400 animate-pulse" />
+                        <span>Actualizar Géneros de Existentes</span>
                       </button>
                     </div>
                   )}
@@ -3354,6 +3480,28 @@ export default function DashboardPage() {
                           </div>
                         </div>
                       </div>
+
+                      {/* Géneros y Estilos */}
+                      {((previewModalItem.genres && previewModalItem.genres.length > 0) || 
+                        (previewModalItem.styles && previewModalItem.styles.length > 0)) && (
+                        <div className="glass-card rounded-xl p-4 border border-white/5 space-y-3 bg-slate-900/50">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2 border-b border-white/5 pb-2">
+                            <Sparkles className="w-4 h-4 text-indigo-400" /> Géneros y Estilos
+                          </h4>
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {previewModalItem.genres?.map((g, idx) => (
+                              <span key={`gen-${idx}`} className="text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-0.5 rounded-full">
+                                {g}
+                              </span>
+                            ))}
+                            {previewModalItem.styles?.map((s, idx) => (
+                              <span key={`sty-${idx}`} className="text-[10px] font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-0.5 rounded-full">
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Links and Actions */}
                       {previewModalItem.url && (

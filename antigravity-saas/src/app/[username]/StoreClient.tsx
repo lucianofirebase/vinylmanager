@@ -18,7 +18,8 @@ import {
   Check,
   RefreshCw,
   ShoppingBag,
-  Trash2
+  Trash2,
+  Sparkles
 } from 'lucide-react';
 import Link from 'next/link';
 import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
@@ -41,6 +42,8 @@ interface VinylItem {
   status?: string;
   discogsId?: number | null;
   qty: number;
+  genres?: string[];
+  styles?: string[];
 }
 
 interface StoreOwner {
@@ -780,6 +783,27 @@ export default function StoreClient({ username }: { username: string }) {
                         </div>
                       </div>
                     </div>
+
+                    {((previewItem.genres && previewItem.genres.length > 0) || 
+                      (previewItem.styles && previewItem.styles.length > 0)) && (
+                      <div className="pt-2">
+                        <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                          <Sparkles className="w-4 h-4 text-indigo-400" /> Géneros y Estilos
+                        </span>
+                        <div className="flex flex-wrap gap-1.5 p-3 rounded-xl bg-slate-900/40 border border-white/5">
+                          {previewItem.genres?.map((g, idx) => (
+                            <span key={`gen-${idx}`} className="text-[10px] font-semibold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                              {g}
+                            </span>
+                          ))}
+                          {previewItem.styles?.map((s, idx) => (
+                            <span key={`sty-${idx}`} className="text-[10px] font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                              {s}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {previewItem.notes && (
                       <div className="pt-2">

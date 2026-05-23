@@ -46,7 +46,7 @@ const GRADIENT_PRESETS = [
 ];
 
 export default function SettingsPage() {
-  const { user, userData, refreshUserData } = useAuth();
+  const { user, userData, refreshUserData, logout } = useAuth();
 
   const getUserRole = (ud: typeof userData) => {
     if (!ud) return 'coleccionista';
@@ -302,8 +302,29 @@ export default function SettingsPage() {
       // 5. Delete the authentication user in Firebase Auth
       await user.delete();
 
-      // Redirect to login
-      window.location.href = '/login';
+      // Cierre de sesión explícito y limpieza de almacenamiento en navegador
+      try {
+        await logout();
+      } catch (e) {
+        console.error("Error during logout", e);
+      }
+      
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Limpiar todas las cookies
+        document.cookie.split(";").forEach((c) => {
+          document.cookie = c
+            .replace(/^ +/, "")
+            .replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+      } catch (e) {
+        console.error("Error cleaning storage/cookies", e);
+      }
+
+      // Redirección física dura a la raíz de la web
+      window.location.href = window.location.origin;
     } catch (err: any) {
       console.error('Error deleting account:', err);
       if (err.code === 'auth/requires-recent-login') {

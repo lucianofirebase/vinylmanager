@@ -31,6 +31,8 @@ interface VinylItem {
   photos?: string[];
   discogsPhotos?: string[];
   status?: string;
+  genres?: string[];
+  styles?: string[];
 }
 
 export default function WhatsAppMarketingPage() {

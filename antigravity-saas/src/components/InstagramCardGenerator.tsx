@@ -27,6 +27,8 @@ interface VinylItem {
   cover?: string;
   label?: string;
   year?: string;
+  genres?: string[];
+  styles?: string[];
 }
 
 interface InstagramCardGeneratorProps {

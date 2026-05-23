@@ -39,6 +39,8 @@ interface VinylItem {
   discogsId?: number | null;
   notes?: string;
   status?: string;
+  genres?: string[];
+  styles?: string[];
 }
 
 interface SellerData {
