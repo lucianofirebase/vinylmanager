@@ -945,6 +945,7 @@ export default function OnboardingPage() {
                 disabled={
                   (step === 2 && !userRole) ||
                   (step === 3 && (!isUsernameAvailable || isUsernameChecking)) ||
+                  (step === 5 && isSeller && hasPhysicalStore && !storeAddress.trim()) ||
                   isSyncing
                 }
                 className="btn-premium flex items-center gap-1.5 py-2.5 px-5 text-sm disabled:opacity-50 disabled:cursor-not-allowed"

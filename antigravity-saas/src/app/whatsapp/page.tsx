@@ -307,7 +307,7 @@ export default function WhatsAppMarketingPage() {
                     <div className="max-w-[85%] self-start bg-[#1f2c34] text-[#e9edef] rounded-xl rounded-tl-none p-3 shadow-md border border-white/5 relative">
                       {/* Tail of chat bubble */}
                       <div className="absolute -left-2.5 top-0 w-0 h-0 border-t-[8px] border-t-[#1f2c34] border-l-[10px] border-l-transparent" />
-                      <pre className="white-space-pre-wrap font-sans text-xs break-words leading-relaxed select-text">
+                      <pre className="whitespace-pre-wrap font-sans text-xs break-words leading-relaxed select-text">
                         {whatsappText}
                       </pre>
                     </div>

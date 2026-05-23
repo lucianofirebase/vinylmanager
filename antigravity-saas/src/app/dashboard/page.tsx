@@ -734,8 +734,8 @@ export default function DashboardPage() {
     const data: Omit<VinylItem, 'id'> = {
       artist: repairTextEncoding(formArtist.trim()),
       title: repairTextEncoding(formTitle.trim()),
-      price: Number(formPrice) || 0,
-      qty: Number(formQty) || 1,
+      price: Math.max(0, Number(formPrice) || 0),
+      qty: Math.max(1, Number(formQty) || 1),
       format: formFormat,
       grade: formGrade,
       gradeCover: formGradeCover,
@@ -813,19 +813,22 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!user || !moveToStoreItem) return;
     try {
+      const priceVal = Math.max(0, Number(movePrice) || 0);
+      const qtyVal = Math.max(1, Number(moveQty) || 1);
+
       const docRef = doc(db, 'users', user.uid, 'stock', moveToStoreItem.id);
       await updateDoc(docRef, {
         status: moveStatus,
-        price: Number(movePrice),
-        qty: Number(moveQty),
+        price: priceVal,
+        qty: qtyVal,
         grade: moveGrade,
       });
       
       setStock((prev) => prev.map((v) => v.id === moveToStoreItem.id ? { 
         ...v, 
         status: moveStatus,
-        price: Number(movePrice),
-        qty: Number(moveQty),
+        price: priceVal,
+        qty: qtyVal,
         grade: moveGrade,
       } : v));
       
@@ -964,9 +967,26 @@ export default function DashboardPage() {
     // Activar bloqueo de suspensión de pantalla
     await requestWakeLock();
 
+    // Helper local para manejar Rate Limits (429) de la API de Discogs
+    const fetchWithRateLimit = async (urlStr: string): Promise<Response> => {
+      let response = await fetch(urlStr);
+      if (response.status === 429) {
+        setImportLogs((prev) => [
+          { msg: `⚠️ Límite de API de Discogs alcanzado (429). Pausando importación por 8 segundos...`, type: 'warning' },
+          ...prev
+        ]);
+        await new Promise((resolve) => setTimeout(resolve, 8000));
+        response = await fetch(urlStr);
+      }
+      return response;
+    };
+
     try {
       const total = importData.length;
       setImportProgress({ current: 0, total, status: 'Iniciando importación...' });
+
+      let batch = writeBatch(db);
+      let batchCount = 0;
 
       for (let i = 0; i < total; i++) {
         const row = importData[i];
@@ -1008,7 +1028,7 @@ export default function DashboardPage() {
               const type = idMatch[1] === 'release' ? 'releases' : 'masters';
               const id = idMatch[2];
               try {
-                const res = await fetch(`https://api.discogs.com/${type}/${id}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+                const res = await fetchWithRateLimit(`https://api.discogs.com/${type}/${id}?key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
                 if (res.ok) {
                   const details = await res.json();
                   itemData = {
@@ -1030,7 +1050,7 @@ export default function DashboardPage() {
           // Search Discogs database if no details fetched yet
           if (!itemData && artist !== 'Desconocido' && title !== 'Desconocido') {
             const searchName = `${artist} ${title}`;
-            const res = await fetch(`https://api.discogs.com/database/search?q=${encodeURIComponent(searchName)}&format=${format}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
+            const res = await fetchWithRateLimit(`https://api.discogs.com/database/search?q=${encodeURIComponent(searchName)}&format=${format}&key=${DISCOGS_KEY}&secret=${DISCOGS_SECRET}`);
             if (res.ok) {
               const searchData = await res.json();
               const bestMatch = searchData.results && searchData.results[0];
@@ -1057,8 +1077,8 @@ export default function DashboardPage() {
             artist: repairTextEncoding(itemData.artist || ''),
             title: repairTextEncoding(itemData.title || ''),
             label: repairTextEncoding(itemData.label || ''),
-            price,
-            qty,
+            price: Math.max(0, price),
+            qty: Math.max(1, qty),
             grade,
             gradeCover: grade,
             format,
@@ -1067,8 +1087,15 @@ export default function DashboardPage() {
             url
           };
 
-          const stockCol = collection(db, 'users', user.uid, 'stock');
-          await addDoc(stockCol, newItem);
+          const docRef = doc(collection(db, 'users', user.uid, 'stock'));
+          batch.set(docRef, newItem);
+          batchCount++;
+
+          if (batchCount === 500) {
+            await batch.commit();
+            batch = writeBatch(db);
+            batchCount = 0;
+          }
 
           setImportLogs((prev) => [
             { 
@@ -1089,6 +1116,10 @@ export default function DashboardPage() {
 
         // Discogs rate limit delay (1.5 seconds)
         await new Promise((r) => setTimeout(r, 1500));
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
       }
 
       setImportProgress((prev) => ({ ...prev, status: '¡Importación finalizada!' }));
