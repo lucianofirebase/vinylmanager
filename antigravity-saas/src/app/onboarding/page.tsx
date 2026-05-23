@@ -219,22 +219,51 @@ export default function OnboardingPage() {
     // Activar bloqueo de suspensión de pantalla
     await requestWakeLock();
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 segundos de tiempo de espera
+    let pageTimeoutId: any = null;
 
     try {
-      const res = await fetch(
-        `https://api.discogs.com/users/${discogsUsername.trim()}/collection/folders/0/releases?per_page=100&sort=added&sort_order=desc`,
-        { signal: controller.signal }
-      );
-      clearTimeout(timeoutId);
+      let releases: any[] = [];
+      let page = 1;
+      let totalPages = 1;
 
-      if (!res.ok) {
-        throw new Error("No se pudo acceder a tu colección. ¿Es pública?");
-      }
+      do {
+        setSyncProgress({ 
+          current: 0, 
+          total: 0, 
+          status: `Descargando colección de Discogs (Pág. ${page}${totalPages > 1 ? ` de ${totalPages}` : ''})...` 
+        });
 
-      const data = await res.json();
-      const releases = data.releases || [];
+        const controller = new AbortController();
+        pageTimeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout per page fetch
+
+        const res = await fetch(
+          `https://api.discogs.com/users/${discogsUsername.trim()}/collection/folders/0/releases?page=${page}&per_page=100&sort=added&sort_order=desc`,
+          { signal: controller.signal }
+        );
+        clearTimeout(pageTimeoutId);
+        pageTimeoutId = null;
+
+        if (!res.ok) {
+          throw new Error("No se pudo acceder a tu colección. ¿Es pública?");
+        }
+
+        const data = await res.json();
+        const pageReleases = data.releases || [];
+        releases = [...releases, ...pageReleases];
+        
+        totalPages = data.pagination?.pages || 1;
+
+        if (pageReleases.length === 0) {
+          break;
+        }
+
+        page++;
+        if (page <= totalPages) {
+          // Pause slightly between page fetches to respect Discogs API rate limits
+          await new Promise((r) => setTimeout(r, 800));
+        }
+      } while (page <= totalPages);
+
       const total = releases.length;
 
       if (total === 0) {
@@ -302,7 +331,9 @@ export default function OnboardingPage() {
       setSyncDone(true);
     } catch (err: any) {
       console.error(err);
-      clearTimeout(timeoutId);
+      if (pageTimeoutId) {
+        clearTimeout(pageTimeoutId);
+      }
       if (err.name === 'AbortError') {
         setSyncProgress({ current: 0, total: 0, status: 'Tiempo de espera agotado al conectar con Discogs (15s).' });
       } else {
