@@ -3,9 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardShell from '../../components/DashboardShell';
-import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, collection, getDocs, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User as UserIcon, 
   Check, 
@@ -23,7 +23,9 @@ import {
   Compass,
   ChevronDown,
   Phone,
-  MapPin
+  MapPin,
+  X,
+  Trash2
 } from 'lucide-react';
 
 const INTERESTS_PRESETS = [
@@ -76,6 +78,12 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Delete Account States
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [deleteConfirmUsername, setDeleteConfirmUsername] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Pre-populate settings from AuthContext
   useEffect(() => {
@@ -241,6 +249,66 @@ export default function SettingsPage() {
       setSaveError('Ocurrió un error al guardar los cambios.');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccountClick = () => {
+    setDeleteConfirmUsername('');
+    setDeleteError(null);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const handleDeleteAccountConfirm = async () => {
+    if (!user || !userData) return;
+    if (deleteConfirmUsername !== userData.username) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      // 1. Delete username reservation
+      if (userData.username) {
+        await deleteDoc(doc(db, 'usernames', userData.username));
+      }
+
+      // 2. Fetch and delete all stock items
+      const stockRef = collection(db, 'users', user.uid, 'stock');
+      const stockSnap = await getDocs(stockRef);
+      if (!stockSnap.empty) {
+        const batch = writeBatch(db);
+        stockSnap.forEach((d) => {
+          batch.delete(doc(db, 'users', user.uid, 'stock', d.id));
+        });
+        await batch.commit();
+      }
+
+      // 3. Fetch and delete all sales items (if any exist)
+      const salesRef = collection(db, 'users', user.uid, 'sales');
+      const salesSnap = await getDocs(salesRef);
+      if (!salesSnap.empty) {
+        const batch = writeBatch(db);
+        salesSnap.forEach((d) => {
+          batch.delete(doc(db, 'users', user.uid, 'sales', d.id));
+        });
+        await batch.commit();
+      }
+
+      // 4. Delete the main user doc in Firestore
+      await deleteDoc(doc(db, 'users', user.uid));
+
+      // 5. Delete the authentication user in Firebase Auth
+      await user.delete();
+
+      // Redirect to login
+      window.location.href = '/login';
+    } catch (err: any) {
+      console.error('Error deleting account:', err);
+      if (err.code === 'auth/requires-recent-login') {
+        setDeleteError('Por seguridad, esta acción requiere haber iniciado sesión recientemente. Por favor cierra sesión, vuelve a ingresar e intenta nuevamente.');
+      } else {
+        setDeleteError('Ocurrió un error al eliminar tu cuenta. Por favor intenta de nuevo.');
+      }
+      setIsDeleting(false);
     }
   };
 
@@ -559,6 +627,112 @@ export default function SettingsPage() {
             </div>
           </div>
         </form>
+
+        {/* Zona de Peligro: Eliminar Cuenta */}
+        <div className="mt-8 glass-card rounded-2xl border border-red-500/10 bg-red-950/5 p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-bold text-red-400 flex items-center gap-2">
+                <AlertCircle className="w-5 h-5 text-red-400" />
+                <span>Zona de Peligro: Eliminar Cuenta</span>
+              </h3>
+              <p className="text-gray-405 text-xs mt-1">
+                Esta acción es permanente. Se eliminará tu perfil de usuario, tu nombre de usuario reservado, todo tu stock e historial de ventas. No se puede deshacer.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleDeleteAccountClick}
+              className="px-5 py-2.5 rounded-xl border border-red-500/20 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 font-bold text-xs transition-all whitespace-nowrap self-start sm:self-center"
+            >
+              Eliminar Cuenta
+            </button>
+          </div>
+        </div>
+
+        {/* MODAL: CONFIRM DELETION */}
+        <AnimatePresence>
+          {isDeleteConfirmOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsDeleteConfirmOpen(false)}
+                className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+              />
+              
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                className="bg-[#0f172a] w-full max-w-md rounded-3xl relative border border-red-500/20 z-10 overflow-hidden shadow-2xl"
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-white/5 relative bg-red-950/10">
+                  <h3 className="text-xl font-bold text-red-400 flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5 animate-pulse" />
+                    <span>¿Eliminar tu cuenta?</span>
+                  </h3>
+                  <button 
+                    onClick={() => setIsDeleteConfirmOpen(false)}
+                    className="absolute right-6 top-6 text-gray-400 hover:text-white transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Form */}
+                <div className="p-6 space-y-4">
+                  <p className="text-sm text-gray-300 leading-relaxed">
+                    Para confirmar que deseas eliminar tu cuenta de forma permanente, por favor escribe tu nombre de usuario <span className="text-red-400 font-bold">@{userData?.username}</span> a continuación:
+                  </p>
+
+                  <input
+                    type="text"
+                    placeholder="Escribe tu nombre de usuario"
+                    value={deleteConfirmUsername}
+                    onChange={(e) => setDeleteConfirmUsername(e.target.value)}
+                    className="w-full input-premium text-sm font-semibold border-red-500/20 focus:border-red-500/50 focus:ring-red-500/50"
+                  />
+
+                  {deleteError && (
+                    <p className="text-red-400 text-xs font-semibold flex items-center gap-1.5 bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{deleteError}</span>
+                    </p>
+                  )}
+
+                  {/* Buttons */}
+                  <div className="pt-4 border-t border-white/5 flex justify-end gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteConfirmOpen(false)}
+                      className="btn-secondary-premium px-4 py-2 text-xs"
+                      disabled={isDeleting}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAccountConfirm}
+                      disabled={deleteConfirmUsername !== userData?.username || isDeleting}
+                      className="px-5 py-2 rounded-xl text-xs flex items-center gap-1.5 bg-red-600 hover:bg-red-700 disabled:bg-red-950/40 disabled:text-red-400/50 text-white font-bold transition-all"
+                    >
+                      {isDeleting ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
+                      <span>Eliminar Permanentemente</span>
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
       </div>
     </DashboardShell>
   );
