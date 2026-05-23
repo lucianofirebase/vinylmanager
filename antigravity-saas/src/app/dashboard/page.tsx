@@ -533,6 +533,13 @@ export default function DashboardPage() {
     return 0;
   });
 
+  const [visibleCount, setVisibleCount] = useState(30);
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [searchQuery, formatFilter, statusFilter, activeTab, sortBy]);
+
+  const slicedStock = sortedStock.slice(0, visibleCount);
+
   // Handle individual item selection
   const toggleSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1587,7 +1594,7 @@ export default function DashboardPage() {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 select-none">
-            {sortedStock.map((item) => {
+            {slicedStock.map((item) => {
               const isSelected = selectedIds.has(item.id);
               return (
                 <div
@@ -1716,7 +1723,7 @@ export default function DashboardPage() {
               <div className={`text-right pr-2 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-5'}`}>Acciones</div>
             </div>
 
-            {sortedStock.map((item) => {
+            {slicedStock.map((item) => {
               const isSelected = selectedIds.has(item.id);
               return (
                 <div
@@ -1821,6 +1828,19 @@ export default function DashboardPage() {
               );
             })}
             </div>
+          </div>
+        )}
+
+        {/* Load More Indicator/Trigger */}
+        {visibleCount < sortedStock.length && (
+          <div className="pt-8 flex justify-center pb-4">
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 30)}
+              className="btn-secondary-premium px-6 py-3 text-xs font-bold flex items-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4 text-indigo-400 animate-spin-slow" />
+              <span>Cargar más discos ({sortedStock.length - visibleCount} restantes)</span>
+            </button>
           </div>
         )}
 

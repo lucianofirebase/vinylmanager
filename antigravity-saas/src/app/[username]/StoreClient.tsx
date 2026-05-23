@@ -15,7 +15,10 @@ import {
   X,
   Disc,
   MapPin,
-  Check
+  Check,
+  RefreshCw,
+  ShoppingBag,
+  Trash2
 } from 'lucide-react';
 import Link from 'next/link';
 import AudioPreviewPlayer from '../../components/AudioPreviewPlayer';
@@ -50,11 +53,12 @@ interface StoreOwner {
   whatsappPhone?: string;
   currency?: string;
   isPublicStore?: boolean;
+  storeTheme?: 'midnight' | 'retro-amber' | 'acid-neon' | 'mono-classic';
 }
 
-const getFormatBadgeColor = (format: string) => {
+const getFormatBadgeColor = (format: string, theme?: any) => {
   switch (format.toLowerCase()) {
-    case 'vinyl': return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
+    case 'vinyl': return theme ? theme.badgeAccent : 'bg-purple-500/10 text-purple-400 border-purple-500/20';
     case 'cd': return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
     case 'cassette': return 'bg-orange-500/10 text-orange-400 border-orange-500/20';
     default: return 'bg-gray-500/10 text-gray-400 border-gray-500/20';
@@ -121,6 +125,7 @@ export default function StoreClient({ username }: { username: string }) {
           avatarType: userData.avatarType || 'preset',
           whatsappPhone: userData.whatsappPhone || '',
           currency: userData.currency || 'USD',
+          storeTheme: userData.storeTheme || 'midnight',
         };
         setOwner(storeOwner);
 
@@ -168,6 +173,75 @@ export default function StoreClient({ username }: { username: string }) {
     return matchesSearch && matchesFormat;
   });
 
+  const [visibleCount, setVisibleCount] = useState(30);
+  useEffect(() => {
+    setVisibleCount(30);
+  }, [searchQuery, filterFormat]);
+
+  const slicedStock = filteredStock.slice(0, visibleCount);
+
+  // Digging Pile States
+  const [diggingPile, setDiggingPile] = useState<VinylItem[]>([]);
+  const [isPileDrawerOpen, setIsPileDrawerOpen] = useState(false);
+
+  // Load from localStorage on mount (once owner is available to avoid mixing piles of different shops)
+  useEffect(() => {
+    if (owner?.username) {
+      const saved = localStorage.getItem(`diggingPile_${owner.username}`);
+      if (saved) {
+        try {
+          setDiggingPile(JSON.parse(saved));
+        } catch (e) {
+          console.error('Error parsing digging pile', e);
+        }
+      }
+    }
+  }, [owner]);
+
+  // Save to localStorage when it changes
+  const savePile = (newPile: VinylItem[]) => {
+    setDiggingPile(newPile);
+    if (owner?.username) {
+      localStorage.setItem(`diggingPile_${owner.username}`, JSON.stringify(newPile));
+    }
+  };
+
+  const addToPile = (item: VinylItem) => {
+    if (diggingPile.some((x) => x.id === item.id)) return;
+    const newPile = [...diggingPile, item];
+    savePile(newPile);
+  };
+
+  const removeFromPile = (id: string) => {
+    const newPile = diggingPile.filter((x) => x.id !== id);
+    savePile(newPile);
+  };
+
+  const clearPile = () => {
+    savePile([]);
+  };
+
+  const isInPile = (id: string) => {
+    return diggingPile.some((x) => x.id === id);
+  };
+
+  const handleSendWhatsAppOrder = () => {
+    if (!owner?.whatsappPhone || diggingPile.length === 0) return;
+
+    let itemsText = '';
+    let totalSum = 0;
+
+    diggingPile.forEach((item) => {
+      itemsText += `* 💿 ${item.artist} - ${item.title} (${item.format || 'Vinyl'} | ${item.grade || 'VG+'}) - ${formatCurrency(item.price, owner.currency)}\n`;
+      totalSum += item.price;
+    });
+
+    const message = `¡Hola! Me interesan estos artículos de tu catálogo en VinylStock:\n\n${itemsText}\n*Total estimado:* ${formatCurrency(totalSum, owner.currency)}\n\n¿Están disponibles? ¡Gracias!`;
+
+    const url = `https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+  };
+
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -177,6 +251,111 @@ export default function StoreClient({ username }: { username: string }) {
       console.error('Error copying to clipboard', err);
     }
   };
+
+  const themeConfig = {
+    midnight: {
+      bg: 'bg-[#030712]',
+      selectionBg: 'selection:bg-indigo-500/30',
+      textAccent: 'text-indigo-400',
+      textAccentHover: 'hover:text-indigo-300',
+      borderAccent: 'border-indigo-500/20 hover:border-indigo-500/40',
+      btnPrimary: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25',
+      btnSecondary: 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-indigo-500/30 text-white',
+      badgeAccent: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/20',
+      cardHoverShadow: 'hover:shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)] hover:border-indigo-500/25',
+      searchFocusIcon: 'group-focus-within:text-indigo-400',
+      searchFocusInput: 'focus:border-indigo-500/50 focus:ring-indigo-500/50',
+      activePhotoBorder: 'border-indigo-500',
+      inactiveCartBtn: 'bg-white/5 text-indigo-300 border-indigo-500/20 hover:border-indigo-500/40 hover:bg-indigo-500/5',
+      interestBtnShadow: 'shadow-indigo-500/20',
+      floatingCartBtn: 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-400/30',
+      drawerTopIndicator: 'via-indigo-500/50',
+      checkoutBtn: 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25 border-indigo-500/30',
+      orbs: (
+        <>
+          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[100px] mix-blend-screen" />
+        </>
+      )
+    },
+    'retro-amber': {
+      bg: 'bg-[#0c0a09]',
+      selectionBg: 'selection:bg-amber-500/30',
+      textAccent: 'text-amber-500',
+      textAccentHover: 'hover:text-amber-400',
+      borderAccent: 'border-amber-500/20 hover:border-amber-500/45',
+      btnPrimary: 'bg-amber-600 hover:bg-amber-500 text-black shadow-amber-500/10 font-bold',
+      btnSecondary: 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-amber-500/35 text-amber-100',
+      badgeAccent: 'bg-amber-500/20 text-amber-400 border-amber-500/20',
+      cardHoverShadow: 'hover:shadow-[0_20px_40px_-15px_rgba(245,158,11,0.15)] hover:border-amber-500/25',
+      searchFocusIcon: 'group-focus-within:text-amber-500',
+      searchFocusInput: 'focus:border-amber-500/50 focus:ring-amber-500/50',
+      activePhotoBorder: 'border-amber-500',
+      inactiveCartBtn: 'bg-white/5 text-amber-300 border-amber-500/20 hover:border-amber-500/40 hover:bg-amber-500/5',
+      interestBtnShadow: 'shadow-amber-500/10',
+      floatingCartBtn: 'bg-amber-600 hover:bg-amber-500 text-black border-amber-400/30',
+      drawerTopIndicator: 'via-amber-500/50',
+      checkoutBtn: 'bg-amber-600 hover:bg-amber-500 text-black shadow-amber-500/25 border-amber-500/30',
+      orbs: (
+        <>
+          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-amber-600/5 rounded-full blur-[120px] mix-blend-screen" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-orange-600/5 rounded-full blur-[100px] mix-blend-screen" />
+        </>
+      )
+    },
+    'acid-neon': {
+      bg: 'bg-[#020504]',
+      selectionBg: 'selection:bg-lime-500/30',
+      textAccent: 'text-lime-400',
+      textAccentHover: 'hover:text-lime-300',
+      borderAccent: 'border-lime-500/20 hover:border-lime-500/40',
+      btnPrimary: 'bg-lime-500 hover:bg-lime-400 text-black shadow-lime-500/15 font-bold',
+      btnSecondary: 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-lime-500/30 text-lime-100',
+      badgeAccent: 'bg-lime-500/20 text-lime-400 border-lime-500/20',
+      cardHoverShadow: 'hover:shadow-[0_20px_40px_-15px_rgba(132,204,22,0.15)] hover:border-lime-500/25',
+      searchFocusIcon: 'group-focus-within:text-lime-400',
+      searchFocusInput: 'focus:border-lime-500/50 focus:ring-lime-500/50',
+      activePhotoBorder: 'border-lime-500',
+      inactiveCartBtn: 'bg-white/5 text-lime-300 border-lime-500/20 hover:border-lime-500/40 hover:bg-lime-500/5',
+      interestBtnShadow: 'shadow-lime-500/15',
+      floatingCartBtn: 'bg-lime-500 hover:bg-lime-400 text-black border-lime-400/30',
+      drawerTopIndicator: 'via-lime-500/50',
+      checkoutBtn: 'bg-lime-500 hover:bg-lime-400 text-black shadow-lime-500/25 border-lime-500/30',
+      orbs: (
+        <>
+          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-lime-600/5 rounded-full blur-[120px] mix-blend-screen" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-fuchsia-600/5 rounded-full blur-[100px] mix-blend-screen" />
+        </>
+      )
+    },
+    'mono-classic': {
+      bg: 'bg-[#0f172a]',
+      selectionBg: 'selection:bg-slate-500/30',
+      textAccent: 'text-slate-200',
+      textAccentHover: 'hover:text-white',
+      borderAccent: 'border-slate-500/20 hover:border-slate-500/40',
+      btnPrimary: 'bg-white hover:bg-gray-100 text-black shadow-slate-500/10 font-bold',
+      btnSecondary: 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20 text-slate-200',
+      badgeAccent: 'bg-slate-500/20 text-slate-350 border-slate-500/20',
+      cardHoverShadow: 'hover:shadow-[0_20px_40px_-15px_rgba(255,255,255,0.05)] hover:border-white/15',
+      searchFocusIcon: 'group-focus-within:text-slate-200',
+      searchFocusInput: 'focus:border-slate-500/50 focus:ring-slate-500/50',
+      activePhotoBorder: 'border-slate-200',
+      inactiveCartBtn: 'bg-white/5 text-slate-350 border-slate-500/20 hover:border-slate-500/40 hover:bg-slate-500/5',
+      interestBtnShadow: 'shadow-slate-500/10',
+      floatingCartBtn: 'bg-white hover:bg-gray-100 text-black border-slate-400/30',
+      drawerTopIndicator: 'via-slate-500/50',
+      checkoutBtn: 'bg-white hover:bg-gray-100 text-black shadow-slate-500/10 border-slate-500/30',
+      orbs: (
+        <>
+          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-slate-500/5 rounded-full blur-[120px] mix-blend-screen" />
+          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-zinc-600/5 rounded-full blur-[100px] mix-blend-screen" />
+        </>
+      )
+    }
+  };
+
+  const theme = themeConfig[owner?.storeTheme || 'midnight'] || themeConfig.midnight;
 
   const renderAvatar = () => {
     if (!owner) return null;
@@ -246,11 +425,10 @@ export default function StoreClient({ username }: { username: string }) {
   }
 
   return (
-    <div className="min-h-screen bg-[#030712] text-white selection:bg-indigo-500/30">
+    <div className={`min-h-screen ${theme.bg} text-white ${theme.selectionBg}`}>
       {/* Dynamic Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
-        <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[120px] mix-blend-screen" />
-        <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-emerald-600/10 rounded-full blur-[100px] mix-blend-screen" />
+        {theme.orbs}
         <div className="absolute inset-0 bg-[url('/noise.png')] opacity-[0.03] mix-blend-overlay" />
       </div>
 
@@ -268,11 +446,11 @@ export default function StoreClient({ username }: { username: string }) {
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-[#030712] via-[#030712]/80 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/50 to-transparent" />
           </div>
 
           <div className="relative p-8 md:p-12 flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-[#030712] shadow-2xl overflow-hidden shrink-0 bg-slate-800 z-10">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-full border-4 border-black/40 shadow-2xl overflow-hidden shrink-0 bg-slate-800 z-10">
               {renderAvatar()}
             </div>
             
@@ -289,8 +467,8 @@ export default function StoreClient({ username }: { username: string }) {
               {(owner as any)?.storeAddress && (
                 <div className="mt-4 rounded-2xl overflow-hidden border border-white/5 bg-slate-900/40">
                   <div className="flex items-center gap-2.5 px-4 py-3 border-b border-white/5">
-                    <div className="w-6 h-6 rounded-lg bg-indigo-500/20 flex items-center justify-center">
-                      <MapPin className="w-3.5 h-3.5 text-indigo-400" />
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${theme.badgeAccent}`}>
+                      <MapPin className="w-3.5 h-3.5" />
                     </div>
                     <div>
                       <p className="text-xs font-semibold text-white">{(owner as any).storeAddress}</p>
@@ -300,7 +478,7 @@ export default function StoreClient({ username }: { username: string }) {
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent((owner as any).storeAddress)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="ml-auto text-[10px] text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1 whitespace-nowrap"
+                      className={`ml-auto text-[10px] font-semibold flex items-center gap-1 whitespace-nowrap ${theme.textAccent} ${theme.textAccentHover}`}
                     >
                       Ver mapa →
                     </a>
@@ -334,7 +512,7 @@ export default function StoreClient({ username }: { username: string }) {
                   href={`https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(`Hola! Vengo de tu tienda online VinylStock.`)}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto btn-primary-premium px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm shadow-xl shadow-indigo-500/20 whitespace-nowrap"
+                  className={`w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all duration-300 shadow-xl whitespace-nowrap ${theme.btnPrimary} ${theme.interestBtnShadow}`}
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Contactar</span>
@@ -342,7 +520,7 @@ export default function StoreClient({ username }: { username: string }) {
               )}
               <button 
                 onClick={handleShare}
-                className="w-full sm:w-auto btn-secondary-premium px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10"
+                className={`w-full sm:w-auto px-6 py-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all duration-300 backdrop-blur-md ${theme.btnSecondary}`}
               >
                 {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Share2 className="w-4 h-4 text-white" />}
                 <span>{copied ? 'Copiado' : 'Compartir'}</span>
@@ -355,14 +533,14 @@ export default function StoreClient({ username }: { username: string }) {
         <div className="mb-10 space-y-4">
           <div className="relative group max-w-3xl mx-auto">
             <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400 group-focus-within:text-indigo-400 transition-colors" />
+              <Search className={`h-5 w-5 text-gray-400 transition-colors ${theme.searchFocusIcon}`} />
             </div>
             <input
               type="text"
               placeholder="Buscar por artista, título o sello..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="block w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-900/50 border border-white/10 text-white placeholder-gray-500 focus:bg-slate-900/80 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 transition-all shadow-xl"
+              className={`block w-full pl-12 pr-4 py-4 rounded-2xl bg-slate-900/50 border border-white/10 text-white placeholder-gray-500 focus:bg-slate-900/80 focus:ring-1 transition-all shadow-xl ${theme.searchFocusInput}`}
             />
           </div>
           
@@ -374,7 +552,7 @@ export default function StoreClient({ username }: { username: string }) {
                 onClick={() => setFilterFormat(f)}
                 className={`px-4 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                   filterFormat === f 
-                    ? 'bg-indigo-500/20 border-indigo-500/50 text-indigo-300'
+                    ? `${theme.badgeAccent} border-current`
                     : 'bg-slate-900/40 border-white/5 text-gray-400 hover:text-white hover:border-white/20'
                 }`}
               >
@@ -392,18 +570,40 @@ export default function StoreClient({ username }: { username: string }) {
             <p className="text-gray-500 mt-2">Intenta con otra búsqueda o el vendedor no tiene stock disponible en este momento.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
-             {filteredStock.map((item) => (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+             {slicedStock.map((item) => (
               <div 
                 key={item.id}
                 onClick={() => {
                   setPreviewItem(item);
                   setActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
                 }}
-                className="p-2 rounded-[2rem] bg-white/5 border border-white/10 hover:border-indigo-500/25 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group flex flex-col relative hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)]"
+                className={`p-2 rounded-[2rem] bg-white/5 border border-white/10 hover:border-current transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group flex flex-col relative hover:-translate-y-1 ${theme.cardHoverShadow}`}
               >
                 <div className="flex-1 flex flex-col overflow-hidden bg-[#0d1326] rounded-[calc(2rem-0.5rem)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-white/5 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]">
                   <div className="aspect-square w-full bg-slate-900 flex items-center justify-center relative overflow-hidden border-b border-white/5">
+                    {/* Botón rápido Pila de Diggeo */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isInPile(item.id)) {
+                          removeFromPile(item.id);
+                        } else {
+                          addToPile(item);
+                        }
+                      }}
+                      className={`absolute top-3 left-3 p-2 rounded-xl border transition-all duration-300 backdrop-blur-md shadow-lg z-20 ${
+                        isInPile(item.id)
+                          ? `${theme.btnPrimary} scale-110`
+                          : 'bg-black/50 text-gray-300 border-white/10 hover:border-white/30 hover:bg-black/70 hover:scale-105 opacity-0 group-hover:opacity-100'
+                      }`}
+                      title={isInPile(item.id) ? "Quitar de mi selección" : "Agregar a mi selección"}
+                    >
+                      <ShoppingBag className="w-3.5 h-3.5" />
+                    </button>
+
                     {item.cover ? (
                       <img 
                         src={item.cover} 
@@ -423,7 +623,7 @@ export default function StoreClient({ username }: { username: string }) {
                           Reservado
                         </span>
                       )}
-                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format || 'Vinyl')}`}>
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format || 'Vinyl', theme)}`}>
                         {item.format || 'Vinyl'}
                       </span>
                     </div>
@@ -431,7 +631,7 @@ export default function StoreClient({ username }: { username: string }) {
 
                   <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
                     <div className="space-y-1">
-                      <h4 className="text-xs font-black text-indigo-400 tracking-wider uppercase leading-none truncate">
+                      <h4 className={`text-xs font-black ${theme.textAccent} tracking-wider uppercase leading-none truncate`}>
                         {item.artist}
                       </h4>
                       <h3 className="text-base font-bold text-white leading-tight line-clamp-2">
@@ -459,8 +659,21 @@ export default function StoreClient({ username }: { username: string }) {
               </div>
             ))}
           </div>
-        )}
-      </div>
+
+          {filteredStock.length > visibleCount && (
+            <div className="flex justify-center mt-12">
+              <button
+                onClick={() => setVisibleCount((prev) => prev + 30)}
+                className={`px-8 py-3.5 rounded-2xl font-bold flex items-center gap-2 border transition-all duration-300 backdrop-blur-md shadow-lg ${theme.btnSecondary}`}
+              >
+                <RefreshCw className="w-4 h-4 animate-spin-slow" />
+                <span>Cargar más discos</span>
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
 
       {/* Preview Modal */}
       <AnimatePresence>
@@ -509,7 +722,7 @@ export default function StoreClient({ username }: { username: string }) {
                           key={i}
                           onClick={() => setActivePhoto(photo)}
                           className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 shrink-0 transition-all ${
-                            activePhoto === photo ? 'border-indigo-500 scale-105' : 'border-white/5 opacity-50 hover:opacity-100'
+                            activePhoto === photo ? `${theme.activePhotoBorder} scale-105` : 'border-white/5 opacity-50 hover:opacity-100'
                           }`}
                         >
                           <img src={photo} alt="thumbnail" className="w-full h-full object-cover" />
@@ -523,7 +736,7 @@ export default function StoreClient({ username }: { username: string }) {
                 <div className="md:col-span-7 space-y-6">
                   <div className="space-y-4">
                     <div>
-                      <span className="text-xs font-extrabold text-indigo-400 tracking-wider uppercase">
+                      <span className={`text-xs font-extrabold ${theme.textAccent} tracking-wider uppercase`}>
                         {previewItem.artist}
                       </span>
                       <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight mt-1 leading-tight">
@@ -578,16 +791,39 @@ export default function StoreClient({ username }: { username: string }) {
                     )}
                   </div>
 
-                  <div className="pt-6 border-t border-white/5">
+                  <div className="pt-6 border-t border-white/5 space-y-3">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isInPile(previewItem.id)) {
+                          removeFromPile(previewItem.id);
+                        } else {
+                          addToPile(previewItem);
+                        }
+                      }}
+                      className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 text-sm font-bold border transition-all duration-300 ${
+                        isInPile(previewItem.id)
+                          ? `${theme.btnPrimary} ${theme.interestBtnShadow}`
+                          : theme.inactiveCartBtn
+                      }`}
+                    >
+                      <ShoppingBag className="w-4 h-4" />
+                      <span>
+                        {isInPile(previewItem.id)
+                          ? 'Quitar de mi selección'
+                          : 'Agregar a mi selección (WhatsApp Cart)'}
+                      </span>
+                    </button>
+
                     {owner.whatsappPhone ? (
                       <a
                         href={`https://wa.me/${owner.whatsappPhone}?text=${encodeURIComponent(`Hola! Me interesa este ${previewItem.format === 'CD' ? 'CD' : previewItem.format === 'Cassette' ? 'Cassette' : 'disco'} de tu tienda pública: ${previewItem.artist} - ${previewItem.title}`)}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="w-full btn-primary-premium py-4 rounded-xl flex items-center justify-center gap-2 text-lg font-bold shadow-xl shadow-indigo-500/20"
+                        className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 text-lg font-bold shadow-xl transition-all duration-300 ${theme.btnPrimary} ${theme.interestBtnShadow}`}
                       >
                         <MessageSquare className="w-5 h-5" />
-                        <span>Me interesa (WhatsApp)</span>
+                        <span>Comprar ahora (WhatsApp)</span>
                       </a>
                     ) : (
                       <div className="w-full bg-slate-900/80 border border-white/5 py-4 rounded-xl flex items-center justify-center text-gray-400 font-bold text-sm">
@@ -607,6 +843,163 @@ export default function StoreClient({ username }: { username: string }) {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Botón Flotante de Selección (Pila de Diggeo) */}
+      <AnimatePresence>
+        {diggingPile.length > 0 && (
+          <motion.button
+            initial={{ opacity: 0, scale: 0.8, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: 20 }}
+            onClick={() => setIsPileDrawerOpen(true)}
+            className={`fixed bottom-6 right-6 z-40 p-4 rounded-full border shadow-2xl flex items-center gap-2 group transition-all duration-300 ${theme.floatingCartBtn}`}
+          >
+            <div className="relative">
+              <ShoppingBag className="w-6 h-6 group-hover:scale-110 transition-transform" />
+              <span className="absolute -top-2.5 -right-2.5 bg-emerald-500 text-black text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center border-2 border-slate-950 animate-pulse">
+                {diggingPile.length}
+              </span>
+            </div>
+            <span className="max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-out font-bold text-xs whitespace-nowrap">
+              Ver mi selección
+            </span>
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      {/* Drawer de la Pila de Diggeo (WhatsApp Shopping Cart) */}
+      <AnimatePresence>
+        {isPileDrawerOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsPileDrawerOpen(false)}
+              className="fixed inset-0 bg-black z-40 backdrop-blur-sm"
+            />
+            {/* Drawer */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 bottom-0 w-full sm:max-w-md bg-slate-950/95 border-l border-white/10 z-50 flex flex-col shadow-2xl backdrop-blur-xl"
+            >
+              {/* Top Accent line */}
+              <div className={`h-1.5 w-full bg-gradient-to-r from-transparent ${theme.drawerTopIndicator} to-transparent`} />
+
+              {/* Header */}
+              <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <ShoppingBag className={`w-5 h-5 ${theme.textAccent}`} />
+                  <div>
+                    <h3 className="font-extrabold text-white text-lg leading-tight">Mi Selección</h3>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">WhatsApp Shopping Cart</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={clearPile}
+                    title="Vaciar selección"
+                    className="p-2 rounded-xl bg-white/5 border border-white/5 text-gray-400 hover:text-red-400 hover:border-red-500/20 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => setIsPileDrawerOpen(false)}
+                    className="p-2 rounded-xl bg-white/5 border border-white/5 text-gray-400 hover:text-white transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Items List */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
+                {diggingPile.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                      <ShoppingBag className="w-8 h-8 text-gray-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-white text-sm">Tu selección está vacía</h4>
+                      <p className="text-xs text-gray-500 mt-1 max-w-[200px]">
+                        Navega por la tienda y agrega los discos que te interesan.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  diggingPile.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 bg-white/5 border border-white/5 rounded-2xl p-3 hover:border-white/10 transition-all group"
+                    >
+                      <div className="w-12 h-12 bg-slate-900 rounded-xl overflow-hidden shrink-0 border border-white/5">
+                        {item.cover ? (
+                          <img src={item.cover} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-600">
+                            <Music className="w-5 h-5" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-xs font-bold text-white truncate leading-tight">
+                          {item.title}
+                        </h4>
+                        <p className={`text-[10px] font-bold ${theme.textAccent} truncate uppercase tracking-wider mt-0.5`}>
+                          {item.artist}
+                        </p>
+                        <span className="inline-block mt-1 text-[9px] font-semibold bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-gray-400">
+                          {item.format || 'Vinyl'}
+                        </span>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-black text-emerald-400">
+                          {formatCurrency(item.price, owner.currency)}
+                        </p>
+                        <button
+                          onClick={() => removeFromPile(item.id)}
+                          className="text-[10px] text-gray-500 hover:text-red-400 font-bold block mt-1 transition-colors ml-auto"
+                        >
+                          Quitar
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Footer */}
+              {diggingPile.length > 0 && (
+                <div className="p-6 border-t border-white/5 bg-slate-950 space-y-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-400 font-medium">Total estimado:</span>
+                    <span className="text-xl font-black text-emerald-400">
+                      {formatCurrency(
+                        diggingPile.reduce((acc, x) => acc + x.price, 0),
+                        owner.currency
+                      )}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleSendWhatsAppOrder}
+                    className={`w-full py-4 rounded-xl flex items-center justify-center gap-2.5 text-sm font-bold border transition-all duration-300 shadow-xl ${theme.checkoutBtn}`}
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Enviar pedido por WhatsApp</span>
+                  </button>
+                  <p className="text-[9px] text-center text-gray-500 leading-normal">
+                    Se abrirá WhatsApp con el resumen consolidado de tu pedido para coordinar con el vendedor.
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </div>

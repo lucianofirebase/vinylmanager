@@ -28,6 +28,7 @@ interface UserData {
   storeBio?: string;
   storeAddress?: string;
   role?: 'vendedor' | 'coleccionista' | 'ambos';
+  storeTheme?: 'midnight' | 'retro-amber' | 'acid-neon' | 'mono-classic';
 }
 
 interface AuthContextType {

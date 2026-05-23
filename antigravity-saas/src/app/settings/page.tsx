@@ -74,6 +74,7 @@ export default function SettingsPage() {
   const [storeName, setStoreName] = useState('');
   const [storeBio, setStoreBio] = useState('');
   const [storeAddress, setStoreAddress] = useState('');
+  const [storeTheme, setStoreTheme] = useState<'midnight' | 'retro-amber' | 'acid-neon' | 'mono-classic'>('midnight');
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -97,6 +98,7 @@ export default function SettingsPage() {
       setStoreName(userData.storeName || '');
       setStoreBio(userData.storeBio || '');
       setStoreAddress((userData as any)?.storeAddress || '');
+      setStoreTheme((userData as any)?.storeTheme || 'midnight');
       
       if (userData.avatarType === 'upload') {
         setAvatarType('upload');
@@ -236,6 +238,7 @@ export default function SettingsPage() {
         storeName: storeName.trim(),
         storeBio: storeBio.trim(),
         storeAddress: storeAddress.trim() || null,
+        storeTheme: storeTheme,
         updatedAt: new Date(),
       }, { merge: true });
 
@@ -548,6 +551,38 @@ export default function SettingsPage() {
                       <p className="text-[10px] text-gray-500">Se mostrará en tu tienda pública con un mapa de Google Maps.</p>
                     </div>
                   )}
+
+                  {/* Showroom Themes card selector */}
+                  <div className="space-y-2 pt-2 border-t border-white/5">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block">Tema del Showroom</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { id: 'midnight', label: 'Midnight', desc: 'Índigo y Violeta', bg: 'bg-[#030712]', border: 'border-indigo-500/30', accent: 'bg-indigo-500' },
+                        { id: 'retro-amber', label: 'Retro Amber', desc: 'Ámbar Vintage', bg: 'bg-[#0b0c10]', border: 'border-amber-500/30', accent: 'bg-amber-500' },
+                        { id: 'acid-neon', label: 'Acid Neon', desc: 'Cyberpunk/Lime', bg: 'bg-[#020504]', border: 'border-lime-500/30', accent: 'bg-lime-500' },
+                        { id: 'mono-classic', label: 'Mono Classic', desc: 'Slate Elegante', bg: 'bg-[#0f172a]', border: 'border-slate-500/30', accent: 'bg-slate-400' },
+                      ].map((themeOpt) => {
+                        const isSelected = storeTheme === themeOpt.id;
+                        return (
+                          <div
+                            key={themeOpt.id}
+                            onClick={() => setStoreTheme(themeOpt.id as any)}
+                            className={`flex flex-col p-3 rounded-xl border cursor-pointer select-none text-left transition-all ${
+                              isSelected 
+                                ? 'border-indigo-500 bg-indigo-500/5 ring-1 ring-indigo-500/50' 
+                                : 'bg-[#0b0f19] border-white/5 hover:border-white/10 hover:bg-[#0f1524]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="text-xs font-bold text-white">{themeOpt.label}</span>
+                              <div className={`w-2.5 h-2.5 rounded-full ${themeOpt.accent}`} />
+                            </div>
+                            <span className="text-[9px] text-gray-400 leading-none">{themeOpt.desc}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
