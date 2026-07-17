@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Discogs Wishlist Matcher - Panel de Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <!-- Background Glowing Orbs for Antigravity Vibe -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+  
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="vinyl-logo" id="logo-vinyl">💿</div>
+        <h2>Discogs Matcher</h2>
+      </div>
+
+      <div class="sidebar-section user-section">
+        <h3>Tu Cuenta</h3>
+        <div class="user-card" id="user-card">
+          <div class="avatar" id="user-avatar">?</div>
+          <div class="user-details">
+            <span class="user-status" id="connection-status">Detectando sesión...</span>
+            <span class="username" id="username-display">Buscando usuario...</span>
+          </div>
+        </div>
+        
+        <div class="sidebar-location-box" style="margin-top: 12px;">
+          <label for="buyer-country" style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">País de Envío</label>
+          <select id="buyer-country" style="width: 100%; background: var(--bg-darkest); border: 1px solid var(--border-glow); border-radius: 8px; color: #fff; padding: 8px 10px; font-size: 12px; cursor: pointer; outline: none;">
+            <option value="Uruguay" selected>Uruguay (UY)</option>
+            <option value="Spain">España (ES)</option>
+            <option value="United States">Estados Unidos (US)</option>
+            <option value="Argentina">Argentina (AR)</option>
+            <option value="United Kingdom">Reino Unido (UK)</option>
+            <option value="Germany">Alemania (DE)</option>
+            <option value="Other">Otro (Internacional)</option>
+          </select>
+        </div>
+
+        <div class="input-fallback" id="input-fallback" style="display: none;">
+          <p class="fallback-note">Si la detección falla, ingresa tu usuario manualmente:</p>
+          <input type="text" id="manual-username" placeholder="Usuario de Discogs">
+          <button id="save-username-btn" class="btn-secondary">Sincronizar</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section control-section">
+        <button id="load-wants-btn" class="btn-primary" disabled>
+          <span>1. Cargar Lista de Deseos</span>
+        </button>
+        <button id="start-scan-btn" class="btn-primary" disabled style="margin-top: 10px;">
+          <span>2. Iniciar Análisis de Ventas</span>
+        </button>
+        
+        <!-- Cache persistency controls -->
+        <div class="cache-control-box" style="margin-top: 12px; font-size: 11px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-glow);">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="checkbox" id="use-cache-checkbox" checked style="cursor: pointer; accent-color: var(--color-purple); width: 14px; height: 14px;">
+            <label for="use-cache-checkbox" style="cursor: pointer; color: var(--text-muted); font-weight: 500; user-select: none;">Usar caché de escaneo (24h)</label>
+          </div>
+          <button id="clear-cache-btn" class="btn-secondary" style="padding: 6px; font-size: 10px; font-weight: 600; width: 100%;">Limpiar caché de escaneo</button>
+        </div>
+      </div>
+
+      <div class="sidebar-section filter-section">
+        <h3>Filtros</h3>
+        
+        <div class="filter-group">
+          <label for="filter-min-matches">Coincidencias mínimas</label>
+          <select id="filter-min-matches">
+            <option value="1">1 o más discos</option>
+            <option value="2" selected>2 o más discos</option>
+            <option value="3">3 o más discos</option>
+            <option value="5">5 o más discos</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-country">Ubicación del Vendedor</label>
+          <select id="filter-country">
+            <option value="all">Cualquier país</option>
+            <option value="Europe">Europa</option>
+            <option value="United States">EE.UU. (US)</option>
+            <option value="Spain">España (ES)</option>
+            <option value="United Kingdom">Reino Unido (UK)</option>
+            <option value="Germany">Alemania (DE)</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="filter-rating">Calificación de Vendedor</label>
+          <select id="filter-rating">
+            <option value="0">Cualquiera</option>
+            <option value="98">98% o más</option>
+            <option value="99">99% o más</option>
+            <option value="100">100%</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label for="sort-by">Ordenar por</label>
+          <select id="sort-by">
+            <option value="matches-desc" selected>Más coincidencias primero</option>
+            <option value="price-asc">Precio total más bajo</option>
+            <option value="rating-desc">Mejor reputación</option>
+          </select>
+        </div>
+
+        <div class="filter-group checkbox-group">
+          <input type="checkbox" id="filter-priority-only">
+          <label for="filter-priority-only">Filtrar por favoritos (★)</label>
+        </div>
+      </div>
+      
+      <div class="footer-info">
+        <span>V1.0 • Desarrollado con ❤️ para coleccionistas</span>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="main-content">
+      <!-- HEADER / METRICS -->
+      <header class="main-header">
+        <div class="header-titles">
+          <h1>Análisis del Marketplace</h1>
+          <p>Encuentra tiendas con múltiples vinilos de tu lista de deseos para ahorrar en envíos combinados.</p>
+        </div>
+        <div class="metrics-grid">
+          <div class="metric-card">
+            <span class="metric-value" id="metric-wants-count">0</span>
+            <span class="metric-label">Discos Deseados</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value" id="metric-sellers-count">0</span>
+            <span class="metric-label">Vendedores Evaluados</span>
+          </div>
+          <div class="metric-card">
+            <span class="metric-value" id="metric-matches-count">0</span>
+            <span class="metric-label">Coincidencias en Venta</span>
+          </div>
+        </div>
+      </header>
+
+      <!-- PROGRESS / STATUS CARD -->
+      <div class="status-card" id="status-card" style="display: none;">
+        <div class="status-card-layout">
+          <!-- DJ DECK COLUMN (Visual Turntable & Cover Preview) -->
+          <div class="dj-deck-column">
+            <div class="turntable-container" id="loading-turntable-container">
+              <div class="turntable-platter">
+                <div class="turntable-vinyl" id="turntable-vinyl">
+                  <div class="vinyl-grooves"></div>
+                  <div class="vinyl-center-label">
+                    <div class="center-hole"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="turntable-tonearm" id="turntable-tonearm-deck"></div>
+            </div>
+            
+            <div class="audio-visualizer" id="audio-visualizer">
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+              <div class="vis-bar"></div>
+            </div>
+
+            <!-- Sleek Cover Preview Area -->
+            <div class="scanning-cover-container">
+              <div class="scanning-cover-art" id="scanning-cover-art">
+                <span class="cover-placeholder" id="cover-placeholder">💿</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- PROGRESS DETAILS COLUMN -->
+          <div class="progress-details-column">
+            <div class="status-header">
+              <div class="status-title-container">
+                <div class="spinner"></div>
+                <h3 id="status-title">Escaneando Marketplace...</h3>
+              </div>
+              <button id="cancel-scan-btn" class="btn-text">Cancelar</button>
+            </div>
+            
+            <div class="progress-bar-container">
+              <div class="progress-bar" id="progress-bar" style="width: 0%;"></div>
+            </div>
+            
+            <div class="progress-details">
+              <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1; text-align: left;">
+                <span id="progress-text">Procesando discos de tu Wantlist...</span>
+              </div>
+              <span id="progress-percent" style="font-size: 20px; font-weight: 800; color: var(--color-purple); margin-left: 10px;">0%</span>
+            </div>
+            
+            <div class="status-logs" id="status-logs"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RESULTS CONTAINER -->
+      <div class="results-container">
+        <!-- INTERACTIVE ONBOARDING WIZARD -->
+        <div class="empty-state onboarding-wizard" id="empty-state">
+          <div class="wizard-steps-indicator">
+            <div class="wizard-step-dot active" id="dot-1">1</div>
+            <div class="wizard-step-line"></div>
+            <div class="wizard-step-dot" id="dot-2">2</div>
+            <div class="wizard-step-line"></div>
+            <div class="wizard-step-dot" id="dot-3">3</div>
+          </div>
+
+          <!-- STEP 1: ACCOUNT DETECTION -->
+          <div class="wizard-step-pane active" id="step-pane-1">
+            <div class="vinyl-illustration">
+              <div class="vinyl-body">
+                <div class="vinyl-groove"></div>
+                <div class="vinyl-label-center"></div>
+              </div>
+              <div class="tonearm"></div>
+            </div>
+            <h2>Paso 1: Detectar tu cuenta de Discogs</h2>
+            <p>La extensión se conecta a tu sesión activa en Discogs para cargar tu lista de deseos de forma segura y automática.</p>
+            
+            <div class="detection-box">
+              <div class="detection-indicator" id="wizard-detection-status">
+                <span class="pulse-indicator orange"></span>
+                <span id="wizard-detection-text">Buscando sesión activa...</span>
+              </div>
+              <p class="detection-subtext" id="wizard-detection-subtext">Asegúrate de estar logueado en <a href="https://www.discogs.com" target="_blank">discogs.com</a> en este navegador.</p>
+              
+              <!-- Manual User Input directly inside wizard if detection fails -->
+              <div id="wizard-input-fallback" style="display: none; width: 100%; margin-top: 12px; flex-direction: column; gap: 8px;">
+                <p class="detection-subtext" style="color: var(--text-muted); font-weight: 500; margin: 0;">Si la detección falla, ingresa tu usuario manualmente:</p>
+                <input type="text" id="wizard-manual-username" placeholder="Usuario de Discogs" style="width: 100%; padding: 10px; background: var(--bg-darkest); border: 1px solid var(--border-glow); border-radius: 8px; color: #fff; font-size: 13px; text-align: center; outline: none;">
+                <button id="wizard-save-username-btn" class="btn-secondary" style="width: 100%; padding: 10px; font-weight: 600;">Sincronizar y Continuar</button>
+              </div>
+            </div>
+
+            <button id="wizard-next-1-btn" class="btn-action" disabled>Continuar</button>
+          </div>
+
+          <!-- STEP 2: SHIPPING LOCATION -->
+          <div class="wizard-step-pane" id="step-pane-2" style="display: none;">
+            <div class="icon-illustration">📍</div>
+            <h2>Paso 2: ¿Dónde recibirás tus discos?</h2>
+            <p>Usaremos tu ubicación para calcular los costos de envío combinado de forma mucho más precisa y recomendarte las mejores tiendas.</p>
+            
+            <div class="location-box">
+              <label for="wizard-buyer-country">País de destino</label>
+              <select id="wizard-buyer-country">
+                <option value="Uruguay" selected>Uruguay (UY)</option>
+                <option value="Spain">España (ES)</option>
+                <option value="United States">Estados Unidos (US)</option>
+                <option value="Argentina">Argentina (AR)</option>
+                <option value="United Kingdom">Reino Unido (UK)</option>
+                <option value="Germany">Alemania (DE)</option>
+                <option value="Other">Otro (Internacional)</option>
+              </select>
+              
+              <!-- Visual explanation of location-based shipping calculation -->
+              <div class="shipping-info-cards" style="margin-top: 15px; width: 100%; display: flex; gap: 8px; justify-content: space-between;">
+                <div class="shipping-info-card" style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glow); padding: 8px; border-radius: 8px; font-size: 10px; text-align: left;">
+                  <h4 style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: var(--color-green);">Nacional</h4>
+                  <p style="margin: 0; color: var(--text-muted); line-height: 1.3;">Mismo país. Barato ($4.50 base + $1.00/extra)</p>
+                </div>
+                <div class="shipping-info-card" style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glow); padding: 8px; border-radius: 8px; font-size: 10px; text-align: left;">
+                  <h4 style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #3b82f6;">UE a UE</h4>
+                  <p style="margin: 0; color: var(--text-muted); line-height: 1.3;">Entre países UE. Medio ($9.50 base + $2.00/extra)</p>
+                </div>
+                <div class="shipping-info-card" style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glow); padding: 8px; border-radius: 8px; font-size: 10px; text-align: left;">
+                  <h4 style="margin: 0 0 4px 0; font-size: 11px; font-weight: 600; color: #ef4444;">Internac.</h4>
+                  <p style="margin: 0; color: var(--text-muted); line-height: 1.3;">Larga dist. Premium ($24.00 base + $3.50/extra)</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="wizard-buttons">
+              <button id="wizard-back-2-btn" class="btn-secondary">Atrás</button>
+              <button id="wizard-next-2-btn" class="btn-action">Continuar</button>
+            </div>
+          </div>
+
+          <!-- STEP 3: SYNC WANTLIST -->
+          <div class="wizard-step-pane" id="step-pane-3" style="display: none;">
+            <div class="icon-illustration">🔄</div>
+            <h2>Paso 3: Sincronizar lista de deseos</h2>
+            <p>Cargaremos los discos de tu Wantlist para poder analizar cuáles están disponibles en el Marketplace.</p>
+            
+            <div class="sync-box">
+              <button id="wizard-sync-btn" class="btn-action">Cargar mi Wantlist</button>
+              <div class="sync-loader" id="wizard-sync-loader" style="display: none;">
+                <div class="spinner"></div>
+                <p id="wizard-sync-text">Conectando con la base de datos...</p>
+              </div>
+            </div>
+
+            <div class="wizard-buttons" id="wizard-buttons-3">
+              <button id="wizard-back-3-btn" class="btn-secondary">Atrás</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- WANTLIST MANAGER (PRE-SCAN SELECT FAVORITES) -->
+        <div class="wantlist-manager" id="wantlist-manager" style="display: none;">
+          <div class="manager-header">
+            <div class="manager-info">
+              <h2>Marca tus discos favoritos / prioritarios</h2>
+              <p>Usa la estrella (★) para destacar los vinilos que más deseas. Podrás filtrar vendedores que tengan al menos uno de tus seleccionados.</p>
+            </div>
+            <div class="search-box">
+              <input type="text" id="wants-search-input" placeholder="Buscar por título o artista...">
+            </div>
+          </div>
+          <div class="wants-list-grid" id="wants-list-grid">
+            <!-- Loaded wants with star selectors will be loaded here -->
+          </div>
+          <div class="manager-footer">
+            <button id="manager-start-scan-btn" class="btn-action">Iniciar Análisis de Vendedores</button>
+          </div>
+        </div>
+
+        <!-- SMART PURCHASE RECOMMENDATION -->
+        <div class="smart-purchase-card" id="smart-purchase-card" style="display: none;">
+          <!-- Content will be injected dynamically -->
+        </div>
+
+        <!-- RESULTS GRID -->
+        <div class="results-grid" id="results-grid" style="display: none;">
+          <!-- Seller cards will be dynamically injected here -->
+        </div>
+        
+        <!-- NO RESULTS FOUND AFTER SCAN -->
+        <div class="no-results-state" id="no-results-state" style="display: none;">
+          <div class="icon">🔍</div>
+          <h3>No se encontraron vendedores coincidentes</h3>
+          <p>Prueba reduciendo la cantidad de coincidencias mínimas o cambiando el filtro de país.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+<script src="dashboard.js"></script>
+</html>

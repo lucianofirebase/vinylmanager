@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "Discogs Wishlist Matcher",
+  "version": "1.0",
+  "description": "Encuentra vendedores en el marketplace de Discogs que tienen mas articulos de tu Wantlist en venta.",
+  "permissions": [
+    "cookies",
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.discogs.com/*",
+    "https://api.discogs.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["https://*.discogs.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Discogs Matcher"
+  },
+  "options_page": "dashboard.html"
+}
