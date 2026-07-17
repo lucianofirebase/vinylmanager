@@ -521,11 +521,18 @@ async function startMarketplaceScan() {
   loadWantsBtn.disabled = true;
   logoVinyl.classList.add('spinning');
   
-  // Show progress panel and trigger DJ Deck
+  // Show progress panel and trigger turntable spinning
   statusCard.style.display = 'block';
   const turntableVinyl = document.getElementById('turntable-vinyl');
   if (turntableVinyl) turntableVinyl.classList.add('spinning');
-  startDJQuotes();
+  
+  // Reset cover art preview
+  const scanningCoverArt = document.getElementById('scanning-cover-art');
+  const coverPlaceholder = document.getElementById('cover-placeholder');
+  if (scanningCoverArt) {
+    scanningCoverArt.style.backgroundImage = '';
+    if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+  }
   
   statusLogs.innerHTML = '';
   emptyState.style.display = 'none';
@@ -550,6 +557,19 @@ async function startMarketplaceScan() {
       progressBar.style.width = `${progress}%`;
       progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
       progressPercent.textContent = `${progress}%`;
+
+      // Update Cover Art Preview for currently scanned item
+      const scanningCoverArt = document.getElementById('scanning-cover-art');
+      const coverPlaceholder = document.getElementById('cover-placeholder');
+      if (scanningCoverArt) {
+        if (item.image) {
+          scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
+          if (coverPlaceholder) coverPlaceholder.style.display = 'none';
+        } else {
+          scanningCoverArt.style.backgroundImage = '';
+          if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+        }
+      }
       
       let parsedListings = null;
       let isFromCache = false;
@@ -581,11 +601,6 @@ async function startMarketplaceScan() {
       if (isFromCache && parsedListings) {
         log(`[Caché] Cargadas ${parsedListings.length} copias en venta para este disco (guardado hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
         state.allListings.push(...parsedListings);
-        if (parsedListings.length > 0) {
-          for (let p = 0; p < Math.min(3, parsedListings.length); p++) {
-            setTimeout(spawnNoteParticle, p * 120);
-          }
-        }
         
         // Update stats on-the-fly
         const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
@@ -605,11 +620,6 @@ async function startMarketplaceScan() {
         
         log(`Encontradas ${parsedListings.length} copias en venta para este disco.`);
         state.allListings.push(...parsedListings);
-        if (parsedListings.length > 0) {
-          for (let p = 0; p < Math.min(3, parsedListings.length); p++) {
-            setTimeout(spawnNoteParticle, p * 120);
-          }
-        }
         
         // Save to cache
         if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -661,7 +671,14 @@ async function startMarketplaceScan() {
     
     const turntableVinyl = document.getElementById('turntable-vinyl');
     if (turntableVinyl) turntableVinyl.classList.remove('spinning');
-    stopDJQuotes();
+    
+    // Reset cover art preview
+    const scanningCoverArt = document.getElementById('scanning-cover-art');
+    const coverPlaceholder = document.getElementById('cover-placeholder');
+    if (scanningCoverArt) {
+      scanningCoverArt.style.backgroundImage = '';
+      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+    }
   }
 }
 
