@@ -352,6 +352,22 @@
       </div>
     </main>
   </div>
+  <!-- RESUME SESSION DIALOG MODAL -->
+  <div class="modal-overlay" id="resume-modal" style="display: none;">
+    <div class="modal-content glass-modal">
+      <div class="modal-header">
+        <h2>Búsqueda Incompleta Detectada</h2>
+      </div>
+      <div class="modal-body">
+        <p>Se detectó una sesión previa interrumpida del usuario <strong id="resume-username">...</strong>.</p>
+        <p>Quedó en el disco <strong id="resume-progress">...</strong> con <strong id="resume-matches">...</strong> ofertas acumuladas.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="btn-discard-session" class="btn-secondary">Descartar</button>
+        <button id="btn-resume-session" class="btn-action">Reanudar Búsqueda</button>
+      </div>
+    </div>
+  </div>
 </body>
 <script src="dashboard.js"></script>
 </html>

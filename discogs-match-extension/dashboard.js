@@ -114,14 +114,134 @@ document.addEventListener('DOMContentLoaded', () => {
   filterPriorityOnly.addEventListener('change', renderResults);
 });
 
+// Dynamic lock/unlock filters section
+function toggleFiltersState(enabled) {
+  filterMinMatches.disabled = !enabled;
+  filterCountry.disabled = !enabled;
+  filterRating.disabled = !enabled;
+  sortBy.disabled = !enabled;
+  filterPriorityOnly.disabled = !enabled;
+  
+  const filterSection = document.querySelector('.filter-section');
+  if (filterSection) {
+    if (enabled) {
+      filterSection.style.opacity = '1';
+      filterSection.style.pointerEvents = 'auto';
+    } else {
+      filterSection.style.opacity = '0.4';
+      filterSection.style.pointerEvents = 'none';
+    }
+  }
+}
+
+// Save currently running search session
+function saveScanSession(currentIndex) {
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({
+      'scan_session': {
+        timestamp: Date.now(),
+        username: state.username,
+        currentIndex: currentIndex,
+        allListings: state.allListings,
+        wants: state.wants
+      }
+    });
+  }
+}
+
+// Clear scan session cache
+function clearScanSession() {
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.remove(['scan_session']);
+  }
+}
+
+// Verify if there is an interrupted session to restore
+function checkScanSession() {
+  if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.get(['scan_session'], (result) => {
+      const session = result.scan_session;
+      if (session) {
+        const now = Date.now();
+        const ageHours = (now - session.timestamp) / (1000 * 60 * 60);
+        // Session must be less than 12 hours old and not fully completed
+        if (ageHours < 12 && session.currentIndex < session.wants.length - 1 && session.allListings.length > 0) {
+          const resumeModal = document.getElementById('resume-modal');
+          const resumeUsername = document.getElementById('resume-username');
+          const resumeProgress = document.getElementById('resume-progress');
+          const resumeMatches = document.getElementById('resume-matches');
+          
+          if (resumeModal && resumeUsername && resumeProgress && resumeMatches) {
+            resumeUsername.textContent = session.username || 'detectado';
+            resumeProgress.textContent = `${session.currentIndex + 1} de ${session.wants.length}`;
+            resumeMatches.textContent = session.allListings.length;
+            
+            // Show modal overlay
+            resumeModal.style.display = 'flex';
+            
+            // Set up button actions
+            const resumeBtn = document.getElementById('btn-resume-session');
+            const discardBtn = document.getElementById('btn-discard-session');
+            
+            // Clone to strip duplicate event listeners if any
+            const newResumeBtn = resumeBtn.cloneNode(true);
+            const newDiscardBtn = discardBtn.cloneNode(true);
+            resumeBtn.parentNode.replaceChild(newResumeBtn, resumeBtn);
+            discardBtn.parentNode.replaceChild(newDiscardBtn, discardBtn);
+            
+            newResumeBtn.addEventListener('click', () => {
+              resumeModal.style.display = 'none';
+              restoreSessionAndResume(session);
+            });
+            
+            newDiscardBtn.addEventListener('click', () => {
+              resumeModal.style.display = 'none';
+              clearScanSession();
+            });
+          }
+        }
+      }
+    });
+  }
+}
+
+// Restore saved wants, listings, and start scanning from where it left off
+function restoreSessionAndResume(session) {
+  state.username = session.username;
+  state.wants = session.wants;
+  state.allListings = session.allListings;
+  
+  // Set UI elements
+  usernameDisplay.textContent = state.username || 'Usuario';
+  connectionStatus.textContent = 'Sesión Activa (Restaurada)';
+  if (userAvatar) {
+    userAvatar.textContent = state.username ? state.username.substring(0, 2).toUpperCase() : '?';
+  }
+  
+  // Update UI Stats
+  metricWantsCount.textContent = state.wants.length;
+  const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
+  metricSellersCount.textContent = uniqueSellers.size;
+  metricMatchesCount.textContent = state.allListings.length;
+  
+  // Resume scan from next index
+  startMarketplaceScan(session.currentIndex + 1);
+}
+
 // Initialize Application and detect user session
 async function initApp() {
   log('Iniciando Discogs Wishlist Matcher...');
+  
+  // Lock filters initially until results exist
+  toggleFiltersState(false);
   
   // Load saved shipping destination country
   const savedCountry = localStorage.getItem('buyer_country') || 'Uruguay';
   buyerCountry.value = savedCountry;
   wizardBuyerCountry.value = savedCountry;
+  
+  // Check for interrupted scan session
+  checkScanSession();
   
   try {
     const detectedUser = await detectDiscogsSession();
@@ -509,13 +629,23 @@ function parseWantlistHTML(html) {
   return wants;
 }
 // Step 2: Start Marketplace Scan
-async function startMarketplaceScan() {
+async function startMarketplaceScan(startIndex = 0) {
   if (state.wants.length === 0) return;
   
   state.isScanning = true;
   state.cancelRequested = false;
-  state.allListings = [];
-  state.groupedSellers = [];
+  
+  // Lock filters dynamically while scanning
+  toggleFiltersState(false);
+  
+  if (startIndex === 0) {
+    state.allListings = [];
+    state.groupedSellers = [];
+    statusLogs.innerHTML = '';
+    log('Iniciando escaneo del marketplace...');
+  } else {
+    log(`Reanudando escaneo del marketplace desde el disco ${startIndex + 1}...`, 'info');
+  }
   
   startScanBtn.disabled = true;
   loadWantsBtn.disabled = true;
@@ -534,16 +664,13 @@ async function startMarketplaceScan() {
     if (coverPlaceholder) coverPlaceholder.style.display = 'block';
   }
   
-  statusLogs.innerHTML = '';
   emptyState.style.display = 'none';
   wantlistManager.style.display = 'none';
   resultsGrid.style.display = 'none';
   noResultsState.style.display = 'none';
   
-  log('Iniciando escaneo del marketplace...');
-  
   try {
-    for (let i = 0; i < state.wants.length; i++) {
+    for (let i = startIndex; i < state.wants.length; i++) {
       if (state.cancelRequested) {
         log('Escaneo cancelado por el usuario.', 'error');
         break;
@@ -607,6 +734,9 @@ async function startMarketplaceScan() {
         metricSellersCount.textContent = uniqueSellers.size;
         metricMatchesCount.textContent = state.allListings.length;
         
+        // Save scan session progress
+        saveScanSession(i);
+        
         // Skip fetch and delay when using cached data
         continue;
       }
@@ -639,6 +769,9 @@ async function startMarketplaceScan() {
         const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
         metricSellersCount.textContent = uniqueSellers.size;
         metricMatchesCount.textContent = state.allListings.length;
+        
+        // Save scan session progress
+        saveScanSession(i);
         
       } catch (e) {
         log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
@@ -678,6 +811,17 @@ async function startMarketplaceScan() {
     if (scanningCoverArt) {
       scanningCoverArt.style.backgroundImage = '';
       if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+    }
+
+    // Enable filters back if results exist
+    if (state.allListings.length > 0 && state.groupedSellers.length > 0) {
+      toggleFiltersState(true);
+      // Clear session only if finished completely without cancellation
+      if (!state.cancelRequested) {
+        clearScanSession();
+      }
+    } else {
+      toggleFiltersState(false);
     }
   }
 }
@@ -1294,8 +1438,12 @@ function renderResults() {
     noResultsState.style.display = 'none';
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
+    toggleFiltersState(false);
     return;
   }
+  
+  // Enable filters since we have results
+  toggleFiltersState(true);
   
   // Extract filters
   const minMatches = parseInt(filterMinMatches.value, 10);
