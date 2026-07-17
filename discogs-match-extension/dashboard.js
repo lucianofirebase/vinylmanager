@@ -393,15 +393,26 @@ async function detectDiscogsSession() {
 
 // Direct fetch (no proxy)
 async function fetchDirect(url) {
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`HTTP Error ${response.status}`);
+  console.log(`[DirectFetch] Iniciando fetch directo para URL: ${url}`);
+  try {
+    const response = await fetch(url);
+    console.log(`[DirectFetch] Status respuesta: ${response.status} para URL: ${url}`);
+    if (!response.ok) {
+      throw new Error(`HTTP Error ${response.status}`);
+    }
+    const text = await response.text();
+    console.log(`[DirectFetch] Éxito. Descargados ${text.length} bytes.`);
+    return text;
+  } catch (error) {
+    console.error(`[DirectFetch] Error en fetch directo para URL: ${url}:`, error.message);
+    throw error;
   }
-  return response.text();
 }
 
 // Fetch helper using the content script proxy to bypass Cloudflare
 async function fetchThroughTab(url) {
+  console.log(`[ProxyFetch] Solicitando URL a través de pestaña proxy: ${url}`);
+  
   // Query all active tabs on Discogs
   let tabs = await new Promise((resolve) => {
     chrome.tabs.query({ url: "*://*.discogs.com/*" }, (result) => {
@@ -414,11 +425,10 @@ async function fetchThroughTab(url) {
   if (tabs.length > 0) {
     // If a tab is open, use the first one
     activeProxyTab = tabs[0];
-    log(`Usando pestaña abierta de Discogs (ID: ${activeProxyTab.id}) como proxy...`);
+    console.log(`[ProxyFetch] Usando pestaña Discogs abierta (ID: ${activeProxyTab.id})`);
   } else {
     // If no tab is open and we have already created a background proxy tab, use it
     if (state.proxyTabId !== null) {
-      // Check if it is still alive
       try {
         const tab = await new Promise((resolve, reject) => {
           chrome.tabs.get(state.proxyTabId, (tabInfo) => {
@@ -427,6 +437,7 @@ async function fetchThroughTab(url) {
           });
         });
         activeProxyTab = tab;
+        console.log(`[ProxyFetch] Reusando pestaña proxy creada previamente (ID: ${activeProxyTab.id})`);
       } catch (e) {
         state.proxyTabId = null;
       }
@@ -434,28 +445,55 @@ async function fetchThroughTab(url) {
 
     // If no tab is available at all, create one in the background
     if (activeProxyTab === null) {
-      log('Abriendo pestaña de Discogs en segundo plano para procesar ofertas...');
+      console.log('[ProxyFetch] Creando nueva pestaña de Discogs en segundo plano...');
       activeProxyTab = await new Promise((resolve) => {
         chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
           state.proxyTabId = tab.id;
-          // Wait 3.5 seconds for it to load and inject content script
-          setTimeout(() => resolve(tab), 3500);
+          setTimeout(() => {
+            console.log(`[ProxyFetch] Nueva pestaña proxy creada (ID: ${tab.id})`);
+            resolve(tab);
+          }, 3500);
         });
       });
     }
   }
 
-  // Send request message to the proxy tab
+  // Send request message to the proxy tab with a timeout
   return new Promise((resolve, reject) => {
+    let timeoutId = setTimeout(() => {
+      timeoutId = null;
+      console.warn(`[ProxyFetch] TIMEOUT (10s) en pestaña proxy para ${url}. Intentando conexión directa...`);
+      fetchDirect(url)
+        .then(resolve)
+        .catch(err => {
+          console.error(`[ProxyFetch] Falló fallback directo tras timeout:`, err.message);
+          reject(err);
+        });
+    }, 10000);
+
+    console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${activeProxyTab.id} para URL: ${url}`);
     chrome.tabs.sendMessage(activeProxyTab.id, { action: "fetchUrl", url }, (response) => {
+      if (!timeoutId) {
+        console.log(`[ProxyFetch] Respuesta tardía recibida de pestaña ${activeProxyTab.id} para ${url} (ya venció timeout)`);
+        return; 
+      }
+      clearTimeout(timeoutId);
+      
       if (chrome.runtime.lastError) {
-        // Fallback: If communicating fails, try to scrape directly (might work or fail with 403)
-        log(`Error al enviar mensaje a pestaña: ${chrome.runtime.lastError.message}. Intentando conexión directa...`, 'error');
-        fetchDirect(url).then(resolve).catch(reject);
+        console.error(`[ProxyFetch] Error de comunicación con pestaña ${activeProxyTab.id}:`, chrome.runtime.lastError.message);
+        fetchDirect(url)
+          .then(resolve)
+          .catch(err => {
+            console.error(`[ProxyFetch] Falló fallback directo tras error de canal:`, err.message);
+            reject(err);
+          });
       } else if (response && response.success) {
+        console.log(`[ProxyFetch] Respuesta exitosa recibida de pestaña proxy para URL: ${url} (${response.html ? response.html.length : 0} bytes)`);
         resolve(response.html);
       } else {
-        reject(new Error(response ? response.error : "Unknown same-origin fetch error"));
+        const errMsg = response ? response.error : "Unknown same-origin fetch error";
+        console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
+        reject(new Error(errMsg));
       }
     });
   });
@@ -485,18 +523,21 @@ async function loadWantlist() {
     
     // Method A: JSON API through tab proxy with pagination
     try {
-      log('Intentando cargar Wantlist a través de la API de Discogs...');
+      console.log(`[WantlistAPI] Iniciando carga de Wantlist de '${state.username}' a través de la API de Discogs...`);
       let page = 1;
       let totalPages = 1;
       
       do {
+        console.log(`[WantlistAPI] Solicitando página ${page} de ${totalPages}...`);
         log(`Cargando página ${page} de la API de Discogs...`);
         if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (API)...`;
         
         const jsonText = await fetchThroughTab(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100`);
+        console.log(`[WantlistAPI] Respuesta recibida para página ${page}. Parseando JSON...`);
         const data = JSON.parse(jsonText);
         
         if (data && data.wants && data.wants.length > 0) {
+          console.log(`[WantlistAPI] Página ${page} parseada con éxito. Encontrados ${data.wants.length} vinilos deseados.`);
           const pageWants = data.wants.map(item => ({
             id: item.id,
             title: item.basic_information.title,
@@ -508,6 +549,12 @@ async function loadWantlist() {
           loadedWants.push(...pageWants);
           totalPages = data.pagination.pages;
           page++;
+          
+          // Polite delay to avoid rate limits
+          if (page <= totalPages) {
+            console.log(`[WantlistAPI] Esperando 1.2s antes de solicitar la página ${page}...`);
+            await new Promise(r => setTimeout(r, 1200));
+          }
         } else {
           break;
         }
@@ -535,6 +582,8 @@ async function loadWantlist() {
             hasMore = false;
           } else {
             page++;
+            // Polite delay to avoid rate limits
+            await new Promise(r => setTimeout(r, 1200));
           }
         } else {
           hasMore = false;
@@ -630,6 +679,10 @@ function parseWantlistHTML(html) {
 }
 // Step 2: Start Marketplace Scan
 async function startMarketplaceScan(startIndex = 0) {
+  // Ensure startIndex is a valid number (handles PointerEvent from button click event listeners)
+  if (typeof startIndex !== 'number') {
+    startIndex = 0;
+  }
   if (state.wants.length === 0) return;
   
   state.isScanning = true;
@@ -744,7 +797,7 @@ async function startMarketplaceScan(startIndex = 0) {
       log(`Escaneando (${i + 1}/${state.wants.length}): ${item.artist} - ${item.title}...`);
       
       try {
-        const url = `https://www.discogs.com/sell/release/${item.id}`;
+        const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
         const html = await fetchThroughTab(url);
         parsedListings = parseReleaseHTML(html, item.id);
         
@@ -849,11 +902,37 @@ function parseReleaseHTML(html, releaseId) {
   
   rows.forEach(row => {
     try {
-      // 1. Seller Name
+      // Check if seller does not ship to buyer's location (skip them)
+      const rowTextLower = row.textContent.toLowerCase();
+      if (
+        rowTextLower.includes('no disponible en') || 
+        rowTextLower.includes('does not ship') || 
+        rowTextLower.includes('not available in') ||
+        rowTextLower.includes('no hace envíos') ||
+        rowTextLower.includes('no envia a') ||
+        rowTextLower.includes('no envía a')
+      ) {
+        return; // Skip this listing
+      }
+
+      // 1. Seller Name (extracted from href to prevent issues with browser translations)
       const sellerLink = row.querySelector('.seller_info a, a[href^="/user/"], [class*="seller"] a');
       if (!sellerLink) return;
-      const sellerName = sellerLink.textContent.trim();
-      if (!sellerName || sellerName.toLowerCase() === 'view seller profile') return;
+      
+      let sellerName = '';
+      const href = sellerLink.getAttribute('href') || '';
+      const sellerMatch = href.match(/\/seller\/([^/]+)\/profile/i);
+      const userMatch = href.match(/\/user\/([^/?#]+)/i);
+      
+      if (sellerMatch) {
+        sellerName = decodeURIComponent(sellerMatch[1]);
+      } else if (userMatch) {
+        sellerName = decodeURIComponent(userMatch[1]);
+      } else {
+        sellerName = sellerLink.textContent.trim();
+      }
+      
+      if (!sellerName || sellerName.toLowerCase() === 'view seller profile' || sellerName.toLowerCase() === 'vendedor') return;
       
       // 2. Seller Rating and Ratings Count
       const sellerInfoText = row.querySelector('.seller_info')?.textContent || '';
@@ -890,17 +969,20 @@ function parseReleaseHTML(html, releaseId) {
       shipsFrom = shipsFrom.replace(/[\n\r]/g, '').trim();
       
       // 4. Price & Currency
+      const convertedPriceEl = row.querySelector('.converted_price');
       const priceEl = row.querySelector('.price, .item_price, .price_value');
-      let priceText = priceEl ? priceEl.textContent.trim() : '';
       
+      let priceText = '';
       let priceVal = 0;
       let currency = '$';
+      let source = 'original';
       
-      const priceValAttr = priceEl?.getAttribute('data-pricevalue');
-      if (priceValAttr) {
-        priceVal = parseFloat(priceValAttr);
-      } else if (priceText) {
-        const cleanPrice = priceText.replace(/[^\d.,]/g, '');
+      if (convertedPriceEl) {
+        source = 'converted_price';
+        priceText = convertedPriceEl.textContent.trim();
+        // Split by tax/shipping keywords to remove extra text containing periods
+        const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
+        const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
         let numStr = cleanPrice;
         if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
           numStr = cleanPrice.replace(',', '.');
@@ -908,22 +990,59 @@ function parseReleaseHTML(html, releaseId) {
           numStr = cleanPrice.replace(/,/g, '');
         }
         priceVal = parseFloat(numStr) || 0;
+      } else {
+        const priceValAttr = priceEl?.getAttribute('data-pricevalue');
+        priceText = priceEl ? priceEl.textContent.trim() : '';
+        if (priceValAttr) {
+          source = 'data-pricevalue';
+          priceVal = parseFloat(priceValAttr);
+        } else if (priceText) {
+          source = 'price_element_text';
+          const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
+          const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
+          let numStr = cleanPrice;
+          if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
+            numStr = cleanPrice.replace(',', '.');
+          } else if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
+            numStr = cleanPrice.replace(/,/g, '');
+          }
+          priceVal = parseFloat(numStr) || 0;
+        }
       }
       
-      if (priceText.includes('€')) currency = '€';
-      else if (priceText.includes('£')) currency = '£';
-      else if (priceText.includes('A$')) currency = 'A$';
-      else if (priceText.includes('CA$')) currency = 'C$';
-      else if (priceText.includes('¥')) currency = '¥';
-      else if (priceText.includes('$')) currency = '$';
+      // Better currency detection (match standard ISO codes or symbols)
+      const currencyMatch = priceText.match(/\b(UYU|ARS|CLP|COP|MXN|BRL|NZD|ZAR|CHF|SEK|NOK|DKK|USD|EUR|GBP|CAD|AUD|JPY)\b/i);
+      if (currencyMatch) {
+        const parsedCode = currencyMatch[1].toUpperCase();
+        if (parsedCode === 'USD') currency = '$';
+        else if (parsedCode === 'EUR') currency = '€';
+        else if (parsedCode === 'GBP') currency = '£';
+        else if (parsedCode === 'JPY') currency = '¥';
+        else currency = parsedCode + ' '; // e.g. "ARS " or "CLP "
+      } else {
+        if (priceText.includes('€')) currency = '€';
+        else if (priceText.includes('£')) currency = '£';
+        else if (priceText.includes('A$')) currency = 'A$';
+        else if (priceText.includes('CA$')) currency = 'C$';
+        else if (priceText.includes('¥')) currency = '¥';
+        else if (priceText.includes('$')) currency = '$';
+      }
       
       // 5. Shipping
       const shippingEl = row.querySelector('.item_shipping, .shipping');
       let shippingText = shippingEl ? shippingEl.textContent.trim() : '';
       let shippingVal = 0;
+      let rawShippingText = shippingText;
       
       if (shippingText) {
-        const cleanShipping = shippingText.replace(/[^\d.,]/g, '');
+        // Prioritize converted shipping in parentheses, e.g. "(about $12.00)"
+        const matchConverted = shippingText.match(/\(([^)]*\d[^)]*)\)/);
+        if (matchConverted) {
+          shippingText = matchConverted[1];
+        }
+        
+        const cleanText = shippingText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
+        const cleanShipping = cleanText.replace(/[^\d.,]/g, '');
         let numStr = cleanShipping;
         if (cleanShipping.includes(',') && !cleanShipping.includes('.')) {
           numStr = cleanShipping.replace(',', '.');
@@ -932,6 +1051,20 @@ function parseReleaseHTML(html, releaseId) {
         }
         shippingVal = parseFloat(numStr) || 0;
       }
+
+      // Detailed price and shipping logs to the console as requested by the user
+      console.log(
+        `%c[Precio & Envío Log]%c\n` +
+        `• Release: ${releaseId}\n` +
+        `• Vendedor: ${sellerName}\n` +
+        `• Origen Precio: ${source}\n` +
+        `• Texto Precio Original: "${priceText}"\n` +
+        `• Valor de Precio Parseado: ${priceVal}\n` +
+        `• Moneda Detectada: "${currency}"\n` +
+        `• Texto Envío Original: "${rawShippingText}"\n` +
+        `• Valor de Envío Parseado: ${shippingVal}`,
+        'color: #9f7aea; font-weight: bold;', 'color: #fff;'
+      );
       
       // 6. Condition
       const conditionEl = row.querySelector('.item_condition, .condition');
@@ -1123,8 +1256,8 @@ function getSmartPurchaseCombo(filteredSellers, targetReleases) {
     return results;
   }
 
-  // Check combos of size 1, 2, 3
-  const maxComboSize = Math.min(3, candidates.length);
+  // Recommend strictly the single best seller (combo of size 1) to avoid shipping division/multiplicity
+  const maxComboSize = 1;
   for (let size = 1; size <= maxComboSize; size++) {
     const combos = getCombos(candidates, size);
     for (const combo of combos) {
@@ -1242,160 +1375,240 @@ function renderSmartPurchase(filteredSellers) {
     return;
   }
 
-  const comboResult = getSmartPurchaseCombo(filteredSellers, coverableReleases);
-  if (!comboResult) {
+  // Calculate Option A: Max Consolidation (greatest quantity of matching wants)
+  const candidatesA = [...filteredSellers].sort((a, b) => {
+    if (b.listings.length !== a.listings.length) {
+      return b.listings.length - a.listings.length;
+    }
+    const costA = getSingleSellerTotalCost(a);
+    const costB = getSingleSellerTotalCost(b);
+    return costA - costB;
+  });
+  
+  const bestSellerA = candidatesA[0];
+
+  // Calculate Option B: Best average cost per disc (Efficiency, minimum of 3 discs)
+  const eligibleB = filteredSellers.filter(s => s.listings.length >= 3);
+  let bestSellerB = null;
+  if (eligibleB.length > 0) {
+    const candidatesB = [...eligibleB].map(s => {
+      const totalCost = getSingleSellerTotalCost(s);
+      const avgCost = totalCost / s.listings.length;
+      return { seller: s, totalCost, avgCost };
+    }).sort((a, b) => a.avgCost - b.avgCost);
+    
+    bestSellerB = candidatesB[0].seller;
+  } else {
+    // Fallback to any seller with lowest average cost
+    const candidatesB = [...filteredSellers].map(s => {
+      const totalCost = getSingleSellerTotalCost(s);
+      const avgCost = totalCost / s.listings.length;
+      return { seller: s, totalCost, avgCost };
+    }).sort((a, b) => a.avgCost - b.avgCost);
+    bestSellerB = candidatesB[0]?.seller || null;
+  }
+
+  if (!bestSellerA) {
     smartPurchaseCard.style.display = 'none';
     return;
   }
 
-  let individualPurchaseCost = 0;
-  const currencySymbol = comboResult.sellers[0]?.currency || '$';
-
-  coverableReleases.forEach(relId => {
-    let cheapestListing = null;
-    let cheapestSeller = null;
-    filteredSellers.forEach(s => {
-      const listing = s.listings.find(l => l.releaseId === relId);
-      if (listing) {
-        if (!cheapestListing || listing.priceVal < cheapestListing.priceVal) {
-          cheapestListing = listing;
-          cheapestSeller = s;
-        }
-      }
-    });
-
-    if (cheapestListing && cheapestSeller) {
-      const isDomestic = cheapestSeller.isDomestic;
-      const isEUToEU = cheapestSeller.isEUToEU;
-      let baseShippingPrice = 6.00;
-      if (isDomestic) {
-        baseShippingPrice = 4.50;
-      } else if (isEUToEU) {
-        baseShippingPrice = 9.50;
-      } else {
-        baseShippingPrice = 24.00;
-      }
-      const estShipping = cheapestListing.shippingVal > 0 ? cheapestListing.shippingVal : baseShippingPrice;
-      individualPurchaseCost += cheapestListing.priceVal + estShipping;
-    }
-  });
-
-  const savings = Math.max(0, individualPurchaseCost - comboResult.totalCost);
-
-  const savingsHtml = savings > 0 
-    ? `<div class="badge-savings">
-         <span>⚡</span> ¡Ahorras ${currencySymbol}${savings.toFixed(2)} en envíos!
-       </div>`
-    : `<div class="badge-savings" style="background: linear-gradient(135deg, var(--color-purple) 0%, var(--color-purple-dark) 100%)">
-         <span>💿</span> Mejor Combinación
-       </div>`;
-
-  let sellersListHtml = '';
-  comboResult.sellers.forEach(s => {
-    const assignedListings = comboResult.assignments[s.name];
-    let albumsHtml = '';
+  // Helper functions for costs
+  function getSingleSellerTotalCost(seller) {
+    const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
+    const listCount = seller.listings.length;
+    const isDomestic = seller.isDomestic;
+    const isEUToEU = seller.isEUToEU;
     
-    assignedListings.forEach(l => {
-      const wantInfo = state.wants.find(w => w.id === l.releaseId) || { title: 'Unknown', artist: 'Unknown' };
-      albumsHtml += `
-        <div class="smart-album-row">
-          <span class="smart-album-title">💿 ${wantInfo.title} <span style="font-size:11px; color:var(--text-muted)">- ${wantInfo.artist}</span></span>
-          <span class="smart-album-price">${l.currency}${l.priceVal.toFixed(2)}</span>
-        </div>
-      `;
-    });
-
-    const listCount = assignedListings.length;
     let baseShippingPrice = 6.00;
     let extraItemCost = 1.50;
-    if (s.isDomestic) {
+    if (isDomestic) {
       baseShippingPrice = 4.50;
       extraItemCost = 1.00;
-    } else if (s.isEUToEU) {
+    } else if (isEUToEU) {
       baseShippingPrice = 9.50;
       extraItemCost = 2.00;
     } else {
       baseShippingPrice = 24.00;
       extraItemCost = 3.50;
     }
-    const shippingValues = assignedListings.map(l => l.shippingVal).filter(v => v > 0);
+    
+    const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
     let estShipping = 0;
     if (shippingValues.length > 0) {
-      estShipping = Math.max(...shippingValues) + (listCount - 1) * extraItemCost;
+      const maxShipping = Math.max(...shippingValues);
+      estShipping = maxShipping + (listCount - 1) * extraItemCost;
     } else {
       estShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
     }
+    return subtotal + estShipping;
+  }
 
-    const sellerSubtotal = assignedListings.reduce((sum, l) => sum + l.priceVal, 0);
-    const sellerTotal = sellerSubtotal + estShipping;
+  function getSingleSellerShippingSavings(seller, allSellers) {
+    let individualShippingCost = 0;
+    seller.listings.forEach(l => {
+      let cheapestListing = null;
+      let cheapestSellerForRel = null;
+      allSellers.forEach(s => {
+        const relListing = s.listings.find(x => x.releaseId === l.releaseId);
+        if (relListing) {
+          if (!cheapestListing || relListing.priceVal < cheapestListing.priceVal) {
+            cheapestListing = relListing;
+            cheapestSellerForRel = s;
+          }
+        }
+      });
+      
+      if (cheapestListing && cheapestSellerForRel) {
+        const isDomestic = cheapestSellerForRel.isDomestic;
+        const isEUToEU = cheapestSellerForRel.isEUToEU;
+        let baseShippingPrice = 6.00;
+        if (isDomestic) {
+          baseShippingPrice = 4.50;
+        } else if (isEUToEU) {
+          baseShippingPrice = 9.50;
+        } else {
+          baseShippingPrice = 24.00;
+        }
+        const estShipping = cheapestListing.shippingVal > 0 ? cheapestListing.shippingVal : baseShippingPrice;
+        individualShippingCost += estShipping;
+      }
+    });
+    
+    const listCount = seller.listings.length;
+    const isDomestic = seller.isDomestic;
+    const isEUToEU = seller.isEUToEU;
+    
+    let baseShippingPrice = 6.00;
+    let extraItemCost = 1.50;
+    if (isDomestic) {
+      baseShippingPrice = 4.50;
+      extraItemCost = 1.00;
+    } else if (isEUToEU) {
+      baseShippingPrice = 9.50;
+      extraItemCost = 2.00;
+    } else {
+      baseShippingPrice = 24.00;
+      extraItemCost = 3.50;
+    }
+    
+    const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
+    let estShipping = 0;
+    if (shippingValues.length > 0) {
+      const maxShipping = Math.max(...shippingValues);
+      estShipping = maxShipping + (listCount - 1) * extraItemCost;
+    } else {
+      estShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
+    }
+    
+    return Math.max(0, individualShippingCost - estShipping);
+  }
 
-    sellersListHtml += `
-      <div class="smart-seller-item">
-        <div class="smart-seller-header">
-          <div>
-            <a href="#" class="smart-seller-name" data-scroll-to="${s.name}">
-              👤 ${s.name} <span style="font-size:12px; color:var(--color-amber)">★ ${s.rating}%</span>
+  function renderCard(title, description, badgeText, seller, badgeColor) {
+    const totalCost = getSingleSellerTotalCost(seller);
+    const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
+    const shippingCost = totalCost - subtotal;
+    const currencySymbol = seller.currency || '$';
+    
+    let albumsHtml = '';
+    seller.listings.forEach(l => {
+      const wantInfo = state.wants.find(w => w.id === l.releaseId) || { title: 'Unknown', artist: 'Unknown' };
+      albumsHtml += `
+        <div class="smart-album-row">
+          <span class="smart-album-title" title="${wantInfo.title} - ${wantInfo.artist}">💿 ${wantInfo.title}</span>
+          <span class="smart-album-price">${l.currency}${l.priceVal.toFixed(2)}</span>
+        </div>
+      `;
+    });
+    
+    return `
+      <div class="smart-option-card">
+        <div class="smart-option-badge" style="background: ${badgeColor}">${badgeText}</div>
+        <div class="smart-option-header">
+          <h3>${title}</h3>
+          <p>${description}</p>
+        </div>
+        
+        <div class="smart-option-seller">
+          <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">
+            <a href="#" class="smart-option-seller-name" data-scroll-to="${seller.name}" style="display: block; font-weight: 700; color: var(--color-purple); text-decoration: none;">
+              👤 ${seller.name}
             </a>
-            <span class="smart-seller-meta">📍 ${s.shipsFrom} • ${s.isDomestic ? 'Nacional' : (s.isEUToEU ? 'UE a UE' : 'Internacional')}</span>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+              📍 ${seller.shipsFrom} • ${seller.rating}% pos.
+            </div>
           </div>
-          <div style="text-align: right">
-            <span style="font-size: 13px; font-weight: 700; color: #fff;">${s.currency}${sellerTotal.toFixed(2)}</span>
-            <div style="font-size: 10px; color: var(--text-muted)">Envío combinado: ${s.currency}${estShipping.toFixed(2)}</div>
+          <div style="text-align: right; flex-shrink: 0;">
+            <div style="font-size: 15px; font-weight: 800; color: #fff;">${currencySymbol}${totalCost.toFixed(2)}</div>
+            <div style="font-size: 10px; color: var(--text-muted)">Envío: ${currencySymbol}${shippingCost.toFixed(2)}</div>
           </div>
         </div>
-        <div class="smart-seller-albums">
+        
+        <div class="smart-option-albums-list">
           ${albumsHtml}
+        </div>
+        
+        <div class="smart-option-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
+            <span>Discos cubiertos:</span>
+            <span style="color:#fff; font-weight:700;">${seller.listings.length} de ${state.wants.length}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
+            <span>Promedio por disco:</span>
+            <span style="color:var(--color-amber); font-weight:700;">${currencySymbol}${(totalCost / seller.listings.length).toFixed(2)}</span>
+          </div>
         </div>
       </div>
     `;
-  });
+  }
 
-  const comboSubtotal = comboResult.sellers.reduce((sum, s) => {
-    return sum + comboResult.assignments[s.name].reduce((subSum, l) => subSum + l.priceVal, 0);
-  }, 0);
-  const comboShipping = comboResult.totalCost - comboSubtotal;
+  // Render cards side-by-side or as single card if it's the exact same seller
+  let cardsHtml = '';
+  if (bestSellerB && bestSellerA.name === bestSellerB.name) {
+    cardsHtml = `
+      <div style="width: 100%; display: flex; justify-content: center;">
+        ${renderCard(
+          "Ganador Absoluto",
+          "Esta tienda es la mejor opción tanto por catálogo como por precio promedio de los discos.",
+          "★ RECOMENDADO ★",
+          bestSellerA,
+          "linear-gradient(135deg, var(--color-purple) 0%, #ec4899 100%)"
+        )}
+      </div>
+    `;
+  } else {
+    cardsHtml = `
+      <div class="smart-options-container">
+        ${renderCard(
+          "Opción A: Compra Máxima",
+          "Ideal si querés consolidar el máximo de tu lista en un solo paquete y envío.",
+          "Máximo Catálogo",
+          bestSellerA,
+          "var(--color-purple)"
+        )}
+        ${bestSellerB ? renderCard(
+          "Opción B: Compra Eficiente",
+          "Ideal si querés priorizar el menor precio promedio por disco (mínimo 3 discos).",
+          "Mejor Precio",
+          bestSellerB,
+          "var(--color-amber)"
+        ) : ''}
+      </div>
+    `;
+  }
 
   smartPurchaseCard.innerHTML = `
-    <div class="smart-purchase-header">
-      <div class="smart-purchase-title-area">
-        <span class="smart-purchase-icon">🏆</span>
+    <div class="smart-purchase-header" style="margin-bottom: 16px;">
+      <div class="smart-purchase-title-area" style="display: flex; align-items: center; gap: 12px;">
+        <span class="smart-purchase-icon" style="font-size: 24px;">🏆</span>
         <div>
-          <h2>Compra Inteligente Recomendada</h2>
-          <p>La combinación más barata para conseguir ${comboResult.totalCovered} de tus discos deseados en el menor número de paquetes.</p>
+          <h2 style="margin: 0; font-family: var(--font-title); font-size: 18px; color: #fff;">Compra Inteligente Consolidada</h2>
+          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Las mejores opciones de vendedor único para consolidar tu compra sin multiplicar gastos de envío.</p>
         </div>
       </div>
-      ${savingsHtml}
     </div>
     <div class="smart-purchase-content">
-      <div class="smart-sellers-list">
-        ${sellersListHtml}
-      </div>
-      <div class="smart-purchase-summary">
-        <div>
-          <h3 style="margin: 0 0 16px 0; font-family: var(--font-title); font-size: 15px; color: #fff;">Resumen del Combo</h3>
-          <div class="summary-row">
-            <span>Tiendas en combo</span>
-            <span>${comboResult.sellers.length}</span>
-          </div>
-          <div class="summary-row">
-            <span>Discos cubiertos</span>
-            <span>${comboResult.totalCovered} de ${coverableReleases.length}</span>
-          </div>
-          <div class="summary-row">
-            <span>Subtotal de discos</span>
-            <span>${currencySymbol}${comboSubtotal.toFixed(2)}</span>
-          </div>
-          <div class="summary-row">
-            <span>Costo total de envíos</span>
-            <span>${currencySymbol}${comboShipping.toFixed(2)}</span>
-          </div>
-          <div class="summary-row total">
-            <span>Total Estimado</span>
-            <span class="total-value">${currencySymbol}${comboResult.totalCost.toFixed(2)}</span>
-          </div>
-        </div>
-        <button class="btn-buy-combo" id="btn-scroll-to-results">Ver tiendas e iniciar compra</button>
-      </div>
+      ${cardsHtml}
     </div>
   `;
 

@@ -1931,3 +1931,103 @@ body {
   to { transform: scale(1); opacity: 1; }
 }
 
+/* Recommended Smart Options CSS */
+.smart-options-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.smart-option-card {
+  background: rgba(28, 22, 54, 0.4);
+  border: 1px solid rgba(159, 122, 234, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  text-align: left;
+}
+
+.smart-option-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(159, 122, 234, 0.4);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 15px rgba(159, 122, 234, 0.1);
+}
+
+.smart-option-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 20px;
+  text-transform: uppercase;
+}
+
+.smart-option-header {
+  margin-bottom: 16px;
+}
+
+.smart-option-header h3 {
+  font-family: var(--font-title);
+  font-size: 16px;
+  font-weight: 800;
+  margin: 0 0 4px 0;
+  color: #fff;
+}
+
+.smart-option-header p {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+.smart-option-seller {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.smart-option-seller-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-purple);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.smart-option-seller-name:hover {
+  color: #b066ff !important;
+}
+
+.smart-option-albums-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 150px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  padding-right: 4px;
+}
+
+.smart-option-albums-list::-webkit-scrollbar {
+  width: 4px;
+}
+.smart-option-albums-list::-webkit-scrollbar-thumb {
+  background: rgba(159, 122, 234, 0.3);
+  border-radius: 2px;
+}
+
