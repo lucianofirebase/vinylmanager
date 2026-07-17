@@ -9,6 +9,30 @@ let state = {
   proxyTabId: null
 };
 
+const CURRENCY_MAP = {
+  'EUR': { symbol: '€', code: 'EUR', rate: 1.08 },
+  'USD': { symbol: '$', code: 'USD', rate: 1.0 },
+  'GBP': { symbol: '£', code: 'GBP', rate: 1.28 },
+  'JPY': { symbol: '¥', code: 'JPY', rate: 0.0065 },
+  'UYU': { symbol: '$', code: 'UYU', rate: 0.025 },
+  'AUD': { symbol: 'A$', code: 'AUD', rate: 0.67 },
+  'CAD': { symbol: 'CA$', code: 'CAD', rate: 0.73 },
+  'CHF': { symbol: 'CHF', code: 'CHF', rate: 1.12 },
+  'SEK': { symbol: 'kr', code: 'SEK', rate: 0.095 },
+  'NOK': { symbol: 'kr', code: 'NOK', rate: 0.093 },
+  'DKK': { symbol: 'kr', code: 'DKK', rate: 0.14 },
+  'NZD': { symbol: 'NZ$', code: 'NZD', rate: 0.61 },
+  'BRL': { symbol: 'R$', code: 'BRL', rate: 0.18 },
+  'MXN': { symbol: 'Mex$', code: 'MXN', rate: 0.055 },
+  'CLP': { symbol: '$', code: 'CLP', rate: 0.0011 },
+  'COP': { symbol: '$', code: 'COP', rate: 0.00025 }
+};
+
+function formatPrice(val, currencyCode) {
+  const info = CURRENCY_MAP[currencyCode] || { symbol: '$', code: currencyCode || 'USD' };
+  return `${info.code} ${info.symbol}${val.toFixed(2)}`;
+}
+
 // DOM Elements
 const logoVinyl = document.getElementById('logo-vinyl');
 const connectionStatus = document.getElementById('connection-status');
@@ -71,6 +95,14 @@ const filterPriorityOnly = document.getElementById('filter-priority-only');
 // Add Event Listeners on Load
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
+  
+  // Tab Navigation switching
+  const tabBtnSellers = document.getElementById('tab-btn-sellers');
+  const tabBtnStats = document.getElementById('tab-btn-stats');
+  if (tabBtnSellers && tabBtnStats) {
+    tabBtnSellers.addEventListener('click', () => switchTab('sellers'));
+    tabBtnStats.addEventListener('click', () => switchTab('stats'));
+  }
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);
@@ -543,7 +575,9 @@ async function loadWantlist() {
             title: item.basic_information.title,
             artist: item.basic_information.artists.map(a => a.name).join(', '),
             year: item.basic_information.year,
-            image: item.basic_information.cover_image || item.basic_information.thumb || ''
+            image: item.basic_information.cover_image || item.basic_information.thumb || '',
+            wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
+            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0
           }));
           
           loadedWants.push(...pageWants);
@@ -671,7 +705,9 @@ function parseWantlistHTML(html) {
       title,
       artist,
       year: '',
-      image
+      image,
+      wantCount: null,
+      haveCount: null
     });
   });
   
@@ -684,6 +720,8 @@ async function startMarketplaceScan(startIndex = 0) {
     startIndex = 0;
   }
   if (state.wants.length === 0) return;
+  
+  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
   
   state.isScanning = true;
   state.cancelRequested = false;
@@ -722,6 +760,17 @@ async function startMarketplaceScan(startIndex = 0) {
   resultsGrid.style.display = 'none';
   noResultsState.style.display = 'none';
   
+  const tabNavigation = document.getElementById('tab-navigation');
+  if (tabNavigation) tabNavigation.style.display = 'none';
+  const statsView = document.getElementById('stats-view');
+  if (statsView) statsView.style.display = 'none';
+  const tabBtnSellers = document.getElementById('tab-btn-sellers');
+  const tabBtnStats = document.getElementById('tab-btn-stats');
+  if (tabBtnSellers && tabBtnStats) {
+    tabBtnSellers.classList.add('active');
+    tabBtnStats.classList.remove('active');
+  }
+  
   try {
     for (let i = startIndex; i < state.wants.length; i++) {
       if (state.cancelRequested) {
@@ -758,7 +807,7 @@ async function startMarketplaceScan(startIndex = 0) {
       // Try fetching from chrome.storage.local cache first
       if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
         try {
-          const cacheKey = `release_${item.id}`;
+          const cacheKey = `release_${item.id}_${buyerCountryVal}`;
           const cacheData = await new Promise(resolve => {
             chrome.storage.local.get([cacheKey], (result) => {
               resolve(result[cacheKey] || null);
@@ -807,7 +856,7 @@ async function startMarketplaceScan(startIndex = 0) {
         // Save to cache
         if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
           try {
-            const cacheKey = `release_${item.id}`;
+            const cacheKey = `release_${item.id}_${buyerCountryVal}`;
             const cacheVal = {
               timestamp: Date.now(),
               listings: parsedListings
@@ -968,19 +1017,19 @@ function parseReleaseHTML(html, releaseId) {
       // Clean shipsFrom location string
       shipsFrom = shipsFrom.replace(/[\n\r]/g, '').trim();
       
-      // 4. Price & Currency
-      const convertedPriceEl = row.querySelector('.converted_price');
+      // 4. Price & Currency (Parse original seller price to prevent double shipping addition in converted prices)
       const priceEl = row.querySelector('.price, .item_price, .price_value');
-      
-      let priceText = '';
+      let priceText = priceEl ? priceEl.textContent.trim() : '';
       let priceVal = 0;
-      let currency = '$';
+      let currency = 'USD';
       let source = 'original';
       
-      if (convertedPriceEl) {
-        source = 'converted_price';
-        priceText = convertedPriceEl.textContent.trim();
-        // Split by tax/shipping keywords to remove extra text containing periods
+      const priceValAttr = priceEl?.getAttribute('data-pricevalue');
+      if (priceValAttr) {
+        source = 'data-pricevalue';
+        priceVal = parseFloat(priceValAttr) || 0;
+      } else if (priceText) {
+        source = 'price_element_text';
         const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
         const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
         let numStr = cleanPrice;
@@ -990,58 +1039,37 @@ function parseReleaseHTML(html, releaseId) {
           numStr = cleanPrice.replace(/,/g, '');
         }
         priceVal = parseFloat(numStr) || 0;
-      } else {
-        const priceValAttr = priceEl?.getAttribute('data-pricevalue');
-        priceText = priceEl ? priceEl.textContent.trim() : '';
-        if (priceValAttr) {
-          source = 'data-pricevalue';
-          priceVal = parseFloat(priceValAttr);
-        } else if (priceText) {
-          source = 'price_element_text';
-          const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
-          const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
-          let numStr = cleanPrice;
-          if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
-            numStr = cleanPrice.replace(',', '.');
-          } else if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
-            numStr = cleanPrice.replace(/,/g, '');
-          }
-          priceVal = parseFloat(numStr) || 0;
+      }
+      
+      // Detect the original currency code from the original price text
+      if (priceText.includes('€')) currency = 'EUR';
+      else if (priceText.includes('£')) currency = 'GBP';
+      else if (priceText.includes('¥')) currency = 'JPY';
+      else if (priceText.includes('A$')) currency = 'AUD';
+      else if (priceText.includes('CA$') || priceText.includes('C$')) currency = 'CAD';
+      else if (priceText.includes('NZ$')) currency = 'NZD';
+      else if (priceText.includes('R$')) currency = 'BRL';
+      else if (priceText.includes('Mex$')) currency = 'MXN';
+      else {
+        const isoMatch = priceText.match(/\b(UYU|ARS|CLP|COP|MXN|BRL|NZD|ZAR|CHF|SEK|NOK|DKK|USD|EUR|GBP|CAD|AUD|JPY)\b/i);
+        if (isoMatch) {
+          currency = isoMatch[1].toUpperCase();
+        } else if (priceText.includes('$')) {
+          currency = 'USD';
+        } else {
+          currency = 'USD'; // default fallback
         }
       }
       
-      // Better currency detection (match standard ISO codes or symbols)
-      const currencyMatch = priceText.match(/\b(UYU|ARS|CLP|COP|MXN|BRL|NZD|ZAR|CHF|SEK|NOK|DKK|USD|EUR|GBP|CAD|AUD|JPY)\b/i);
-      if (currencyMatch) {
-        const parsedCode = currencyMatch[1].toUpperCase();
-        if (parsedCode === 'USD') currency = '$';
-        else if (parsedCode === 'EUR') currency = '€';
-        else if (parsedCode === 'GBP') currency = '£';
-        else if (parsedCode === 'JPY') currency = '¥';
-        else currency = parsedCode + ' '; // e.g. "ARS " or "CLP "
-      } else {
-        if (priceText.includes('€')) currency = '€';
-        else if (priceText.includes('£')) currency = '£';
-        else if (priceText.includes('A$')) currency = 'A$';
-        else if (priceText.includes('CA$')) currency = 'C$';
-        else if (priceText.includes('¥')) currency = '¥';
-        else if (priceText.includes('$')) currency = '$';
-      }
-      
-      // 5. Shipping
+      // 5. Shipping (Parse original shipping cost to match the original currency of the price)
       const shippingEl = row.querySelector('.item_shipping, .shipping');
       let shippingText = shippingEl ? shippingEl.textContent.trim() : '';
       let shippingVal = 0;
       let rawShippingText = shippingText;
       
       if (shippingText) {
-        // Prioritize converted shipping in parentheses, e.g. "(about $12.00)"
-        const matchConverted = shippingText.match(/\(([^)]*\d[^)]*)\)/);
-        if (matchConverted) {
-          shippingText = matchConverted[1];
-        }
-        
-        const cleanText = shippingText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
+        // We split by parenthesis first to avoid parsing the converted parentheses value
+        const cleanText = shippingText.split(/\(|(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
         const cleanShipping = cleanText.replace(/[^\d.,]/g, '');
         let numStr = cleanShipping;
         if (cleanShipping.includes(',') && !cleanShipping.includes('.')) {
@@ -1180,7 +1208,7 @@ function groupListingsBySeller() {
       isEUToEU = true;
     }
     
-    // Apply shipping base & increments depending on location
+    // Apply shipping base & increments depending on location (values in USD)
     let baseShippingPrice = 6.00;
     let extraItemCost = 1.50;
     
@@ -1195,6 +1223,12 @@ function groupListingsBySeller() {
       baseShippingPrice = 24.00;
       extraItemCost = 3.50;
     }
+
+    // Convert estimated rates from USD to seller's currency
+    const currencyInfo = CURRENCY_MAP[seller.currency] || { rate: 1.0 };
+    const conversionFactor = 1.0 / currencyInfo.rate;
+    baseShippingPrice = baseShippingPrice * conversionFactor;
+    extraItemCost = extraItemCost * conversionFactor;
     
     // Check if we parsed actual shipping costs from listings
     const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
@@ -1415,100 +1449,20 @@ function renderSmartPurchase(filteredSellers) {
 
   // Helper functions for costs
   function getSingleSellerTotalCost(seller) {
-    const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
-    const listCount = seller.listings.length;
-    const isDomestic = seller.isDomestic;
-    const isEUToEU = seller.isEUToEU;
-    
-    let baseShippingPrice = 6.00;
-    let extraItemCost = 1.50;
-    if (isDomestic) {
-      baseShippingPrice = 4.50;
-      extraItemCost = 1.00;
-    } else if (isEUToEU) {
-      baseShippingPrice = 9.50;
-      extraItemCost = 2.00;
-    } else {
-      baseShippingPrice = 24.00;
-      extraItemCost = 3.50;
-    }
-    
-    const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
-    let estShipping = 0;
-    if (shippingValues.length > 0) {
-      const maxShipping = Math.max(...shippingValues);
-      estShipping = maxShipping + (listCount - 1) * extraItemCost;
-    } else {
-      estShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
-    }
-    return subtotal + estShipping;
+    return seller.totalPrice;
   }
 
-  function getSingleSellerShippingSavings(seller, allSellers) {
-    let individualShippingCost = 0;
-    seller.listings.forEach(l => {
-      let cheapestListing = null;
-      let cheapestSellerForRel = null;
-      allSellers.forEach(s => {
-        const relListing = s.listings.find(x => x.releaseId === l.releaseId);
-        if (relListing) {
-          if (!cheapestListing || relListing.priceVal < cheapestListing.priceVal) {
-            cheapestListing = relListing;
-            cheapestSellerForRel = s;
-          }
-        }
-      });
-      
-      if (cheapestListing && cheapestSellerForRel) {
-        const isDomestic = cheapestSellerForRel.isDomestic;
-        const isEUToEU = cheapestSellerForRel.isEUToEU;
-        let baseShippingPrice = 6.00;
-        if (isDomestic) {
-          baseShippingPrice = 4.50;
-        } else if (isEUToEU) {
-          baseShippingPrice = 9.50;
-        } else {
-          baseShippingPrice = 24.00;
-        }
-        const estShipping = cheapestListing.shippingVal > 0 ? cheapestListing.shippingVal : baseShippingPrice;
-        individualShippingCost += estShipping;
-      }
-    });
-    
-    const listCount = seller.listings.length;
-    const isDomestic = seller.isDomestic;
-    const isEUToEU = seller.isEUToEU;
-    
-    let baseShippingPrice = 6.00;
-    let extraItemCost = 1.50;
-    if (isDomestic) {
-      baseShippingPrice = 4.50;
-      extraItemCost = 1.00;
-    } else if (isEUToEU) {
-      baseShippingPrice = 9.50;
-      extraItemCost = 2.00;
-    } else {
-      baseShippingPrice = 24.00;
-      extraItemCost = 3.50;
-    }
-    
-    const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
-    let estShipping = 0;
-    if (shippingValues.length > 0) {
-      const maxShipping = Math.max(...shippingValues);
-      estShipping = maxShipping + (listCount - 1) * extraItemCost;
-    } else {
-      estShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
-    }
-    
-    return Math.max(0, individualShippingCost - estShipping);
+  function getSingleSellerTotalCostInUSD(seller) {
+    const rate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+    return seller.totalPrice * rate;
   }
+
+
 
   function renderCard(title, description, badgeText, seller, badgeColor) {
     const totalCost = getSingleSellerTotalCost(seller);
     const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
     const shippingCost = totalCost - subtotal;
-    const currencySymbol = seller.currency || '$';
     
     let albumsHtml = '';
     seller.listings.forEach(l => {
@@ -1516,7 +1470,7 @@ function renderSmartPurchase(filteredSellers) {
       albumsHtml += `
         <div class="smart-album-row">
           <span class="smart-album-title" title="${wantInfo.title} - ${wantInfo.artist}">💿 ${wantInfo.title}</span>
-          <span class="smart-album-price">${l.currency}${l.priceVal.toFixed(2)}</span>
+          <span class="smart-album-price">${formatPrice(l.priceVal, l.currency)}</span>
         </div>
       `;
     });
@@ -1539,8 +1493,8 @@ function renderSmartPurchase(filteredSellers) {
             </div>
           </div>
           <div style="text-align: right; flex-shrink: 0;">
-            <div style="font-size: 15px; font-weight: 800; color: #fff;">${currencySymbol}${totalCost.toFixed(2)}</div>
-            <div style="font-size: 10px; color: var(--text-muted)">Envío: ${currencySymbol}${shippingCost.toFixed(2)}</div>
+            <div style="font-size: 15px; font-weight: 800; color: #fff;">${formatPrice(totalCost, seller.currency)}</div>
+            <div style="font-size: 10px; color: var(--text-muted)">Envío: ${formatPrice(shippingCost, seller.currency)}</div>
           </div>
         </div>
         
@@ -1555,7 +1509,7 @@ function renderSmartPurchase(filteredSellers) {
           </div>
           <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
             <span>Promedio por disco:</span>
-            <span style="color:var(--color-amber); font-weight:700;">${currencySymbol}${(totalCost / seller.listings.length).toFixed(2)}</span>
+            <span style="color:var(--color-amber); font-weight:700;">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
           </div>
         </div>
       </div>
@@ -1651,6 +1605,10 @@ function renderResults() {
     noResultsState.style.display = 'none';
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
+    const tabNavigation = document.getElementById('tab-navigation');
+    if (tabNavigation) tabNavigation.style.display = 'none';
+    const statsView = document.getElementById('stats-view');
+    if (statsView) statsView.style.display = 'none';
     toggleFiltersState(false);
     return;
   }
@@ -1728,6 +1686,10 @@ function renderResults() {
     noResultsState.style.display = 'block';
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
+    const tabNavigation = document.getElementById('tab-navigation');
+    if (tabNavigation) tabNavigation.style.display = 'none';
+    const statsView = document.getElementById('stats-view');
+    if (statsView) statsView.style.display = 'none';
     return;
   }
   
@@ -1736,6 +1698,8 @@ function renderResults() {
   
   emptyState.style.display = 'none';
   noResultsState.style.display = 'none';
+  const tabNavigation = document.getElementById('tab-navigation');
+  if (tabNavigation) tabNavigation.style.display = 'flex';
   resultsGrid.style.display = 'grid';
   resultsGrid.innerHTML = '';
   
@@ -1769,8 +1733,8 @@ function renderResults() {
           <td>
             <span class="badge-condition ${list.mediaCondClass}">${list.mediaCondition}</span>
           </td>
-          <td class="listing-price-cell">${list.currency}${list.priceVal.toFixed(2)}</td>
-          <td class="listing-shipping-cell">+ ${list.currency}${list.shippingVal.toFixed(2)} envío</td>
+          <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
+          <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)} envío</td>
           <td>
             <a href="${list.listingUrl}" target="_blank" class="btn-listing-link">Ver Oferta</a>
           </td>
@@ -1800,17 +1764,17 @@ function renderResults() {
           
           <div class="total-group">
             <span class="total-label">Subtotal</span>
-            <span class="total-value-normal">${seller.currency}${seller.subtotal.toFixed(2)}</span>
+            <span class="total-value-normal">${formatPrice(seller.subtotal, seller.currency)}</span>
           </div>
           
           <div class="total-group" title="Envío estimado según ubicación (${seller.isDomestic ? 'Nacional' : (seller.isEUToEU ? 'UE a UE' : 'Internacional')})">
             <span class="total-label">Envío (${seller.isDomestic ? 'Nac.' : (seller.isEUToEU ? 'UE' : 'Int.')})</span>
-            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${seller.currency}${seller.estimatedShipping.toFixed(2)}</span>
+            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(seller.estimatedShipping, seller.currency)}</span>
           </div>
           
           <div class="total-group">
             <span class="total-label">Total Estimado</span>
-            <span class="total-value-highlight">${seller.currency}${seller.totalPrice.toFixed(2)}</span>
+            <span class="total-value-highlight">${formatPrice(seller.totalPrice, seller.currency)}</span>
           </div>
         </div>
         
@@ -2012,4 +1976,230 @@ async function clearScanCache() {
   } else {
     alert('La API de almacenamiento local no está disponible en este entorno.');
   }
+}
+
+// Switch between Sellers and Statistics tabs
+function switchTab(tabName) {
+  const tabBtnSellers = document.getElementById('tab-btn-sellers');
+  const tabBtnStats = document.getElementById('tab-btn-stats');
+  const resultsGrid = document.getElementById('results-grid');
+  const smartCard = document.getElementById('smart-purchase-card');
+  const statsView = document.getElementById('stats-view');
+  
+  if (!tabBtnSellers || !tabBtnStats) return;
+  
+  if (tabName === 'sellers') {
+    tabBtnSellers.classList.add('active');
+    tabBtnStats.classList.remove('active');
+    resultsGrid.style.display = 'grid';
+    if (smartCard && smartCard.innerHTML.trim() !== '') {
+      smartCard.style.display = 'block';
+    }
+    statsView.style.display = 'none';
+  } else {
+    tabBtnSellers.classList.remove('active');
+    tabBtnStats.classList.add('active');
+    resultsGrid.style.display = 'none';
+    smartCard.style.display = 'none';
+    statsView.style.display = 'flex';
+    calculateAndRenderStats();
+  }
+}
+
+// Calculate and render all wantlist & marketplace statistics
+function calculateAndRenderStats() {
+  const statsView = document.getElementById('stats-view');
+  if (!statsView) return;
+  
+  const totalWantsCount = state.wants.length;
+  
+  // Find releases that are actually for sale (have at least one match)
+  const wantsForSale = state.wants.filter(w => 
+    state.allListings.some(l => l.releaseId === w.id)
+  );
+  
+  // Find releases not for sale (0 matches)
+  const wantsNotForSale = state.wants.filter(w => 
+    !state.allListings.some(l => l.releaseId === w.id)
+  );
+  
+  // Find cheapest and most expensive copies (fair comparison in USD)
+  let cheapestListing = null;
+  let cheapestUSD = Infinity;
+  
+  let expensiveListing = null;
+  let expensiveUSD = -1;
+  
+  state.allListings.forEach(l => {
+    const rate = CURRENCY_MAP[l.currency]?.rate || 1.0;
+    const priceUSD = l.priceVal * rate;
+    
+    if (priceUSD < cheapestUSD && l.priceVal > 0) {
+      cheapestUSD = priceUSD;
+      cheapestListing = l;
+    }
+    if (priceUSD > expensiveUSD && l.priceVal > 0) {
+      expensiveUSD = priceUSD;
+      expensiveListing = l;
+    }
+  });
+  
+  const cheapestWant = cheapestListing ? state.wants.find(w => w.id === cheapestListing.releaseId) : null;
+  const expensiveWant = expensiveListing ? state.wants.find(w => w.id === expensiveListing.releaseId) : null;
+  
+  // Find community wants metrics
+  const wantsWithStats = state.wants.filter(w => w.wantCount !== undefined && w.wantCount !== null && w.wantCount > 0);
+  
+  let leastWanted = null;
+  let mostWanted = null;
+  
+  if (wantsWithStats.length > 0) {
+    const sortedWants = [...wantsWithStats].sort((a, b) => a.wantCount - b.wantCount);
+    leastWanted = sortedWants[0];
+    mostWanted = sortedWants[sortedWants.length - 1];
+  }
+  
+  // Render layout
+  let html = `
+    <!-- Top metrics bar -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 8px;">
+      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Discos a la venta</span>
+        <span style="font-size: 26px; font-weight: 800; color: var(--color-green); margin-top: 6px;">${wantsForSale.length} / ${totalWantsCount}</span>
+        <span style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Disponibles para comprar hoy</span>
+      </div>
+      
+      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Agotados en Discogs</span>
+        <span style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px;">${wantsNotForSale.length}</span>
+        <span style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Sin copias listadas en venta</span>
+      </div>
+      
+      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+        <span style="font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase;">Total de ofertas</span>
+        <span style="font-size: 26px; font-weight: 800; color: var(--color-purple); margin-top: 6px;">${state.allListings.length}</span>
+        <span style="font-size: 11px; color: var(--text-dim); margin-top: 4px;">Copias raspadas del marketplace</span>
+      </div>
+    </div>
+    
+    <div class="stats-grid">
+      <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- CHEAPEST VINYL -->
+        <div class="stats-card-rich">
+          <div class="stats-card-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-green);">El más barato</div>
+          <h3>💰 Más Económico</h3>
+          ${cheapestListing && cheapestWant ? `
+            <div class="stats-album-layout">
+              <div class="stats-album-cover" style="background-image: url('${cheapestWant.image || ''}')"></div>
+              <div class="stats-album-info">
+                <span class="stats-album-title" title="${cheapestWant.title}">${cheapestWant.title}</span>
+                <span class="stats-album-artist" title="${cheapestWant.artist}">${cheapestWant.artist}</span>
+                <span class="stats-price-highlight">${formatPrice(cheapestListing.priceVal, cheapestListing.currency)}</span>
+                <span class="stats-seller-info">Estado: <span class="badge-condition ${cheapestListing.mediaCondClass}" style="display: inline; font-size: 9px; padding: 2px 4px; vertical-align: middle;">${cheapestListing.mediaCondition}</span></span>
+                <span class="stats-seller-info">👤 Vendedor: <strong>${cheapestListing.sellerName}</strong> (📍 ${cheapestListing.shipsFrom})</span>
+                <a href="${cheapestListing.listingUrl}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center;">Ver Oferta</a>
+              </div>
+            </div>
+          ` : `
+            <p style="font-size: 13px; color: var(--text-muted); margin: 10px 0;">No se encontraron ofertas para calcular precios.</p>
+          `}
+        </div>
+        
+        <!-- MOST EXPENSIVE VINYL -->
+        <div class="stats-card-rich">
+          <div class="stats-card-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">El más costoso</div>
+          <h3>💎 Objeto de Lujo</h3>
+          ${expensiveListing && expensiveWant ? `
+            <div class="stats-album-layout">
+              <div class="stats-album-cover" style="background-image: url('${expensiveWant.image || ''}')"></div>
+              <div class="stats-album-info">
+                <span class="stats-album-title" title="${expensiveWant.title}">${expensiveWant.title}</span>
+                <span class="stats-album-artist" title="${expensiveWant.artist}">${expensiveWant.artist}</span>
+                <span class="stats-price-highlight" style="color: #c084fc;">${formatPrice(expensiveListing.priceVal, expensiveListing.currency)}</span>
+                <span class="stats-seller-info">Estado: <span class="badge-condition ${expensiveListing.mediaCondClass}" style="display: inline; font-size: 9px; padding: 2px 4px; vertical-align: middle;">${expensiveListing.mediaCondition}</span></span>
+                <span class="stats-seller-info">👤 Vendedor: <strong>${expensiveListing.sellerName}</strong> (📍 ${expensiveListing.shipsFrom})</span>
+                <a href="${expensiveListing.listingUrl}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center; background: rgba(192, 132, 252, 0.1); border-color: rgba(192, 132, 252, 0.3); color: #c084fc;">Ver Oferta</a>
+              </div>
+            </div>
+          ` : `
+            <p style="font-size: 13px; color: var(--text-muted); margin: 10px 0;">No se encontraron ofertas para calcular precios.</p>
+          `}
+        </div>
+        
+        <!-- COMMUNITY POPULARITY -->
+        <div class="stats-card-rich">
+          <h3>📈 Preferencias de Diggers</h3>
+          ${wantsWithStats.length > 0 ? `
+            <div style="display: flex; flex-direction: column; gap: 14px;">
+              <!-- MOST WANTED -->
+              ${mostWanted ? `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px; border-radius: 8px;">
+                  <span style="font-size: 9px; color: var(--color-amber); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 4px;">🔥 EL MÁS DESEADO DE TU LISTA</span>
+                  <strong style="color: #fff; font-size: 13px; display: block;">${mostWanted.title}</strong>
+                  <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">${mostWanted.artist}</span>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span style="color: var(--text-muted);">Lo quieren en Discogs:</span>
+                    <strong style="color: #fff;">${mostWanted.wantCount.toLocaleString()} coleccionistas</strong>
+                  </div>
+                </div>
+              ` : ''}
+              
+              <!-- LEAST WANTED -->
+              ${leastWanted ? `
+                <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04); padding: 10px; border-radius: 8px;">
+                  <span style="font-size: 9px; color: #a855f7; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 4px;">❄️ EL MENOS QUERIDO / RAREZA OSCURA</span>
+                  <strong style="color: #fff; font-size: 13px; display: block;">${leastWanted.title}</strong>
+                  <span style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">${leastWanted.artist}</span>
+                  <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                    <span style="color: var(--text-muted);">Lo quieren en Discogs:</span>
+                    <strong style="color: #fff;">${leastWanted.wantCount.toLocaleString()} coleccionistas</strong>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          ` : `
+            <p style="font-size: 12px; color: var(--text-muted); margin: 10px 0; line-height: 1.4;">
+              ⚠️ <strong>Datos de popularidad de comunidad no disponibles.</strong><br>
+              Esto ocurre porque la lista se cargó por raspado web (no API) o no hay conectividad. Intente loguearse en Discogs para cargarla mediante API.
+            </p>
+          `}
+        </div>
+      </div>
+      
+      <!-- COLUMN 2: NOT FOR SALE (AGOTADOS) -->
+      <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="stats-card-rich" style="flex-grow: 1;">
+          <h3>⚠️ Discos sin stock (Agotados en venta)</h3>
+          <p style="font-size: 12px; color: var(--text-muted); margin: -10px 0 12px 0; line-height: 1.4;">
+            Estos vinilos de tu lista de deseos no disponen de copias publicadas actualmente en el Marketplace de Discogs.
+          </p>
+          
+          <div class="not-for-sale-list">
+            ${wantsNotForSale.length > 0 ? wantsNotForSale.map(w => `
+              <div class="not-for-sale-row">
+                <div class="not-for-sale-info">
+                  <div class="not-for-sale-cover" style="background-image: url('${w.image || ''}')">
+                    ${!w.image ? `<span style="font-size: 14px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
+                  </div>
+                  <div class="not-for-sale-text">
+                    <span class="not-for-sale-title" title="${w.title}">${w.title}</span>
+                    <span class="not-for-sale-artist" title="${w.artist}">${w.artist}</span>
+                  </div>
+                </div>
+                <a href="https://www.discogs.com/sell/list?release_id=${w.id}" target="_blank" class="btn-search-discogs-sm">Ver en Discogs</a>
+              </div>
+            `).join('') : `
+              <p style="font-size: 13px; color: var(--text-muted); padding: 30px; text-align: center;">
+                🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia en venta hoy.
+              </p>
+            `}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  statsView.innerHTML = html;
 }

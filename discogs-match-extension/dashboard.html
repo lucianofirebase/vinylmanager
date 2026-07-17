@@ -213,6 +213,11 @@
 
       <!-- RESULTS CONTAINER -->
       <div class="results-container">
+        <!-- TAB NAVIGATION -->
+        <div class="tab-navigation" id="tab-navigation" style="display: none;">
+          <button class="tab-btn active" id="tab-btn-sellers">🛍️ Vendedores</button>
+          <button class="tab-btn" id="tab-btn-stats">📊 Estadísticas de Lista</button>
+        </div>
         <!-- INTERACTIVE ONBOARDING WIZARD -->
         <div class="empty-state onboarding-wizard" id="empty-state">
           <div class="wizard-steps-indicator">
@@ -348,6 +353,11 @@
           <div class="icon">🔍</div>
           <h3>No se encontraron vendedores coincidentes</h3>
           <p>Prueba reduciendo la cantidad de coincidencias mínimas o cambiando el filtro de país.</p>
+        </div>
+
+        <!-- STATISTICS VIEW -->
+        <div class="stats-view-container" id="stats-view" style="display: none;">
+          <!-- Content will be injected dynamically by dashboard.js -->
         </div>
       </div>
     </main>
