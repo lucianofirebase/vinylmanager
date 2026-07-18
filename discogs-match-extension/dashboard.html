@@ -53,9 +53,14 @@
       </div>
 
       <div class="sidebar-section control-section">
-        <button id="load-wants-btn" class="btn-primary" disabled>
-          <span>1. Cargar Lista de Deseos</span>
-        </button>
+        <div style="display: flex; gap: 8px;">
+          <button id="load-wants-btn" class="btn-primary" disabled style="flex: 1;">
+            <span>1. Cargar Lista de Deseos</span>
+          </button>
+          <button id="refresh-wants-btn" class="btn-secondary" disabled style="display: none; align-items: center; justify-content: center; width: 42px; height: 42px; padding: 0; border-radius: 10px; font-size: 16px; margin: 0; flex-shrink: 0;" title="Actualizar lista incrementalmente">
+            🔄
+          </button>
+        </div>
         <button id="start-scan-btn" class="btn-primary" disabled style="margin-top: 10px;">
           <span>2. Iniciar Análisis de Ventas</span>
         </button>

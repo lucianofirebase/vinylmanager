@@ -42,6 +42,7 @@ const inputFallback = document.getElementById('input-fallback');
 const manualUsername = document.getElementById('manual-username');
 const saveUsernameBtn = document.getElementById('save-username-btn');
 const loadWantsBtn = document.getElementById('load-wants-btn');
+const refreshWantsBtn = document.getElementById('refresh-wants-btn');
 const startScanBtn = document.getElementById('start-scan-btn');
 const useCacheCheckbox = document.getElementById('use-cache-checkbox');
 const clearCacheBtn = document.getElementById('clear-cache-btn');
@@ -106,6 +107,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);
+  if (refreshWantsBtn) {
+    refreshWantsBtn.addEventListener('click', refreshWantlistIncremental);
+  }
   startScanBtn.addEventListener('click', startMarketplaceScan);
   cancelScanBtn.addEventListener('click', cancelScan);
   saveUsernameBtn.addEventListener('click', saveManualUsername);
@@ -144,6 +148,40 @@ document.addEventListener('DOMContentLoaded', () => {
   filterRating.addEventListener('change', renderResults);
   sortBy.addEventListener('change', renderResults);
   filterPriorityOnly.addEventListener('change', renderResults);
+});
+
+// Intercept all target="_blank" links and open them via chrome.tabs.create (necessary for Chrome extension panels/popups)
+document.addEventListener('click', (e) => {
+  const link = e.target.closest('a');
+  if (link && link.getAttribute('target') === '_blank') {
+    const url = link.getAttribute('href');
+    if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+      e.preventDefault();
+      if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.create) {
+        chrome.tabs.create({ url: url });
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+    return;
+  }
+
+  // Handle Accordion clicks for Consolidated Smart Purchase candidates
+  const header = e.target.closest('.smart-candidate-header');
+  if (header) {
+    const card = header.closest('.smart-candidate-card');
+    if (card) {
+      const container = card.closest('.smart-candidates-stack');
+      // Collapse all other candidates in this stack
+      container.querySelectorAll('.smart-candidate-card').forEach(sibling => {
+        if (sibling !== card) {
+          sibling.classList.remove('active');
+        }
+      });
+      // Toggle the clicked one
+      card.classList.toggle('active');
+    }
+  }
 });
 
 // Dynamic lock/unlock filters section
@@ -535,6 +573,7 @@ async function fetchThroughTab(url) {
 async function loadWantlist() {
   loadWantsBtn.disabled = true;
   loadWantsBtn.textContent = 'Cargando...';
+  if (refreshWantsBtn) refreshWantsBtn.disabled = true;
   
   // Show onboarding wizard loader if active
   if (wizardSyncBtn) {
@@ -564,7 +603,7 @@ async function loadWantlist() {
         log(`Cargando página ${page} de la API de Discogs...`);
         if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (API)...`;
         
-        const jsonText = await fetchThroughTab(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100`);
+        const jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100`);
         console.log(`[WantlistAPI] Respuesta recibida para página ${page}. Parseando JSON...`);
         const data = JSON.parse(jsonText);
         
@@ -641,12 +680,17 @@ async function loadWantlist() {
     loadWantsBtn.textContent = '1. Cargar Lista de Deseos';
     loadWantsBtn.disabled = false;
     startScanBtn.disabled = false;
+    if (refreshWantsBtn) {
+      refreshWantsBtn.style.display = 'flex';
+      refreshWantsBtn.disabled = false;
+    }
     
   } catch (error) {
     log(`Error al cargar Wantlist: ${error.message}`, 'error');
     alert(`No pudimos cargar la Wantlist. Detalle: ${error.message}`);
     loadWantsBtn.textContent = '1. Cargar Lista de Deseos';
     loadWantsBtn.disabled = false;
+    if (refreshWantsBtn) refreshWantsBtn.disabled = false;
     
     // Restore wizard buttons on error
     if (wizardSyncBtn) {
@@ -702,7 +746,7 @@ function parseWantlistHTML(html) {
     
     wants.push({
       id,
-      title,
+        title,
       artist,
       year: '',
       image,
@@ -713,15 +757,105 @@ function parseWantlistHTML(html) {
   
   return wants;
 }
-// Step 2: Start Marketplace Scan
+
+// Step 2: Scan Single Release (Utility)
+async function scanSingleRelease(item, index, totalWants) {
+  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
+  const progress = Math.round(((index + 1) / totalWants) * 100);
+  
+  // Update UI Progress
+  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}`;
+  progressBar.style.width = `${progress}%`;
+  progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
+  progressPercent.textContent = `${progress}%`;
+
+  // Update Cover Art Preview for currently scanned item
+  const scanningCoverArt = document.getElementById('scanning-cover-art');
+  const coverPlaceholder = document.getElementById('cover-placeholder');
+  if (scanningCoverArt) {
+    if (item.image) {
+      scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
+      if (coverPlaceholder) coverPlaceholder.style.display = 'none';
+    } else {
+      scanningCoverArt.style.backgroundImage = '';
+      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+    }
+  }
+  
+  let parsedListings = null;
+  let isFromCache = false;
+  let cacheAgeHours = 0;
+  let communityStats = null;
+  
+  // Try fetching from chrome.storage.local cache first
+  if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    try {
+      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
+      const cacheData = await new Promise(resolve => {
+        chrome.storage.local.get([cacheKey], (result) => {
+          resolve(result[cacheKey] || null);
+        });
+      });
+      
+      if (cacheData) {
+        const now = Date.now();
+        cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
+        if (cacheAgeHours < 24) {
+          parsedListings = cacheData.listings;
+          communityStats = cacheData.communityStats || null;
+          isFromCache = true;
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('Error reading from cache:', cacheErr);
+    }
+  }
+  
+  if (isFromCache && parsedListings) {
+    log(`[Caché] Cargadas ${parsedListings.length} copias en venta para este disco (guardado hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
+    return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
+  }
+  
+  log(`Escaneando (${index + 1}/${totalWants}): ${item.artist} - ${item.title}...`);
+  
+  try {
+    const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
+    const html = await fetchThroughTab(url);
+    const result = parseReleaseHTML(html, item.id);
+    parsedListings = result.listings;
+    communityStats = result.communityStats;
+    
+    log(`Encontradas ${parsedListings.length} copias en venta para este disco.`);
+    
+    // Save to cache
+    if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        const cacheKey = `release_${item.id}_${buyerCountryVal}`;
+        const cacheVal = {
+          timestamp: Date.now(),
+          listings: parsedListings,
+          communityStats: communityStats
+        };
+        chrome.storage.local.set({ [cacheKey]: cacheVal });
+      } catch (cacheErr) {
+        console.warn('Error saving to cache:', cacheErr);
+      }
+    }
+    
+    return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
+  } catch (e) {
+    log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
+    return { listings: [], communityStats: null, isFromCache: false };
+  }
+}
+
+// Step 3: Start Marketplace Scan
 async function startMarketplaceScan(startIndex = 0) {
   // Ensure startIndex is a valid number (handles PointerEvent from button click event listeners)
   if (typeof startIndex !== 'number') {
     startIndex = 0;
   }
   if (state.wants.length === 0) return;
-  
-  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
   
   state.isScanning = true;
   state.cancelRequested = false;
@@ -740,6 +874,8 @@ async function startMarketplaceScan(startIndex = 0) {
   
   startScanBtn.disabled = true;
   loadWantsBtn.disabled = true;
+  const refreshWantsBtn = document.getElementById('refresh-wants-btn');
+  if (refreshWantsBtn) refreshWantsBtn.disabled = true;
   logoVinyl.classList.add('spinning');
   
   // Show progress panel and trigger turntable spinning
@@ -779,108 +915,27 @@ async function startMarketplaceScan(startIndex = 0) {
       }
       
       const item = state.wants[i];
-      const progress = Math.round(((i + 1) / state.wants.length) * 100);
+      const result = await scanSingleRelease(item, i, state.wants.length);
+      state.allListings.push(...result.listings);
       
-      // Update UI Progress
-      statusTitle.textContent = `Escaneando disco ${i + 1} de ${state.wants.length}`;
-      progressBar.style.width = `${progress}%`;
-      progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
-      progressPercent.textContent = `${progress}%`;
-
-      // Update Cover Art Preview for currently scanned item
-      const scanningCoverArt = document.getElementById('scanning-cover-art');
-      const coverPlaceholder = document.getElementById('cover-placeholder');
-      if (scanningCoverArt) {
-        if (item.image) {
-          scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
-          if (coverPlaceholder) coverPlaceholder.style.display = 'none';
-        } else {
-          scanningCoverArt.style.backgroundImage = '';
-          if (coverPlaceholder) coverPlaceholder.style.display = 'block';
-        }
+      // Update community stats on the want item!
+      if (result.communityStats) {
+        if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
+        if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
       }
       
-      let parsedListings = null;
-      let isFromCache = false;
-      let cacheAgeHours = 0;
+      // Update stats on-the-fly
+      const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
+      metricSellersCount.textContent = uniqueSellers.size;
+      metricMatchesCount.textContent = state.allListings.length;
       
-      // Try fetching from chrome.storage.local cache first
-      if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        try {
-          const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-          const cacheData = await new Promise(resolve => {
-            chrome.storage.local.get([cacheKey], (result) => {
-              resolve(result[cacheKey] || null);
-            });
-          });
-          
-          if (cacheData) {
-            const now = Date.now();
-            cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
-            if (cacheAgeHours < 24) {
-              parsedListings = cacheData.listings;
-              isFromCache = true;
-            }
-          }
-        } catch (cacheErr) {
-          console.warn('Error reading from cache:', cacheErr);
-        }
+      // Save scan session progress
+      saveScanSession(i);
+      
+      // Skip fetch and delay when using cached data
+      if (!result.isFromCache) {
+        await new Promise(resolve => setTimeout(resolve, 1200));
       }
-      
-      if (isFromCache && parsedListings) {
-        log(`[Caché] Cargadas ${parsedListings.length} copias en venta para este disco (guardado hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
-        state.allListings.push(...parsedListings);
-        
-        // Update stats on-the-fly
-        const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
-        metricSellersCount.textContent = uniqueSellers.size;
-        metricMatchesCount.textContent = state.allListings.length;
-        
-        // Save scan session progress
-        saveScanSession(i);
-        
-        // Skip fetch and delay when using cached data
-        continue;
-      }
-      
-      log(`Escaneando (${i + 1}/${state.wants.length}): ${item.artist} - ${item.title}...`);
-      
-      try {
-        const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
-        const html = await fetchThroughTab(url);
-        parsedListings = parseReleaseHTML(html, item.id);
-        
-        log(`Encontradas ${parsedListings.length} copias en venta para este disco.`);
-        state.allListings.push(...parsedListings);
-        
-        // Save to cache
-        if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-          try {
-            const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-            const cacheVal = {
-              timestamp: Date.now(),
-              listings: parsedListings
-            };
-            chrome.storage.local.set({ [cacheKey]: cacheVal });
-          } catch (cacheErr) {
-            console.warn('Error saving to cache:', cacheErr);
-          }
-        }
-        
-        // Update stats on-the-fly
-        const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
-        metricSellersCount.textContent = uniqueSellers.size;
-        metricMatchesCount.textContent = state.allListings.length;
-        
-        // Save scan session progress
-        saveScanSession(i);
-        
-      } catch (e) {
-        log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
-      }
-      
-      // Polite delay between requests to avoid overloading or rate limits (1.2 seconds)
-      await new Promise(resolve => setTimeout(resolve, 1200));
     }
     
     // Close background tab if we opened one
@@ -901,6 +956,8 @@ async function startMarketplaceScan(startIndex = 0) {
     state.isScanning = false;
     startScanBtn.disabled = false;
     loadWantsBtn.disabled = false;
+    const refreshWantsBtn = document.getElementById('refresh-wants-btn');
+    if (refreshWantsBtn) refreshWantsBtn.disabled = false;
     logoVinyl.classList.remove('spinning');
     statusCard.style.display = 'none';
     
@@ -928,6 +985,168 @@ async function startMarketplaceScan(startIndex = 0) {
   }
 }
 
+// Step 4: Incremental Wantlist Refresh
+async function refreshWantlistIncremental() {
+  if (state.isScanning) return;
+  
+  const refreshWantsBtn = document.getElementById('refresh-wants-btn');
+  if (!refreshWantsBtn) return;
+  
+  refreshWantsBtn.disabled = true;
+  refreshWantsBtn.classList.add('spinning-btn');
+  log('Iniciando actualización incremental del Wantlist...', 'info');
+  
+  try {
+    let newWants = [];
+    let page = 1;
+    let totalPages = 1;
+    
+    try {
+      do {
+        log(`Cargando página ${page} de la API de Discogs para refrescar...`);
+        const jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100`);
+        const data = JSON.parse(jsonText);
+        
+        if (data && data.wants && data.wants.length > 0) {
+          const pageWants = data.wants.map(item => ({
+            id: item.id,
+            title: item.basic_information.title,
+            artist: item.basic_information.artists.map(a => a.name).join(', '),
+            year: item.basic_information.year,
+            image: item.basic_information.cover_image || item.basic_information.thumb || '',
+            wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
+            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0
+          }));
+          newWants.push(...pageWants);
+          totalPages = data.pagination.pages;
+          page++;
+          
+          if (page <= totalPages) {
+            await new Promise(r => setTimeout(r, 1200));
+          }
+        } else {
+          break;
+        }
+      } while (page <= totalPages);
+      
+    } catch (apiError) {
+      log(`La API falló al refrescar (${apiError.message}). Usando método alternativo de raspado HTML...`, 'warning');
+      let page = 1;
+      newWants = [];
+      let hasMore = true;
+      do {
+        const html = await fetchThroughTab(`https://www.discogs.com/wantlist?user=${state.username}&limit=250&page=${page}`);
+        const pageWants = parseWantlistHTML(html);
+        if (pageWants && pageWants.length > 0) {
+          newWants.push(...pageWants);
+          page++;
+          await new Promise(r => setTimeout(r, 1200));
+        } else {
+          hasMore = false;
+        }
+      } while (hasMore);
+    }
+    
+    if (newWants.length === 0) {
+      log('No se pudo obtener el Wantlist o está vacío.', 'error');
+      refreshWantsBtn.disabled = false;
+      refreshWantsBtn.classList.remove('spinning-btn');
+      return;
+    }
+    
+    const newlyAddedWants = newWants.filter(nw => !state.wants.some(ow => ow.id === nw.id));
+    const removedWants = state.wants.filter(ow => !newWants.some(nw => nw.id === ow.id));
+    
+    log(`Resultados de comparación: +${newlyAddedWants.length} nuevos discos, -${removedWants.length} eliminados.`, 'info');
+    
+    if (removedWants.length > 0) {
+      state.wants = state.wants.filter(ow => newWants.some(nw => nw.id === ow.id));
+      state.allListings = state.allListings.filter(l => newWants.some(nw => nw.id === l.releaseId));
+    }
+    
+    metricWantsCount.textContent = state.wants.length;
+    
+    if (newlyAddedWants.length > 0) {
+      state.isScanning = true;
+      state.cancelRequested = false;
+      
+      state.wants.push(...newlyAddedWants);
+      metricWantsCount.textContent = state.wants.length;
+      
+      statusCard.style.display = 'block';
+      const turntableVinyl = document.getElementById('turntable-vinyl');
+      if (turntableVinyl) turntableVinyl.classList.add('spinning');
+      logoVinyl.classList.add('spinning');
+      
+      log(`Escaneando ${newlyAddedWants.length} nuevos discos en venta...`);
+      
+      for (let i = 0; i < newlyAddedWants.length; i++) {
+        if (state.cancelRequested) {
+          log('Actualización incremental cancelada por el usuario.', 'error');
+          break;
+        }
+        
+        const item = newlyAddedWants[i];
+        const result = await scanSingleRelease(item, i, newlyAddedWants.length);
+        state.allListings.push(...result.listings);
+        
+        // Update community stats on the want item!
+        if (result.communityStats) {
+          if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
+          if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
+        }
+        
+        const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
+        metricSellersCount.textContent = uniqueSellers.size;
+        metricMatchesCount.textContent = state.allListings.length;
+        
+        if (!result.isFromCache) {
+          await new Promise(resolve => setTimeout(resolve, 1200));
+        }
+      }
+      
+      if (state.proxyTabId !== null) {
+        chrome.tabs.remove(state.proxyTabId);
+        state.proxyTabId = null;
+      }
+      
+      log('Escaneo de nuevos discos completado.', 'success');
+    }
+    
+    log('Procesando y agrupando resultados actualizados...', 'success');
+    groupListingsBySeller();
+    renderResults();
+    
+    const tabBtnStats = document.getElementById('tab-btn-stats');
+    if (tabBtnStats && tabBtnStats.classList.contains('active')) {
+      calculateAndRenderStats();
+    }
+    
+    alert(`¡Actualización incremental exitosa!\nSe agregaron ${newlyAddedWants.length} discos y se removieron ${removedWants.length}.`);
+    
+  } catch (error) {
+    log(`Error en la actualización incremental: ${error.message}`, 'error');
+    alert(`Error al actualizar incrementalmente: ${error.message}`);
+  } finally {
+    state.isScanning = false;
+    logoVinyl.classList.remove('spinning');
+    statusCard.style.display = 'none';
+    const turntableVinyl = document.getElementById('turntable-vinyl');
+    if (turntableVinyl) turntableVinyl.classList.remove('spinning');
+    
+    const scanningCoverArt = document.getElementById('scanning-cover-art');
+    const coverPlaceholder = document.getElementById('cover-placeholder');
+    if (scanningCoverArt) {
+      scanningCoverArt.style.backgroundImage = '';
+      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+    }
+    
+    refreshWantsBtn.disabled = false;
+    refreshWantsBtn.classList.remove('spinning-btn');
+  }
+}
+
+
 // Cancel current scan
 function cancelScan() {
   state.cancelRequested = true;
@@ -940,6 +1159,43 @@ function parseReleaseHTML(html, releaseId) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const listings = [];
+  
+  // Extract community stats for the release (Haves / Wants)
+  let haveCount = null;
+  let wantCount = null;
+  
+  try {
+    const haveEl = doc.querySelector('a[href*="#collection"]');
+    if (haveEl) {
+      const num = parseInt(haveEl.textContent.replace(/[^\d]/g, ''), 10);
+      if (!isNaN(num)) haveCount = num;
+    }
+    
+    const wantEl = doc.querySelector('a[href*="#wantlist"]');
+    if (wantEl) {
+      const num = parseInt(wantEl.textContent.replace(/[^\d]/g, ''), 10);
+      if (!isNaN(num)) wantCount = num;
+    }
+    
+    if (haveCount === null || wantCount === null) {
+      // Fallback: search anywhere in body text for "lo tienen: X" or "lo quieren: Y" or English equivalents
+      const bodyText = doc.body ? doc.body.textContent : '';
+      
+      const haveMatch = bodyText.match(/(?:lo tienen|have|haves|haben|possèdent)\s*:\s*([\d.,\s]+)/i);
+      if (haveMatch) {
+        const num = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
+        if (!isNaN(num)) haveCount = num;
+      }
+      
+      const wantMatch = bodyText.match(/(?:lo quieren|want|wants|wollen|veulent)\s*:\s*([\d.,\s]+)/i);
+      if (wantMatch) {
+        const num = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
+        if (!isNaN(num)) wantCount = num;
+      }
+    }
+  } catch (err) {
+    console.warn('Error parsing community stats:', err);
+  }
   
   // Find listings rows
   let rows = doc.querySelectorAll('.shortcut_navigable');
@@ -1145,7 +1401,10 @@ function parseReleaseHTML(html, releaseId) {
     }
   });
   
-  return listings;
+  return {
+    listings: listings,
+    communityStats: { haveCount, wantCount }
+  };
 }
 
 // Group all matching listings by Seller Name
@@ -1414,53 +1673,51 @@ function renderSmartPurchase(filteredSellers) {
     if (b.listings.length !== a.listings.length) {
       return b.listings.length - a.listings.length;
     }
-    const costA = getSingleSellerTotalCost(a);
-    const costB = getSingleSellerTotalCost(b);
+    const rateA = CURRENCY_MAP[a.currency]?.rate || 1.0;
+    const rateB = CURRENCY_MAP[b.currency]?.rate || 1.0;
+    const costA = a.totalPrice * rateA;
+    const costB = b.totalPrice * rateB;
     return costA - costB;
   });
   
-  const bestSellerA = candidatesA[0];
+  const topSellersA = candidatesA.slice(0, 3);
 
   // Calculate Option B: Best average cost per disc (Efficiency, minimum of 3 discs)
   const eligibleB = filteredSellers.filter(s => s.listings.length >= 3);
-  let bestSellerB = null;
+  let candidatesBSorted = [];
+  
+  const mapAndSortB = (sellersList) => {
+    return [...sellersList].map(s => {
+      const avgCost = s.totalPrice / s.listings.length;
+      const rate = CURRENCY_MAP[s.currency]?.rate || 1.0;
+      const avgCostUSD = avgCost * rate;
+      return { seller: s, avgCostUSD };
+    }).sort((a, b) => a.avgCostUSD - b.avgCostUSD).map(c => c.seller);
+  };
+  
   if (eligibleB.length > 0) {
-    const candidatesB = [...eligibleB].map(s => {
-      const totalCost = getSingleSellerTotalCost(s);
-      const avgCost = totalCost / s.listings.length;
-      return { seller: s, totalCost, avgCost };
-    }).sort((a, b) => a.avgCost - b.avgCost);
-    
-    bestSellerB = candidatesB[0].seller;
+    candidatesBSorted = mapAndSortB(eligibleB);
   } else {
-    // Fallback to any seller with lowest average cost
-    const candidatesB = [...filteredSellers].map(s => {
-      const totalCost = getSingleSellerTotalCost(s);
-      const avgCost = totalCost / s.listings.length;
-      return { seller: s, totalCost, avgCost };
-    }).sort((a, b) => a.avgCost - b.avgCost);
-    bestSellerB = candidatesB[0]?.seller || null;
+    const eligibleB2 = filteredSellers.filter(s => s.listings.length >= 2);
+    if (eligibleB2.length > 0) {
+      candidatesBSorted = mapAndSortB(eligibleB2);
+    } else {
+      candidatesBSorted = mapAndSortB(filteredSellers);
+    }
   }
+  
+  const topSellersB = candidatesBSorted.slice(0, 3);
 
-  if (!bestSellerA) {
+  if (topSellersA.length === 0) {
     smartPurchaseCard.style.display = 'none';
     return;
   }
 
-  // Helper functions for costs
-  function getSingleSellerTotalCost(seller) {
-    return seller.totalPrice;
-  }
-
-  function getSingleSellerTotalCostInUSD(seller) {
-    const rate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
-    return seller.totalPrice * rate;
-  }
-
-
-
-  function renderCard(title, description, badgeText, seller, badgeColor) {
-    const totalCost = getSingleSellerTotalCost(seller);
+  // Helper function to render a candidate row card inside the stack
+  function renderCandidateCard(seller, rankIndex, totalWantsCount, optionType) {
+    const rankIcons = ['🥇', '🥈', '🥉'];
+    const medal = rankIcons[rankIndex] || '•';
+    const totalCost = seller.totalPrice;
     const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
     const shippingCost = totalCost - subtotal;
     
@@ -1474,82 +1731,91 @@ function renderSmartPurchase(filteredSellers) {
         </div>
       `;
     });
-    
+
+    const isActiveClass = rankIndex === 0 ? 'active' : '';
+    const sellerUrl = seller.listings[0]?.listingUrl || (seller.listings[0]?.listingId ? 'https://www.discogs.com/sell/item/' + seller.listings[0].listingId : 'https://www.discogs.com/release/' + seller.listings[0]?.releaseId);
+
     return `
-      <div class="smart-option-card">
-        <div class="smart-option-badge" style="background: ${badgeColor}">${badgeText}</div>
-        <div class="smart-option-header">
-          <h3>${title}</h3>
-          <p>${description}</p>
+      <div class="smart-candidate-card ${isActiveClass}">
+        <div class="smart-candidate-header">
+          <div class="smart-candidate-title">
+            <span style="font-size: 14px;">${medal}</span>
+            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${seller.name}">${seller.name}</span>
+            <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
+          </div>
+          <div class="smart-candidate-price">
+            ${formatPrice(totalCost, seller.currency)}
+            <span style="font-size: 8px; opacity: 0.6; margin-left: 2px;">▼</span>
+          </div>
         </div>
         
-        <div class="smart-option-seller">
-          <div style="flex: 1; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 8px;">
-            <a href="#" class="smart-option-seller-name" data-scroll-to="${seller.name}" style="display: block; font-weight: 700; color: var(--color-purple); text-decoration: none;">
-              👤 ${seller.name}
-            </a>
-            <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
-              📍 ${seller.shipsFrom} • ${seller.rating}% pos.
+        <div class="smart-candidate-body">
+          <div class="smart-candidate-body-inner">
+            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+              <span>📍 ${seller.shipsFrom} • ⭐ ${seller.rating}% pos.</span>
+              <a href="${sellerUrl}" target="_blank" style="color: var(--color-purple); text-decoration: none; font-weight: 600;">Ver en Discogs ↗</a>
             </div>
-          </div>
-          <div style="text-align: right; flex-shrink: 0;">
-            <div style="font-size: 15px; font-weight: 800; color: #fff;">${formatPrice(totalCost, seller.currency)}</div>
-            <div style="font-size: 10px; color: var(--text-muted)">Envío: ${formatPrice(shippingCost, seller.currency)}</div>
-          </div>
-        </div>
-        
-        <div class="smart-option-albums-list">
-          ${albumsHtml}
-        </div>
-        
-        <div class="smart-option-footer" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 12px; display:flex; flex-direction:column; gap:6px;">
-          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
-            <span>Discos cubiertos:</span>
-            <span style="color:#fff; font-weight:700;">${seller.listings.length} de ${state.wants.length}</span>
-          </div>
-          <div style="display:flex; justify-content:space-between; font-size:12px; color:var(--text-muted);">
-            <span>Promedio por disco:</span>
-            <span style="color:var(--color-amber); font-weight:700;">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
+            
+            <div class="smart-option-albums-list" style="max-height: 120px;">
+              ${albumsHtml}
+            </div>
+            
+            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+              <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
+                <span>Subtotal discos:</span>
+                <span>${formatPrice(subtotal, seller.currency)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
+                <span>Gastos de envío:</span>
+                <span>${formatPrice(shippingCost, seller.currency)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-weight: 700; margin-top: 2px;">
+                <span style="color: var(--text-muted);">Promedio por disco:</span>
+                <span style="color: var(--color-amber);">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
+              </div>
+              <a href="#" class="btn-action-sm smart-option-seller-name" data-scroll-to="${seller.name}" style="margin-top: 8px; display: block; text-align: center; text-decoration: none; padding: 6px; font-size: 10px;">
+                Ver detalles y WhatsApp ↓
+              </a>
+            </div>
           </div>
         </div>
       </div>
     `;
   }
 
-  // Render cards side-by-side or as single card if it's the exact same seller
-  let cardsHtml = '';
-  if (bestSellerB && bestSellerA.name === bestSellerB.name) {
-    cardsHtml = `
-      <div style="width: 100%; display: flex; justify-content: center;">
-        ${renderCard(
-          "Ganador Absoluto",
-          "Esta tienda es la mejor opción tanto por catálogo como por precio promedio de los discos.",
-          "★ RECOMENDADO ★",
-          bestSellerA,
-          "linear-gradient(135deg, var(--color-purple) 0%, #ec4899 100%)"
-        )}
+  let stackHtmlA = '';
+  topSellersA.forEach((seller, idx) => {
+    stackHtmlA += renderCandidateCard(seller, idx, state.wants.length, 'A');
+  });
+
+  let stackHtmlB = '';
+  topSellersB.forEach((seller, idx) => {
+    stackHtmlB += renderCandidateCard(seller, idx, state.wants.length, 'B');
+  });
+
+  const cardsHtml = `
+    <div class="smart-options-container">
+      <div class="smart-option-card" style="padding: 16px; justify-content: flex-start; min-height: auto;">
+        <div class="smart-option-header" style="margin-bottom: 10px;">
+          <h3 style="display: flex; align-items: center; gap: 8px;">📦 Opción A: Compra Máxima</h3>
+          <p>Satisface la mayor cantidad de discos de tu Wantlist en una sola compra.</p>
+        </div>
+        <div class="smart-candidates-stack">
+          ${stackHtmlA}
+        </div>
       </div>
-    `;
-  } else {
-    cardsHtml = `
-      <div class="smart-options-container">
-        ${renderCard(
-          "Opción A: Compra Máxima",
-          "Ideal si querés consolidar el máximo de tu lista en un solo paquete y envío.",
-          "Máximo Catálogo",
-          bestSellerA,
-          "var(--color-purple)"
-        )}
-        ${bestSellerB ? renderCard(
-          "Opción B: Compra Eficiente",
-          "Ideal si querés priorizar el menor precio promedio por disco (mínimo 3 discos).",
-          "Mejor Precio",
-          bestSellerB,
-          "var(--color-amber)"
-        ) : ''}
+      
+      <div class="smart-option-card" style="padding: 16px; justify-content: flex-start; min-height: auto;">
+        <div class="smart-option-header" style="margin-bottom: 10px;">
+          <h3 style="display: flex; align-items: center; gap: 8px;">💰 Opción B: Compra Eficiente</h3>
+          <p>Prioriza los vendedores con el menor precio promedio por vinilo (mín. 3 discos).</p>
+        </div>
+        <div class="smart-candidates-stack">
+          ${stackHtmlB}
+        </div>
       </div>
-    `;
-  }
+    </div>
+  `;
 
   smartPurchaseCard.innerHTML = `
     <div class="smart-purchase-header" style="margin-bottom: 16px;">
@@ -1700,6 +1966,11 @@ function renderResults() {
   noResultsState.style.display = 'none';
   const tabNavigation = document.getElementById('tab-navigation');
   if (tabNavigation) tabNavigation.style.display = 'flex';
+  const refreshWantsBtn = document.getElementById('refresh-wants-btn');
+  if (refreshWantsBtn) {
+    refreshWantsBtn.style.display = 'flex';
+    refreshWantsBtn.disabled = false;
+  }
   resultsGrid.style.display = 'grid';
   resultsGrid.innerHTML = '';
   
@@ -1736,7 +2007,7 @@ function renderResults() {
           <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
           <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)} envío</td>
           <td>
-            <a href="${list.listingUrl}" target="_blank" class="btn-listing-link">Ver Oferta</a>
+            <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="btn-listing-link">Ver Oferta</a>
           </td>
         </tr>
       `;
@@ -1829,6 +2100,11 @@ function showWantlistManager() {
   noResultsState.style.display = 'none';
   wantlistManager.style.display = 'block';
   wantsSearchInput.value = '';
+  
+  if (refreshWantsBtn) {
+    refreshWantsBtn.style.display = 'flex';
+    refreshWantsBtn.disabled = false;
+  }
   
   // Render list of wants
   renderWantsManagerList();
@@ -2099,7 +2375,7 @@ function calculateAndRenderStats() {
                 <span class="stats-price-highlight">${formatPrice(cheapestListing.priceVal, cheapestListing.currency)}</span>
                 <span class="stats-seller-info">Estado: <span class="badge-condition ${cheapestListing.mediaCondClass}" style="display: inline; font-size: 9px; padding: 2px 4px; vertical-align: middle;">${cheapestListing.mediaCondition}</span></span>
                 <span class="stats-seller-info">👤 Vendedor: <strong>${cheapestListing.sellerName}</strong> (📍 ${cheapestListing.shipsFrom})</span>
-                <a href="${cheapestListing.listingUrl}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center;">Ver Oferta</a>
+                <a href="${cheapestListing.listingUrl || (cheapestListing.listingId ? 'https://www.discogs.com/sell/item/' + cheapestListing.listingId : 'https://www.discogs.com/release/' + cheapestListing.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center;">Ver Oferta</a>
               </div>
             </div>
           ` : `
@@ -2120,7 +2396,7 @@ function calculateAndRenderStats() {
                 <span class="stats-price-highlight" style="color: #c084fc;">${formatPrice(expensiveListing.priceVal, expensiveListing.currency)}</span>
                 <span class="stats-seller-info">Estado: <span class="badge-condition ${expensiveListing.mediaCondClass}" style="display: inline; font-size: 9px; padding: 2px 4px; vertical-align: middle;">${expensiveListing.mediaCondition}</span></span>
                 <span class="stats-seller-info">👤 Vendedor: <strong>${expensiveListing.sellerName}</strong> (📍 ${expensiveListing.shipsFrom})</span>
-                <a href="${expensiveListing.listingUrl}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center; background: rgba(192, 132, 252, 0.1); border-color: rgba(192, 132, 252, 0.3); color: #c084fc;">Ver Oferta</a>
+                <a href="${expensiveListing.listingUrl || (expensiveListing.listingId ? 'https://www.discogs.com/sell/item/' + expensiveListing.listingId : 'https://www.discogs.com/release/' + expensiveListing.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="margin-top: 8px; width: fit-content; text-align: center; background: rgba(192, 132, 252, 0.1); border-color: rgba(192, 132, 252, 0.3); color: #c084fc;">Ver Oferta</a>
               </div>
             </div>
           ` : `

@@ -85,6 +85,7 @@ body {
   margin: 0;
   background: linear-gradient(135deg, #ffffff 0%, #c084fc 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1075,6 +1076,7 @@ body {
   margin-bottom: 4px;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   line-height: 1.3;
@@ -1487,6 +1489,7 @@ body {
   margin: 0;
   background: linear-gradient(135deg, #ffffff 0%, #d8b4fe 50%, #818cf8 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -1901,6 +1904,7 @@ body {
   margin: 0 0 16px 0;
   background: linear-gradient(135deg, #ffffff 0%, #d8b4fe 100%);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -2293,5 +2297,105 @@ body {
   color: #fff;
   border-color: var(--color-purple);
 }
+
+/* SPINNING BTN ANIMATION */
+.spinning-btn {
+  pointer-events: none !important;
+  opacity: 0.6 !important;
+  animation: spin-button-icon 1.2s linear infinite;
+}
+
+@keyframes spin-button-icon {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* SMART PURCHASE MULTI-CANDIDATES */
+.smart-candidates-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.smart-candidate-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smart-candidate-card.active {
+  background: rgba(159, 122, 234, 0.06);
+  border-color: rgba(159, 122, 234, 0.3);
+  box-shadow: inset 0 0 10px rgba(159, 122, 234, 0.05);
+}
+
+.smart-candidate-header {
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.smart-candidate-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.smart-candidate-card.active .smart-candidate-header:hover {
+  background: transparent;
+}
+
+.smart-candidate-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+}
+
+.smart-candidate-meta-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-muted);
+}
+
+.smart-candidate-card.active .smart-candidate-meta-badge {
+  background: rgba(159, 122, 234, 0.2);
+  color: #c084fc;
+}
+
+.smart-candidate-price {
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.smart-candidate-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.smart-candidate-card.active .smart-candidate-body {
+  max-height: 500px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.smart-candidate-body-inner {
+  padding: 16px;
+}
+
+
 
 
