@@ -40,6 +40,60 @@ function escapeHTML(str) {
   );
 }
 
+// Retries any async function if it throws a 429 Rate Limit error
+async function retryOnRateLimit(fn, retries = 3, initialDelay = 2000) {
+  let delay = initialDelay;
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      const isRateLimit = error.message.includes('429') || error.message.toLowerCase().includes('too many requests');
+      if (isRateLimit && attempt < retries) {
+        log(`[Límite Excedido 429] Demasiadas peticiones. Esperando ${delay / 1000}s para reintentar (intento ${attempt}/${retries})...`, 'action');
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2.5; // Exponential backoff
+      } else {
+        throw error;
+      }
+    }
+  }
+}
+
+// Helper to calculate estimated shipping for a seller based on matches count
+function calculateSellerShipping(seller, listingsList) {
+  const listCount = listingsList.length;
+  if (listCount === 0) return 0;
+  
+  let baseShippingPrice = 6.00;
+  let extraItemCost = 1.50;
+  
+  if (seller.isDomestic) {
+    baseShippingPrice = 4.50;
+    extraItemCost = 1.00;
+  } else if (seller.isEUToEU) {
+    baseShippingPrice = 9.50;
+    extraItemCost = 2.00;
+  } else {
+    baseShippingPrice = 24.00;
+    extraItemCost = 3.50;
+  }
+  
+  // Convert estimated rates from USD to seller's currency
+  const currencyInfo = CURRENCY_MAP[seller.currency] || { rate: 1.0 };
+  const conversionFactor = 1.0 / currencyInfo.rate;
+  baseShippingPrice = baseShippingPrice * conversionFactor;
+  extraItemCost = extraItemCost * conversionFactor;
+  
+  // Check if we parsed actual shipping costs from listings
+  const shippingValues = listingsList.map(l => l.shippingVal).filter(v => v > 0);
+  if (shippingValues.length > 0) {
+    const maxShipping = Math.max(...shippingValues);
+    return maxShipping + (listCount - 1) * extraItemCost;
+  } else {
+    return baseShippingPrice + (listCount - 1) * extraItemCost;
+  }
+}
+
 // DOM Elements
 const logoVinyl = document.getElementById('logo-vinyl');
 const connectionStatus = document.getElementById('connection-status');
@@ -470,116 +524,123 @@ async function detectDiscogsSession() {
 
 // Direct fetch (no proxy)
 async function fetchDirect(url) {
-  console.log(`[DirectFetch] Iniciando fetch directo para URL: ${url}`);
-  try {
-    const response = await fetch(url);
-    console.log(`[DirectFetch] Status respuesta: ${response.status} para URL: ${url}`);
-    if (!response.ok) {
-      throw new Error(`HTTP Error ${response.status}`);
+  return retryOnRateLimit(async () => {
+    console.log(`[DirectFetch] Iniciando fetch directo para URL: ${url}`);
+    try {
+      const response = await fetch(url);
+      console.log(`[DirectFetch] Status respuesta: ${response.status} para URL: ${url}`);
+      if (response.status === 429) {
+        throw new Error(`HTTP Error 429: Too Many Requests`);
+      }
+      if (!response.ok) {
+        throw new Error(`HTTP Error ${response.status}`);
+      }
+      const text = await response.text();
+      console.log(`[DirectFetch] Éxito. Descargados ${text.length} bytes.`);
+      return text;
+    } catch (error) {
+      console.error(`[DirectFetch] Error en fetch directo para URL: ${url}:`, error.message);
+      throw error;
     }
-    const text = await response.text();
-    console.log(`[DirectFetch] Éxito. Descargados ${text.length} bytes.`);
-    return text;
-  } catch (error) {
-    console.error(`[DirectFetch] Error en fetch directo para URL: ${url}:`, error.message);
-    throw error;
-  }
+  });
 }
 
 // Fetch helper using the content script proxy to bypass Cloudflare
 async function fetchThroughTab(url) {
-  console.log(`[ProxyFetch] Solicitando URL a través de pestaña proxy: ${url}`);
-  
-  // Query all active tabs on Discogs
-  let tabs = await new Promise((resolve) => {
-    chrome.tabs.query({ url: "*://*.discogs.com/*" }, (result) => {
-      resolve(result || []);
+  return retryOnRateLimit(async () => {
+    console.log(`[ProxyFetch] Solicitando URL a través de pestaña proxy: ${url}`);
+    
+    // Query all active tabs on Discogs
+    let tabs = await new Promise((resolve) => {
+      chrome.tabs.query({ url: "*://*.discogs.com/*" }, (result) => {
+        resolve(result || []);
+      });
     });
-  });
 
-  let activeProxyTab = null;
+    let activeProxyTab = null;
 
-  if (tabs.length > 0) {
-    // If a tab is open, use the first one
-    activeProxyTab = tabs[0];
-    console.log(`[ProxyFetch] Usando pestaña Discogs abierta (ID: ${activeProxyTab.id})`);
-  } else {
-    // If no tab is open and we have already created a background proxy tab, use it
-    if (state.proxyTabId !== null) {
-      try {
-        const tab = await new Promise((resolve, reject) => {
-          chrome.tabs.get(state.proxyTabId, (tabInfo) => {
-            if (chrome.runtime.lastError) reject();
-            else resolve(tabInfo);
+    if (tabs.length > 0) {
+      // If a tab is open, use the first one
+      activeProxyTab = tabs[0];
+      console.log(`[ProxyFetch] Usando pestaña Discogs abierta (ID: ${activeProxyTab.id})`);
+    } else {
+      // If no tab is open and we have already created a background proxy tab, use it
+      if (state.proxyTabId !== null) {
+        try {
+          const tab = await new Promise((resolve, reject) => {
+            chrome.tabs.get(state.proxyTabId, (tabInfo) => {
+              if (chrome.runtime.lastError) reject();
+              else resolve(tabInfo);
+            });
+          });
+          activeProxyTab = tab;
+          console.log(`[ProxyFetch] Reusando pestaña proxy creada previamente (ID: ${activeProxyTab.id})`);
+        } catch (e) {
+          state.proxyTabId = null;
+        }
+      }
+
+      // If no tab is available at all, create one in the background
+      if (activeProxyTab === null) {
+        console.log('[ProxyFetch] Creando nueva pestaña de Discogs en segundo plano...');
+        activeProxyTab = await new Promise((resolve) => {
+          chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
+            state.proxyTabId = tab.id;
+            
+            const listener = (tabId, changeInfo) => {
+              if (tabId === tab.id && changeInfo.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                console.log(`[ProxyFetch] Nueva pestaña proxy creada y cargada (ID: ${tab.id})`);
+                // Pequeño retardo de seguridad para asegurar la inyección de content scripts
+                setTimeout(() => {
+                  resolve(tab);
+                }, 200);
+              }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
           });
         });
-        activeProxyTab = tab;
-        console.log(`[ProxyFetch] Reusando pestaña proxy creada previamente (ID: ${activeProxyTab.id})`);
-      } catch (e) {
-        state.proxyTabId = null;
       }
     }
 
-    // If no tab is available at all, create one in the background
-    if (activeProxyTab === null) {
-      console.log('[ProxyFetch] Creando nueva pestaña de Discogs en segundo plano...');
-      activeProxyTab = await new Promise((resolve) => {
-        chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
-          state.proxyTabId = tab.id;
-          
-          const listener = (tabId, changeInfo) => {
-            if (tabId === tab.id && changeInfo.status === 'complete') {
-              chrome.tabs.onUpdated.removeListener(listener);
-              console.log(`[ProxyFetch] Nueva pestaña proxy creada y cargada (ID: ${tab.id})`);
-              // Pequeño retardo de seguridad para asegurar la inyección de content scripts
-              setTimeout(() => {
-                resolve(tab);
-              }, 200);
-            }
-          };
-          chrome.tabs.onUpdated.addListener(listener);
-        });
-      });
-    }
-  }
-
-  // Send request message to the proxy tab with a timeout
-  return new Promise((resolve, reject) => {
-    let timeoutId = setTimeout(() => {
-      timeoutId = null;
-      console.warn(`[ProxyFetch] TIMEOUT (10s) en pestaña proxy para ${url}. Intentando conexión directa...`);
-      fetchDirect(url)
-        .then(resolve)
-        .catch(err => {
-          console.error(`[ProxyFetch] Falló fallback directo tras timeout:`, err.message);
-          reject(err);
-        });
-    }, 10000);
-
-    console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${activeProxyTab.id} para URL: ${url}`);
-    chrome.tabs.sendMessage(activeProxyTab.id, { action: "fetchUrl", url }, (response) => {
-      if (!timeoutId) {
-        console.log(`[ProxyFetch] Respuesta tardía recibida de pestaña ${activeProxyTab.id} para ${url} (ya venció timeout)`);
-        return; 
-      }
-      clearTimeout(timeoutId);
-      
-      if (chrome.runtime.lastError) {
-        console.error(`[ProxyFetch] Error de comunicación con pestaña ${activeProxyTab.id}:`, chrome.runtime.lastError.message);
+    // Send request message to the proxy tab with a timeout
+    return new Promise((resolve, reject) => {
+      let timeoutId = setTimeout(() => {
+        timeoutId = null;
+        console.warn(`[ProxyFetch] TIMEOUT (10s) en pestaña proxy para ${url}. Intentando conexión directa...`);
         fetchDirect(url)
           .then(resolve)
           .catch(err => {
-            console.error(`[ProxyFetch] Falló fallback directo tras error de canal:`, err.message);
+            console.error(`[ProxyFetch] Falló fallback directo tras timeout:`, err.message);
             reject(err);
           });
-      } else if (response && response.success) {
-        console.log(`[ProxyFetch] Respuesta exitosa recibida de pestaña proxy para URL: ${url} (${response.html ? response.html.length : 0} bytes)`);
-        resolve(response.html);
-      } else {
-        const errMsg = response ? response.error : "Unknown same-origin fetch error";
-        console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
-        reject(new Error(errMsg));
-      }
+      }, 10000);
+
+      console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${activeProxyTab.id} para URL: ${url}`);
+      chrome.tabs.sendMessage(activeProxyTab.id, { action: "fetchUrl", url }, (response) => {
+        if (!timeoutId) {
+          console.log(`[ProxyFetch] Respuesta tardía recibida de pestaña ${activeProxyTab.id} para ${url} (ya venció timeout)`);
+          return; 
+        }
+        clearTimeout(timeoutId);
+        
+        if (chrome.runtime.lastError) {
+          console.error(`[ProxyFetch] Error de comunicación con pestaña ${activeProxyTab.id}:`, chrome.runtime.lastError.message);
+          fetchDirect(url)
+            .then(resolve)
+            .catch(err => {
+              console.error(`[ProxyFetch] Falló fallback directo tras error de canal:`, err.message);
+              reject(err);
+            });
+        } else if (response && response.success) {
+          console.log(`[ProxyFetch] Respuesta exitosa recibida de pestaña proxy para URL: ${url} (${response.html ? response.html.length : 0} bytes)`);
+          resolve(response.html);
+        } else {
+          const errMsg = response ? response.error : "Unknown same-origin fetch error";
+          console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
+          reject(new Error(errMsg));
+        }
+      });
     });
   });
 }
@@ -1482,40 +1543,11 @@ function groupListingsBySeller() {
       isEUToEU = true;
     }
     
-    // Apply shipping base & increments depending on location (values in USD)
-    let baseShippingPrice = 6.00;
-    let extraItemCost = 1.50;
+    // Save properties to seller object
+    seller.isDomestic = isDomestic;
+    seller.isEUToEU = isEUToEU;
     
-    if (isDomestic) {
-      baseShippingPrice = 4.50;
-      extraItemCost = 1.00;
-    } else if (isEUToEU) {
-      baseShippingPrice = 9.50;
-      extraItemCost = 2.00;
-    } else {
-      // International shipping (e.g. Europe/USA to Uruguay)
-      baseShippingPrice = 24.00;
-      extraItemCost = 3.50;
-    }
-
-    // Convert estimated rates from USD to seller's currency
-    const currencyInfo = CURRENCY_MAP[seller.currency] || { rate: 1.0 };
-    const conversionFactor = 1.0 / currencyInfo.rate;
-    baseShippingPrice = baseShippingPrice * conversionFactor;
-    extraItemCost = extraItemCost * conversionFactor;
-    
-    // Check if we parsed actual shipping costs from listings
-    const shippingValues = seller.listings.map(l => l.shippingVal).filter(v => v > 0);
-    let estimatedShipping = 0;
-    
-    if (shippingValues.length > 0) {
-      const maxShipping = Math.max(...shippingValues);
-      estimatedShipping = maxShipping + (listCount - 1) * extraItemCost;
-    } else {
-      // Fallback to estimated base shipping
-      estimatedShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
-    }
-    
+    const estimatedShipping = calculateSellerShipping(seller, seller.listings);
     const totalPrice = subtotal + estimatedShipping;
     
     return {
@@ -1604,32 +1636,7 @@ function getSmartPurchaseCombo(filteredSellers, targetReleases) {
           const subtotal = assignedListings.reduce((sum, l) => sum + l.priceVal, 0);
           
           // Re-estimate shipping based on assigned items
-          const listCount = assignedListings.length;
-          const isDomestic = s.isDomestic;
-          const isEUToEU = s.isEUToEU;
-          
-          let baseShippingPrice = 6.00;
-          let extraItemCost = 1.50;
-          
-          if (isDomestic) {
-            baseShippingPrice = 4.50;
-            extraItemCost = 1.00;
-          } else if (isEUToEU) {
-            baseShippingPrice = 9.50;
-            extraItemCost = 2.00;
-          } else {
-            baseShippingPrice = 24.00;
-            extraItemCost = 3.50;
-          }
-          
-          const shippingValues = assignedListings.map(l => l.shippingVal).filter(v => v > 0);
-          let estimatedShipping = 0;
-          if (shippingValues.length > 0) {
-            const maxShipping = Math.max(...shippingValues);
-            estimatedShipping = maxShipping + (listCount - 1) * extraItemCost;
-          } else {
-            estimatedShipping = baseShippingPrice + (listCount - 1) * extraItemCost;
-          }
+          const estimatedShipping = calculateSellerShipping(s, assignedListings);
           
           totalComboCost += subtotal + estimatedShipping;
         }
