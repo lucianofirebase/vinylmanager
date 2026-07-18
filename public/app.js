@@ -11,7 +11,7 @@ import {
     searchDiscogsDatabase
 } from './js/api.js';
 
-import { logger, showToast, customConfirm } from './js/ui-utils.js';
+import { logger, showToast, customConfirm, escapeHTML } from './js/ui-utils.js';
 import { compressImage } from './js/image-utils.js';
 import { getGradeText, getFormatIcon, generateWhatsAppText } from './js/whatsapp.js';
 import { parseExcelPaste, renderImportTablePreview, runBulkImport } from './js/importer.js';
@@ -378,16 +378,16 @@ function renderListView(items) {
             <div class="row-select" onclick="toggleSelect('${item.id}', event)">
                 <input type="checkbox" ${isSelected ? 'checked' : ''} style="pointer-events: none;">
             </div>
-            <img class="row-cover" src="${coverImg}" alt="${item.title}" onerror="this.src='${DEFAULT_COVER}'">
+            <img class="row-cover" src="${coverImg}" alt="${escapeHTML(item.title)}" onerror="this.src='${DEFAULT_COVER}'">
             <div class="row-info">
                 <div class="row-title-artist">
-                    <span class="row-title" title="${item.title}">${item.title}</span>
-                    <span class="row-artist" title="${item.artist}">${item.artist}</span>
+                    <span class="row-title" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</span>
+                    <span class="row-artist" title="${escapeHTML(item.artist)}">${escapeHTML(item.artist)}</span>
                 </div>
                 <div class="row-specs">
-                    <span class="badge badge-format">${getFormatIcon(item.format)} ${item.format || 'Vinyl'}</span>
-                    <span class="badge badge-grade">📀 ${item.grade || 'VG+'}</span>
-                    <span class="badge badge-status badge-${item.status}">${item.status === 'coleccion' ? '⭐ Colección' : item.status}</span>
+                    <span class="badge badge-format">${getFormatIcon(item.format)} ${escapeHTML(item.format || 'Vinyl')}</span>
+                    <span class="badge badge-grade">📀 ${escapeHTML(item.grade || 'VG+')}</span>
+                    <span class="badge badge-status badge-${item.status}">${item.status === 'coleccion' ? '⭐ Colección' : escapeHTML(item.status)}</span>
                 </div>
             </div>
             <div class="row-price-actions">
@@ -433,26 +433,26 @@ function renderGridView(items) {
                 <input type="checkbox" ${isSelected ? 'checked' : ''} style="pointer-events: none;">
             </div>
             
-            <img class="card-cover" src="${coverImg}" alt="${item.title}" onerror="this.src='${DEFAULT_COVER}'">
+            <img class="card-cover" src="${coverImg}" alt="${escapeHTML(item.title)}" onerror="this.src='${DEFAULT_COVER}'">
             
             <div class="card-info">
-                <span class="card-artist" title="${item.artist}">${item.artist}</span>
-                <h3 class="card-title" title="${item.title}">${item.title}</h3>
+                <span class="card-artist" title="${escapeHTML(item.artist)}">${escapeHTML(item.artist)}</span>
+                <h3 class="card-title" title="${escapeHTML(item.title)}">${escapeHTML(item.title)}</h3>
                 
                 <div class="card-specs">
-                    <span class="badge badge-format">${getFormatIcon(item.format)} ${item.format || 'Vinyl'}</span>
-                    <span class="badge badge-grade">📀 ${item.grade || 'VG+'}</span>
-                    <span class="badge badge-status badge-${item.status}">${item.status === 'coleccion' ? '⭐ Colección' : item.status}</span>
+                    <span class="badge badge-format">${getFormatIcon(item.format)} ${escapeHTML(item.format || 'Vinyl')}</span>
+                    <span class="badge badge-grade">📀 ${escapeHTML(item.grade || 'VG+')}</span>
+                    <span class="badge badge-status badge-${item.status}">${item.status === 'coleccion' ? '⭐ Colección' : escapeHTML(item.status)}</span>
                 </div>
                 
                 <div class="card-price">USD $${item.price || 0}</div>
                 
                 <div class="details-section">
-                    ${item.label ? `<p><strong>Sello:</strong> ${item.label}</p>` : ''}
-                    ${item.year ? `<p><strong>Año:</strong> ${item.year}</p>` : ''}
-                    ${item.catno ? `<p><strong>Catálogo:</strong> ${item.catno}</p>` : ''}
-                    ${item.gradeCover ? `<p><strong>Funda:</strong> ${item.gradeCover}</p>` : ''}
-                    ${item.reservedBy ? `<p><strong>Reservado por:</strong> ${item.reservedBy}</p>` : ''}
+                    ${item.label ? `<p><strong>Sello:</strong> ${escapeHTML(item.label)}</p>` : ''}
+                    ${item.year ? `<p><strong>Año:</strong> ${escapeHTML(item.year)}</p>` : ''}
+                    ${item.catno ? `<p><strong>Catálogo:</strong> ${escapeHTML(item.catno)}</p>` : ''}
+                    ${item.gradeCover ? `<p><strong>Funda:</strong> ${escapeHTML(item.gradeCover)}</p>` : ''}
+                    ${item.reservedBy ? `<p><strong>Reservado por:</strong> ${escapeHTML(item.reservedBy)}</p>` : ''}
                     ${item.reserveDate ? `<p><strong>Fecha Reserva:</strong> ${formatDateSpanish(item.reserveDate)}</p>` : ''}
                     ${item.pickupDate ? `<p><strong>Fecha Entrega:</strong> ${formatDateSpanish(item.pickupDate)}</p>` : ''}
                     

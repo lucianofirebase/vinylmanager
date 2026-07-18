@@ -33,6 +33,13 @@ function formatPrice(val, currencyCode) {
   return `${info.code} ${info.symbol}${val.toFixed(2)}`;
 }
 
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str).replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
 // DOM Elements
 const logoVinyl = document.getElementById('logo-vinyl');
 const connectionStatus = document.getElementById('connection-status');
@@ -519,10 +526,18 @@ async function fetchThroughTab(url) {
       activeProxyTab = await new Promise((resolve) => {
         chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
           state.proxyTabId = tab.id;
-          setTimeout(() => {
-            console.log(`[ProxyFetch] Nueva pestaña proxy creada (ID: ${tab.id})`);
-            resolve(tab);
-          }, 3500);
+          
+          const listener = (tabId, changeInfo) => {
+            if (tabId === tab.id && changeInfo.status === 'complete') {
+              chrome.tabs.onUpdated.removeListener(listener);
+              console.log(`[ProxyFetch] Nueva pestaña proxy creada y cargada (ID: ${tab.id})`);
+              // Pequeño retardo de seguridad para asegurar la inyección de content scripts
+              setTimeout(() => {
+                resolve(tab);
+              }, 200);
+            }
+          };
+          chrome.tabs.onUpdated.addListener(listener);
         });
       });
     }
@@ -1726,7 +1741,7 @@ function renderSmartPurchase(filteredSellers) {
       const wantInfo = state.wants.find(w => w.id === l.releaseId) || { title: 'Unknown', artist: 'Unknown' };
       albumsHtml += `
         <div class="smart-album-row">
-          <span class="smart-album-title" title="${wantInfo.title} - ${wantInfo.artist}">💿 ${wantInfo.title}</span>
+          <span class="smart-album-title" title="${escapeHTML(wantInfo.title)} - ${escapeHTML(wantInfo.artist)}">💿 ${escapeHTML(wantInfo.title)}</span>
           <span class="smart-album-price">${formatPrice(l.priceVal, l.currency)}</span>
         </div>
       `;
@@ -1740,7 +1755,7 @@ function renderSmartPurchase(filteredSellers) {
         <div class="smart-candidate-header">
           <div class="smart-candidate-title">
             <span style="font-size: 14px;">${medal}</span>
-            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${seller.name}">${seller.name}</span>
+            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
             <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
           </div>
           <div class="smart-candidate-price">
@@ -1752,7 +1767,7 @@ function renderSmartPurchase(filteredSellers) {
         <div class="smart-candidate-body">
           <div class="smart-candidate-body-inner">
             <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span>📍 ${seller.shipsFrom} • ⭐ ${seller.rating}% pos.</span>
+              <span>📍 ${escapeHTML(seller.shipsFrom)} • ⭐ ${seller.rating}% pos.</span>
               <a href="${sellerUrl}" target="_blank" style="color: var(--color-purple); text-decoration: none; font-weight: 600;">Ver en Discogs ↗</a>
             </div>
             
@@ -1773,7 +1788,7 @@ function renderSmartPurchase(filteredSellers) {
                 <span style="color: var(--text-muted);">Promedio por disco:</span>
                 <span style="color: var(--color-amber);">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
               </div>
-              <a href="#" class="btn-action-sm smart-option-seller-name" data-scroll-to="${seller.name}" style="margin-top: 8px; display: block; text-align: center; text-decoration: none; padding: 6px; font-size: 10px;">
+              <a href="#" class="btn-action-sm smart-option-seller-name" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 8px; display: block; text-align: center; text-decoration: none; padding: 6px; font-size: 10px;">
                 Ver detalles y WhatsApp ↓
               </a>
             </div>
@@ -1997,12 +2012,12 @@ function renderResults() {
         <tr>
           <td class="listing-title-cell">
             <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="listing-title-link">
-              ${starHtml}${wantInfo.title}
+              ${starHtml}${escapeHTML(wantInfo.title)}
             </a>
-            <span class="listing-artist">${wantInfo.artist}</span>
+            <span class="listing-artist">${escapeHTML(wantInfo.artist)}</span>
           </td>
           <td>
-            <span class="badge-condition ${list.mediaCondClass}">${list.mediaCondition}</span>
+            <span class="badge-condition ${list.mediaCondClass}">${escapeHTML(list.mediaCondition)}</span>
           </td>
           <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
           <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)} envío</td>
@@ -2017,11 +2032,11 @@ function renderResults() {
       <div class="seller-info-row">
         <div class="seller-meta">
           <div class="seller-name-container">
-            <a href="https://www.discogs.com/seller/${seller.name}/profile" target="_blank" class="seller-name">${seller.name}</a>
+            <a href="https://www.discogs.com/seller/${escapeHTML(seller.name)}/profile" target="_blank" class="seller-name">${escapeHTML(seller.name)}</a>
             <span class="rating-badge">${seller.rating}%</span>
           </div>
           <div class="seller-location-rating">
-            <span>📍 ${seller.shipsFrom}</span>
+            <span>📍 ${escapeHTML(seller.shipsFrom)}</span>
             ${shippingTypeBadge}
             <span>⭐ ${seller.ratingCount.toLocaleString()} calificaciones</span>
           </div>

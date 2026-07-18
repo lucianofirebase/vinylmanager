@@ -5,7 +5,8 @@
   "description": "Encuentra vendedores en el marketplace de Discogs que tienen mas articulos de tu Wantlist en venta.",
   "permissions": [
     "cookies",
-    "storage"
+    "storage",
+    "unlimitedStorage"
   ],
   "host_permissions": [
     "https://*.discogs.com/*",
