@@ -251,6 +251,16 @@ body {
   box-shadow: 0 12px 30px rgba(139, 92, 246, 0.5);
 }
 
+.btn-action:disabled {
+  background: var(--bg-card);
+  color: var(--text-dim);
+  border: 1px solid var(--border-glow);
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.65;
+  transform: none !important;
+}
+
 /* FILTERS */
 .filter-group {
   margin-bottom: 16px;

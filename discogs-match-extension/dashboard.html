@@ -79,12 +79,24 @@
         <h3>Filtros</h3>
         
         <div class="filter-group">
+          <label for="filter-search-release">🔍 Buscar Disco / Artista</label>
+          <input type="text" id="filter-search-release" placeholder="Ej: Sade, Beatles, Smooth..." style="width: 100%; padding: 9px 12px; background: var(--bg-darkest); border: 1px solid var(--border-glow); border-radius: 8px; color: #fff; font-size: 13px; outline: none; font-family: var(--font-body); transition: border-color 0.2s ease;">
+        </div>
+
+        <div class="filter-group">
           <label for="filter-min-matches">Coincidencias mínimas</label>
           <select id="filter-min-matches">
             <option value="1">1 o más discos</option>
             <option value="2" selected>2 o más discos</option>
             <option value="3">3 o más discos</option>
+            <option value="4">4 o más discos</option>
             <option value="5">5 o más discos</option>
+            <option value="7">7 o más discos</option>
+            <option value="10">10 o más discos</option>
+            <option value="15">15 o más discos</option>
+            <option value="20">20 o más discos</option>
+            <option value="25">25 o más discos</option>
+            <option value="50">50 o más discos</option>
           </select>
         </div>
 
