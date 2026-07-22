@@ -1,23 +1,24 @@
 :root {
-  --bg-darkest: #04020b;
-  --bg-darker: rgba(11, 8, 24, 0.55);
-  --bg-sidebar: rgba(11, 8, 24, 0.45);
-  --bg-card: rgba(23, 18, 46, 0.35);
-  --bg-card-hover: rgba(38, 30, 74, 0.5);
+  --bg-darkest: #111111;
+  --bg-darker: #1a1a1a;
+  --bg-sidebar: #151515;
+  --bg-card: rgba(38, 38, 38, 0.65);
+  --bg-card-hover: rgba(51, 51, 51, 0.85);
   --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
-  --color-purple: #9f7aea;
-  --color-purple-dark: #6b46c1;
-  --color-purple-glow: rgba(159, 122, 234, 0.25);
-  --color-green: #10b981;
-  --color-green-glow: rgba(16, 185, 129, 0.25);
-  --color-amber: #f59e0b;
-  --border-glow: rgba(159, 122, 234, 0.12);
-  --border-active: rgba(159, 122, 234, 0.45);
-  --shadow-main: 0 20px 40px rgba(0, 0, 0, 0.6);
+  --text-muted: #a0aec0;
+  --text-dim: #718096;
+  --color-purple: #F5C518; /* Discogs Yellow/Gold Accent */
+  --color-purple-dark: #D4A313;
+  --color-purple-glow: rgba(245, 197, 24, 0.2);
+  --color-green: #38A169;
+  --color-green-glow: rgba(56, 161, 105, 0.25);
+  --color-amber: #DD6B20;
+  --border-glow: rgba(245, 197, 24, 0.12);
+  --border-active: rgba(245, 197, 24, 0.45);
+  --shadow-main: 0 20px 40px rgba(0, 0, 0, 0.8);
   --font-title: 'Outfit', 'Inter', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
+  --text-btn-primary: #111111;
 }
 
 * {
@@ -126,7 +127,7 @@ body {
   font-family: var(--font-title);
   font-size: 18px;
   color: #fff;
-  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 4px 10px rgba(245, 197, 24, 0.25);
   background-size: cover;
   background-position: center;
 }
@@ -184,11 +185,11 @@ body {
   background: linear-gradient(135deg, var(--color-purple) 0%, var(--color-purple-dark) 100%);
   border: none;
   border-radius: 10px;
-  color: #ffffff;
+  color: var(--text-btn-primary);
   padding: 12px;
   font-family: var(--font-title);
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
   box-shadow: 0 4px 15px var(--color-purple-glow);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -199,7 +200,7 @@ body {
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45);
+  box-shadow: 0 6px 20px rgba(245, 197, 24, 0.4);
 }
 
 .btn-primary:active:not(:disabled) {
@@ -236,7 +237,7 @@ body {
   background: linear-gradient(135deg, var(--color-purple) 0%, var(--color-purple-dark) 100%);
   border: none;
   border-radius: 30px;
-  color: #ffffff;
+  color: var(--text-btn-primary);
   padding: 14px 28px;
   font-family: var(--font-title);
   font-size: 15px;
@@ -248,7 +249,7 @@ body {
 
 .btn-action:hover {
   transform: scale(1.03);
-  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 12px 30px rgba(245, 197, 24, 0.4);
 }
 
 .btn-action:disabled {
@@ -301,7 +302,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: radial-gradient(circle at 80% 10%, rgba(139, 92, 246, 0.08), transparent 50%), var(--bg-darkest);
+  background: radial-gradient(circle at 80% 10%, rgba(245, 197, 24, 0.04), transparent 50%), var(--bg-darkest);
   overflow-y: auto;
   padding: 40px;
 }
@@ -371,9 +372,9 @@ body {
 
 /* STATUS / PROGRESS CARD */
 .status-card {
-  background: rgba(22, 19, 39, 0.8);
+  background: rgba(30, 30, 30, 0.9);
   border: 1px solid var(--border-active);
-  box-shadow: 0 0 30px rgba(139, 92, 246, 0.15);
+  box-shadow: 0 0 30px rgba(245, 197, 24, 0.1);
   border-radius: 16px;
   padding: 20px;
   margin-bottom: 30px;
@@ -1063,8 +1064,8 @@ body {
 }
 
 .want-card:hover {
-  background: rgba(30, 25, 50, 0.5);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: rgba(45, 45, 45, 0.6);
+  border-color: rgba(245, 197, 24, 0.3);
 }
 
 .want-card-image {
@@ -1184,8 +1185,8 @@ body {
 .wizard-step-dot.active {
   background: var(--color-purple);
   border-color: var(--color-purple);
-  color: #fff;
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+  color: var(--text-btn-primary);
+  box-shadow: 0 0 15px rgba(245, 197, 24, 0.4);
 }
 
 .wizard-step-dot.completed {

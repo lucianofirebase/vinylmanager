@@ -14,7 +14,8 @@ const CURRENCY_MAP = {
   'USD': { symbol: '$', code: 'USD', rate: 1.0 },
   'GBP': { symbol: '£', code: 'GBP', rate: 1.28 },
   'JPY': { symbol: '¥', code: 'JPY', rate: 0.0065 },
-  'UYU': { symbol: '$', code: 'UYU', rate: 0.025 },
+  'UYU': { symbol: '$U', code: 'UYU', rate: 0.025 },
+  'ARS': { symbol: '$', code: 'ARS', rate: 0.001 },
   'AUD': { symbol: 'A$', code: 'AUD', rate: 0.67 },
   'CAD': { symbol: 'CA$', code: 'CAD', rate: 0.73 },
   'CHF': { symbol: 'CHF', code: 'CHF', rate: 1.12 },
@@ -28,12 +29,36 @@ const CURRENCY_MAP = {
   'COP': { symbol: '$', code: 'COP', rate: 0.00025 }
 };
 
-function formatPrice(val, currencyCode) {
-  const info = CURRENCY_MAP[currencyCode] || { symbol: '$', code: currencyCode || 'USD' };
-  if (info.code === info.symbol) {
-    return `${info.code} ${val.toFixed(2)}`;
+function formatPrice(val, currencyCode, overrideDisplayCurrency = null) {
+  const displayCurrencySelect = document.getElementById('display-currency');
+  const displayCurr = overrideDisplayCurrency || (displayCurrencySelect ? displayCurrencySelect.value : 'UYU');
+  
+  if (displayCurr === 'original' || !displayCurr) {
+    const info = CURRENCY_MAP[currencyCode] || { symbol: '$', code: currencyCode || 'USD' };
+    if (info.code === info.symbol) {
+      return `${info.code} ${val.toFixed(2)}`;
+    }
+    return `${info.code} ${info.symbol}${val.toFixed(2)}`;
   }
-  return `${info.code} ${info.symbol}${val.toFixed(2)}`;
+  
+  // Convert val from currencyCode to USD first
+  const sourceRate = CURRENCY_MAP[currencyCode]?.rate || 1.0;
+  const valInUSD = val * sourceRate;
+  
+  // Convert USD to displayCurr
+  const targetInfo = CURRENCY_MAP[displayCurr] || { symbol: '$', code: displayCurr, rate: 1.0 };
+  const valInTarget = valInUSD / (targetInfo.rate || 1.0);
+  
+  // Format target output
+  const isNoCentsCurrency = ['UYU', 'ARS', 'CLP', 'COP', 'JPY'].includes(targetInfo.code);
+  const formattedNum = isNoCentsCurrency
+    ? Math.round(valInTarget).toLocaleString('es-UY')
+    : valInTarget.toFixed(2);
+    
+  if (targetInfo.code === targetInfo.symbol) {
+    return `${targetInfo.code} ${formattedNum}`;
+  }
+  return `${targetInfo.code} ${targetInfo.symbol}${formattedNum}`;
 }
 
 function escapeHTML(str) {
@@ -228,6 +253,19 @@ document.addEventListener('DOMContentLoaded', () => {
   managerStartScanBtn.addEventListener('click', startMarketplaceScan);
   
   // Filters
+  const displayCurrencySelect = document.getElementById('display-currency');
+  if (displayCurrencySelect) {
+    const savedDisplayCurr = localStorage.getItem('display_currency') || 'UYU';
+    displayCurrencySelect.value = savedDisplayCurr;
+    displayCurrencySelect.addEventListener('change', () => {
+      localStorage.setItem('display_currency', displayCurrencySelect.value);
+      if (state.groupedSellers.length > 0) {
+        renderResults();
+        if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
+      }
+    });
+  }
+
   if (filterSearchRelease) {
     filterSearchRelease.addEventListener('input', renderResults);
   }
@@ -274,6 +312,8 @@ document.addEventListener('click', (e) => {
 
 // Dynamic lock/unlock filters section
 function toggleFiltersState(enabled) {
+  const displayCurrencySelect = document.getElementById('display-currency');
+  if (displayCurrencySelect) displayCurrencySelect.disabled = !enabled;
   filterMinMatches.disabled = !enabled;
   filterCountry.disabled = !enabled;
   filterRating.disabled = !enabled;
@@ -906,10 +946,14 @@ async function scanSingleRelease(item, index, totalWants) {
         });
       });
       
-      if (cacheData) {
+      if (cacheData && cacheData.version === 2) {
         const now = Date.now();
         cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
-        if (cacheAgeHours < 24) {
+        
+        // Priority items get live updates if cache is older than 2h; standard items if older than 6h
+        const maxAgeAllowed = item.isPriority ? 2.0 : 6.0;
+        
+        if (cacheAgeHours < maxAgeAllowed) {
           parsedListings = cacheData.listings;
           communityStats = cacheData.communityStats || null;
           isFromCache = true;
@@ -921,11 +965,12 @@ async function scanSingleRelease(item, index, totalWants) {
   }
   
   if (isFromCache && parsedListings) {
-    log(`[Caché] Cargadas ${parsedListings.length} copias en venta para este disco (guardado hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
+    const priorityTag = item.isPriority ? ' ★ Prioritario' : '';
+    log(`[Caché${priorityTag}] Cargadas ${parsedListings.length} copias en venta para este disco (hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
     return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
   }
   
-  log(`Escaneando (${index + 1}/${totalWants}): ${item.artist} - ${item.title}...`);
+  log(`Escaneando en vivo (${index + 1}/${totalWants}): ${item.artist} - ${item.title}...`);
   
   try {
     const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
@@ -934,21 +979,17 @@ async function scanSingleRelease(item, index, totalWants) {
     parsedListings = result.listings;
     communityStats = result.communityStats;
     
-    log(`Encontradas ${parsedListings.length} copias en venta para este disco.`);
-    
-    // Save to cache
-    if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      try {
-        const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-        const cacheVal = {
+    // Save to cache with version 2 tag
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
+      chrome.storage.local.set({
+        [cacheKey]: {
           timestamp: Date.now(),
+          version: 2,
           listings: parsedListings,
           communityStats: communityStats
-        };
-        chrome.storage.local.set({ [cacheKey]: cacheVal });
-      } catch (cacheErr) {
-        console.warn('Error saving to cache:', cacheErr);
-      }
+        }
+      });
     }
     
     return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
@@ -1263,6 +1304,38 @@ function cancelScan() {
   log('Solicitando cancelación del escaneo...');
 }
 
+// Robust helper to parse prices and shipping costs taking into account different locale formats (dots vs commas)
+function parseLocalePrice(cleanPrice, currency) {
+  if (!cleanPrice) return 0;
+  
+  // If it ends with a dot/comma followed by exactly 3 digits, and has no other dot/comma
+  const hasSingleSeparator = (cleanPrice.match(/[.,]/g) || []).length === 1;
+  if (hasSingleSeparator) {
+    const separator = cleanPrice.match(/[.,]/)[0];
+    const parts = cleanPrice.split(separator);
+    if (parts[1].length === 3) {
+      // JPY, UYU, ARS, CLP, COP are non-decimal; separation is always thousands
+      const nonDecimalCurrencies = ['JPY', 'UYU', 'ARS', 'CLP', 'COP'];
+      if (nonDecimalCurrencies.includes(currency)) {
+        return parseFloat(cleanPrice.replace(/[.,]/g, '')) || 0;
+      }
+      // In Europe/EUR, dot followed by 3 digits is thousands separator (e.g. 1.250 EUR -> 1250)
+      if (currency === 'EUR' && separator === '.') {
+        return parseFloat(cleanPrice.replace('.', '')) || 0;
+      }
+    }
+  }
+  
+  // Standard parsing
+  let numStr = cleanPrice;
+  if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
+    numStr = cleanPrice.replace(',', '.');
+  } else if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
+    numStr = cleanPrice.replace(/,/g, '');
+  }
+  return parseFloat(numStr) || 0;
+}
+
 // Parse release HTML response using DOMParser
 function parseReleaseHTML(html, releaseId) {
   const parser = new DOMParser();
@@ -1274,32 +1347,56 @@ function parseReleaseHTML(html, releaseId) {
   let wantCount = null;
   
   try {
-    const haveEl = doc.querySelector('a[href*="#collection"]');
-    if (haveEl) {
-      const num = parseInt(haveEl.textContent.replace(/[^\d]/g, ''), 10);
-      if (!isNaN(num)) haveCount = num;
-    }
-    
-    const wantEl = doc.querySelector('a[href*="#wantlist"]');
-    if (wantEl) {
-      const num = parseInt(wantEl.textContent.replace(/[^\d]/g, ''), 10);
-      if (!isNaN(num)) wantCount = num;
-    }
-    
-    if (haveCount === null || wantCount === null) {
-      // Fallback: search anywhere in body text for "lo tienen: X" or "lo quieren: Y" or English equivalents
-      const bodyText = doc.body ? doc.body.textContent : '';
-      
-      const haveMatch = bodyText.match(/(?:lo tienen|have|haves|haben|possèdent)\s*:\s*([\d.,\s]+)/i);
-      if (haveMatch) {
-        const num = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
-        if (!isNaN(num)) haveCount = num;
+    // Try to find the specific statistics section first to avoid false matches in navigation menus
+    const statsSection = doc.querySelector('#release-stats, .release-stats, .statistics, #statistics, [class*="statistics"]');
+    if (statsSection) {
+      // 1. Check list items inside the stats section
+      const lis = statsSection.querySelectorAll('li');
+      lis.forEach(li => {
+        const text = li.textContent.toLowerCase();
+        if (text.includes('tienen') || text.includes('have') || text.includes('haben') || text.includes('possèdent')) {
+          const num = parseInt(text.replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) haveCount = num;
+        }
+        if (text.includes('quieren') || text.includes('want') || text.includes('wollen') || text.includes('veulent')) {
+          const num = parseInt(text.replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) wantCount = num;
+        }
+      });
+
+      // 2. Fallback to anchor tags inside the stats section
+      if (haveCount === null) {
+        const haveEl = statsSection.querySelector('a[href*="collection"], a[href*="have"]');
+        if (haveEl) {
+          const num = parseInt(haveEl.textContent.replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) haveCount = num;
+        }
       }
-      
-      const wantMatch = bodyText.match(/(?:lo quieren|want|wants|wollen|veulent)\s*:\s*([\d.,\s]+)/i);
-      if (wantMatch) {
-        const num = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
-        if (!isNaN(num)) wantCount = num;
+      if (wantCount === null) {
+        const wantEl = statsSection.querySelector('a[href*="wantlist"], a[href*="want"]');
+        if (wantEl) {
+          const num = parseInt(wantEl.textContent.replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) wantCount = num;
+        }
+      }
+    }
+    
+    // Global fallback if no section matches
+    if (haveCount === null || wantCount === null) {
+      const bodyText = doc.body ? doc.body.textContent : '';
+      if (haveCount === null) {
+        const haveMatch = bodyText.match(/(?:lo tienen|have|haves|haben|possèdent)\s*:\s*([\d.,\s]+)/i);
+        if (haveMatch) {
+          const num = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) haveCount = num;
+        }
+      }
+      if (wantCount === null) {
+        const wantMatch = bodyText.match(/(?:lo quieren|want|wants|wollen|veulent)\s*:\s*([\d.,\s]+)/i);
+        if (wantMatch) {
+          const num = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num)) wantCount = num;
+        }
       }
     }
   } catch (err) {
@@ -1395,24 +1492,7 @@ function parseReleaseHTML(html, releaseId) {
       let currency = 'USD';
       let source = 'original';
       
-      const priceValAttr = priceEl?.getAttribute('data-pricevalue');
-      if (priceValAttr) {
-        source = 'data-pricevalue';
-        priceVal = parseFloat(priceValAttr) || 0;
-      } else if (priceText) {
-        source = 'price_element_text';
-        const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible|sobre|about|\()/i)[0].trim();
-        const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
-        let numStr = cleanPrice;
-        if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
-          numStr = cleanPrice.replace(',', '.');
-        } else if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
-          numStr = cleanPrice.replace(/,/g, '');
-        }
-        priceVal = parseFloat(numStr) || 0;
-      }
-      
-      // Detect the original currency code from the original price text
+      // Detect the original currency code FIRST from the original price text
       const upperPrice = priceText.toUpperCase();
       if (upperPrice.includes('R$') || upperPrice.includes('BRL')) currency = 'BRL';
       else if (upperPrice.includes('€') || upperPrice.includes('EUR')) currency = 'EUR';
@@ -1436,6 +1516,24 @@ function parseReleaseHTML(html, releaseId) {
         currency = 'USD'; // default fallback
       }
       
+      const priceValAttr = priceEl?.getAttribute('data-pricevalue');
+      if (priceValAttr) {
+        source = 'data-pricevalue';
+        priceVal = parseFloat(priceValAttr) || 0;
+      } else if (priceText) {
+        source = 'price_element_text';
+        const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible|sobre|about|\()/i)[0].trim();
+        const cleanPrice = cleanText.replace(/[^\d.,]/g, '');
+        priceVal = parseLocalePrice(cleanPrice, currency);
+      }
+
+      // Handle JPY non-decimal thousands separator fix for priceVal
+      if (currency === 'JPY' && priceText) {
+        const cleanText = priceText.split(/(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible|sobre|about|\()/i)[0].trim();
+        const digitsOnly = cleanText.replace(/[^\d]/g, '');
+        if (digitsOnly) priceVal = parseInt(digitsOnly, 10) || 0;
+      }
+      
       // 5. Shipping (Parse original shipping cost to match the original currency of the price)
       const shippingEl = row.querySelector('.item_shipping, .shipping');
       let shippingText = '';
@@ -1446,18 +1544,33 @@ function parseReleaseHTML(html, releaseId) {
       }
       let shippingVal = 0;
       let rawShippingText = shippingText;
+      let isShippingEstimated = false;
       
       if (shippingText) {
-        // We split by parenthesis first to avoid parsing the converted parentheses value
-        const cleanText = shippingText.split(/\(|(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
-        const cleanShipping = cleanText.replace(/[^\d.,]/g, '');
-        let numStr = cleanShipping;
-        if (cleanShipping.includes(',') && !cleanShipping.includes('.')) {
-          numStr = cleanShipping.replace(',', '.');
-        } else if (cleanShipping.includes(',') && cleanShipping.includes('.')) {
-          numStr = cleanShipping.replace(/,/g, '');
+        const upperShipping = shippingText.toUpperCase();
+        const hasDigits = /\d/.test(shippingText);
+        const isFree = shippingText.toLowerCase().includes('gratis') || shippingText.toLowerCase().includes('free');
+        
+        if (isFree) {
+          shippingVal = 0;
+          isShippingEstimated = false;
+        } else if (!hasDigits) {
+          isShippingEstimated = true;
+          shippingVal = 0; // will fall back to base shipping rate in estimate calculations
+        } else {
+          // We split by parenthesis first to avoid parsing the converted parentheses value
+          const cleanText = shippingText.split(/\(|(?:\+tax|\+envío|\+shipping|envío|shipping|Es posible)/i)[0].trim();
+          if (currency === 'JPY' || upperShipping.includes('JPY') || upperShipping.includes('¥')) {
+            const digitsOnly = cleanText.replace(/[^\d]/g, '');
+            shippingVal = parseInt(digitsOnly, 10) || 0;
+          } else {
+            const cleanShipping = cleanText.replace(/[^\d.,]/g, '');
+            shippingVal = parseLocalePrice(cleanShipping, currency);
+          }
         }
-        shippingVal = parseFloat(numStr) || 0;
+      } else {
+        isShippingEstimated = true;
+        shippingVal = 0; // will fall back to base shipping rate in estimate calculations
       }
 
       // Detailed price and shipping logs to the console as requested by the user
@@ -1514,6 +1627,7 @@ function parseReleaseHTML(html, releaseId) {
         priceVal,
         shippingVal,
         currency,
+        isShippingEstimated,
         mediaCondition,
         mediaCondClass,
         sleeveCondition,
@@ -1555,6 +1669,11 @@ function groupListingsBySeller() {
       listing.currency = 'GBP';
     } else if (locLower.includes('japan') && listing.currency === 'USD') {
       listing.currency = 'JPY';
+    }
+    
+    // Auto-heal small JPY values from legacy cache (e.g. 3.92 JPY -> $3.92 USD) so they aren't treated as $0.02 USD
+    if (listing.currency === 'JPY' && listing.priceVal < 100) {
+      listing.currency = 'USD';
     }
     
     if (!sellersMap[sName]) {
@@ -1617,7 +1736,8 @@ function groupListingsBySeller() {
       estimatedShipping: parseFloat(estimatedShipping.toFixed(2)),
       totalPrice: parseFloat(totalPrice.toFixed(2)),
       isDomestic,
-      isEUToEU
+      isEUToEU,
+      isShippingEstimated: seller.listings.some(l => l.isShippingEstimated)
     };
   });
   
@@ -2247,6 +2367,9 @@ function renderResults() {
       const wantInfo = state.wants.find(w => w.id === list.releaseId) || { title: 'Unknown Title', artist: 'Unknown Artist' };
       const isPriority = priorityIds.includes(list.releaseId);
       const starHtml = isPriority ? `<span class="priority-star-badge" title="Disco prioritario">★</span>` : '';
+      const listShippingWarning = list.isShippingEstimated 
+        ? `<span style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío no especificado por el vendedor. Tarifa de seguridad aplicada.">⚠️</span>` 
+        : '';
       
       listingsHtml += `
         <tr>
@@ -2260,13 +2383,17 @@ function renderResults() {
             <span class="badge-condition ${list.mediaCondClass}">${escapeHTML(list.mediaCondition)}</span>
           </td>
           <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
-          <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)} envío</td>
+          <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)}${listShippingWarning} envío</td>
           <td>
             <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="btn-listing-link">Ver Oferta</a>
           </td>
         </tr>
       `;
     });
+    
+    const sellerShippingWarning = seller.isShippingEstimated 
+      ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío no especificado por el vendedor para tu ubicación. Se aplicó tarifa internacional estimada de seguridad de $35 USD.">⚠️</span>` 
+      : '';
     
     card.innerHTML = `
       <div class="seller-info-row">
@@ -2295,12 +2422,12 @@ function renderResults() {
           
           <div class="total-group" title="Envío estimado según ubicación (${seller.isDomestic ? 'Nacional' : (seller.isEUToEU ? 'UE a UE' : 'Internacional')})">
             <span class="total-label">Envío (${seller.isDomestic ? 'Nac.' : (seller.isEUToEU ? 'UE' : 'Int.')})</span>
-            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(seller.estimatedShipping, seller.currency)}</span>
+            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(seller.estimatedShipping, seller.currency)}${sellerShippingWarning}</span>
           </div>
           
           <div class="total-group">
             <span class="total-label">Total Estimado</span>
-            <span class="total-value-highlight">${formatPrice(seller.totalPrice, seller.currency)}</span>
+            <span class="total-value-highlight">${formatPrice(seller.totalPrice, seller.currency)}${sellerShippingWarning}</span>
           </div>
         </div>
         
@@ -2564,8 +2691,15 @@ function calculateAndRenderStats() {
       let cheapestUSD = Infinity;
       
       listingsForRelease.forEach(l => {
-        const rate = CURRENCY_MAP[l.currency]?.rate || 1.0;
-        const priceUSD = l.priceVal * rate;
+        let rate = CURRENCY_MAP[l.currency]?.rate || 1.0;
+        let priceVal = l.priceVal;
+        
+        // Auto-heal small JPY values from legacy cache (e.g. 3.92 JPY -> $3.92 USD) so they aren't treated as $0.02 USD
+        if (l.currency === 'JPY' && priceVal < 100) {
+          rate = 1.0;
+        }
+        
+        const priceUSD = priceVal * rate;
         if (priceUSD < cheapestUSD) {
           cheapestUSD = priceUSD;
           cheapestListing = l;

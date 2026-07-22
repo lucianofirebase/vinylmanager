@@ -45,6 +45,19 @@
           </select>
         </div>
 
+        <div class="filter-group" style="margin-top: 12px;">
+          <label for="display-currency">💱 Divisa de Visualización</label>
+          <select id="display-currency">
+            <option value="UYU" selected>Peso Uruguayo ($U UYU)</option>
+            <option value="USD">Dólar Estadounidense ($ USD)</option>
+            <option value="EUR">Euro (€ EUR)</option>
+            <option value="GBP">Libra Esterlina (£ GBP)</option>
+            <option value="BRL">Real Brasileño (R$ BRL)</option>
+            <option value="ARS">Peso Argentino ($ ARS)</option>
+            <option value="original">Original del Vendedor</option>
+          </select>
+        </div>
+
         <div class="input-fallback" id="input-fallback" style="display: none;">
           <p class="fallback-note">Si la detección falla, ingresa tu usuario manualmente:</p>
           <input type="text" id="manual-username" placeholder="Usuario de Discogs">
@@ -69,7 +82,7 @@
         <div class="cache-control-box" style="margin-top: 12px; font-size: 11px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-glow);">
           <div style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" id="use-cache-checkbox" checked style="cursor: pointer; accent-color: var(--color-purple); width: 14px; height: 14px;">
-            <label for="use-cache-checkbox" style="cursor: pointer; color: var(--text-muted); font-weight: 500; user-select: none;">Usar caché de escaneo (24h)</label>
+            <label for="use-cache-checkbox" style="cursor: pointer; color: var(--text-muted); font-weight: 500; user-select: none;">Usar caché inteligente (6h)</label>
           </div>
           <button id="clear-cache-btn" class="btn-secondary" style="padding: 6px; font-size: 10px; font-weight: 600; width: 100%;">Limpiar caché de escaneo</button>
         </div>
