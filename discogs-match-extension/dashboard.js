@@ -185,6 +185,7 @@ const filterCountry = document.getElementById('filter-country');
 const filterRating = document.getElementById('filter-rating');
 const sortBy = document.getElementById('sort-by');
 const filterPriorityOnly = document.getElementById('filter-priority-only');
+const filterHasShipping = document.getElementById('filter-has-shipping');
 
 // Add Event Listeners on Load
 document.addEventListener('DOMContentLoaded', () => {
@@ -274,6 +275,9 @@ document.addEventListener('DOMContentLoaded', () => {
   filterRating.addEventListener('change', renderResults);
   sortBy.addEventListener('change', renderResults);
   filterPriorityOnly.addEventListener('change', renderResults);
+  if (filterHasShipping) {
+    filterHasShipping.addEventListener('change', renderResults);
+  }
 });
 
 // Intercept all target="_blank" links and open them via chrome.tabs.create (necessary for Chrome extension panels/popups)
@@ -319,6 +323,7 @@ function toggleFiltersState(enabled) {
   filterRating.disabled = !enabled;
   sortBy.disabled = !enabled;
   filterPriorityOnly.disabled = !enabled;
+  if (filterHasShipping) filterHasShipping.disabled = !enabled;
   
   const filterSection = document.querySelector('.filter-section');
   if (filterSection) {
@@ -2297,6 +2302,10 @@ function renderResults() {
         return titleMatch || artistMatch || rawTitleMatch;
       });
       if (!matchesSearch) return false;
+    }
+    // 6. Has shipping configured filter
+    if (filterHasShipping && filterHasShipping.checked && seller.isShippingEstimated) {
+      return false;
     }
     
     return true;
