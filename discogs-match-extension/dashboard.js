@@ -2455,6 +2455,18 @@ function renderResults() {
         ? `<span style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío no especificado por el vendedor. Tarifa de seguridad aplicada.">⚠️</span>` 
         : '';
       
+      const conditionTitles = {
+        'M': 'Mint (Nuevo / Impecable)',
+        'NM': 'Near Mint (Casi nuevo sin marcas)',
+        'VG+': 'Very Good Plus (Excelente estado con uso mínimo)',
+        'VG': 'Very Good (Buen estado con marcas ligeras)',
+        'G+': 'Good Plus (Estado aceptable con uso visible)',
+        'G': 'Good (Usado con marcas evidentes)',
+        'F': 'Fair (Muy usado)',
+        'P': 'Poor (Dañado)'
+      };
+      const condTooltip = conditionTitles[list.mediaCondition] || 'Estado del vinilo';
+      
       listingsHtml += `
         <tr>
           <td class="listing-title-cell">
@@ -2464,7 +2476,7 @@ function renderResults() {
             <span class="listing-artist">${escapeHTML(wantInfo.artist)}</span>
           </td>
           <td>
-            <span class="badge-condition ${list.mediaCondClass}">${escapeHTML(list.mediaCondition)}</span>
+            <span class="badge-condition ${list.mediaCondClass}" title="${condTooltip}">${escapeHTML(list.mediaCondition)}</span>
           </td>
           <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
           <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)}${listShippingWarning} envío</td>
