@@ -186,10 +186,19 @@ const filterRating = document.getElementById('filter-rating');
 const sortBy = document.getElementById('sort-by');
 const filterPriorityOnly = document.getElementById('filter-priority-only');
 const filterHasShipping = document.getElementById('filter-has-shipping');
+const discogsTokenInput = document.getElementById('discogs-token-input');
 
 // Add Event Listeners on Load
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
+  
+  // Restore saved Discogs API Token if present
+  if (discogsTokenInput) {
+    discogsTokenInput.value = localStorage.getItem('discogs_token') || '';
+    discogsTokenInput.addEventListener('input', () => {
+      localStorage.setItem('discogs_token', discogsTokenInput.value.trim());
+    });
+  }
   
   // Tab Navigation switching
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
@@ -277,6 +286,54 @@ document.addEventListener('DOMContentLoaded', () => {
   filterPriorityOnly.addEventListener('change', renderResults);
   if (filterHasShipping) {
     filterHasShipping.addEventListener('change', renderResults);
+  }
+
+  // Auto currency sync when buyer destination country is changed
+  if (buyerCountry && displayCurrencySelect) {
+    buyerCountry.addEventListener('change', () => {
+      const c = buyerCountry.value;
+      if (c === 'Uruguay') displayCurrencySelect.value = 'UYU';
+      else if (c === 'Spain' || c === 'Germany') displayCurrencySelect.value = 'EUR';
+      else if (c === 'United States') displayCurrencySelect.value = 'USD';
+      else if (c === 'United Kingdom') displayCurrencySelect.value = 'GBP';
+      else if (c === 'Argentina') displayCurrencySelect.value = 'ARS';
+      localStorage.setItem('display_currency', displayCurrencySelect.value);
+      if (state.allListings.length > 0) {
+        groupListingsBySeller();
+        renderResults();
+      }
+    });
+  }
+
+  // Reset filters button listener
+  const btnResetFilters = document.getElementById('btn-reset-filters');
+  if (btnResetFilters) {
+    btnResetFilters.addEventListener('click', () => {
+      filterMinMatches.value = "1";
+      filterCountry.value = "all";
+      filterRating.value = "0";
+      filterPriorityOnly.checked = false;
+      if (filterSearchRelease) filterSearchRelease.value = "";
+      renderResults();
+    });
+  }
+
+  // Private Wantlist Help Modal controls
+  const btnClosePrivateModal = document.getElementById('btn-close-private-modal');
+  const btnSyncAgain = document.getElementById('btn-sync-again');
+  const privateWantlistModal = document.getElementById('private-wantlist-modal');
+
+  if (btnClosePrivateModal && privateWantlistModal) {
+    btnClosePrivateModal.addEventListener('click', () => {
+      privateWantlistModal.style.display = 'none';
+    });
+  }
+
+  if (btnSyncAgain && privateWantlistModal) {
+    btnSyncAgain.addEventListener('click', () => {
+      privateWantlistModal.style.display = 'none';
+      loadWantlist();
+    });
   }
 });
 
@@ -757,7 +814,9 @@ async function loadWantlist() {
         log(`Cargando página ${page} de la API de Discogs...`);
         if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (API)...`;
         
-        const jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100`);
+        const savedToken = localStorage.getItem('discogs_token') || (discogsTokenInput ? discogsTokenInput.value.trim() : '');
+        const tokenParam = savedToken ? `&token=${encodeURIComponent(savedToken)}` : '';
+        const jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100${tokenParam}`);
         console.log(`[WantlistAPI] Respuesta recibida para página ${page}. Parseando JSON...`);
         const data = JSON.parse(jsonText);
         
@@ -799,7 +858,14 @@ async function loadWantlist() {
         log(`Cargando página ${page} del raspado HTML...`);
         if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (Web)...`;
         
-        const html = await fetchThroughTab(`https://www.discogs.com/wantlist?user=${state.username}&limit=250&page=${page}`);
+        let html = '';
+        try {
+          html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?limit=250&page=${page}`);
+        } catch (tabErr) {
+          console.warn(`[WantlistHTML] Falló /user/${state.username}/wants, intentando /mywants...`, tabErr);
+          html = await fetchThroughTab(`https://www.discogs.com/mywants?limit=250&page=${page}`);
+        }
+        
         const pageWants = parseWantlistHTML(html);
         
         if (pageWants.length > 0) {
@@ -841,7 +907,12 @@ async function loadWantlist() {
     
   } catch (error) {
     log(`Error al cargar Wantlist: ${error.message}`, 'error');
-    alert(`No pudimos cargar la Wantlist. Detalle: ${error.message}`);
+    const privateModal = document.getElementById('private-wantlist-modal');
+    if (privateModal) {
+      privateModal.style.display = 'flex';
+    } else {
+      alert(`No pudimos cargar la Wantlist. Si tu lista está en modo Privado, cámbiala a "Pública" en Ajustes de Privacidad en Discogs.`);
+    }
     loadWantsBtn.textContent = '1. Cargar Lista de Deseos';
     loadWantsBtn.disabled = false;
     if (refreshWantsBtn) refreshWantsBtn.disabled = false;
@@ -861,7 +932,11 @@ function parseWantlistHTML(html) {
   const wants = [];
   
   // Find all row elements
-  let rows = doc.querySelectorAll('.shortcut_navigable, tr.shortcut_navigable, tr');
+  let rows = doc.querySelectorAll('.shortcut_navigable, tr.shortcut_navigable, tr, .want_item, .release-card, [class*="want"]');
+  if (rows.length === 0) {
+    // Universal fallback: target all release links directly
+    rows = doc.querySelectorAll('a[href*="/release/"]');
+  }
   
   rows.forEach(row => {
     const releaseLink = row.querySelector('a[href*="/release/"]');

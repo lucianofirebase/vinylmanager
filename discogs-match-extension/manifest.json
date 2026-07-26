@@ -1,12 +1,18 @@
 {
   "manifest_version": 3,
   "name": "Discogs Wishlist Matcher",
-  "version": "1.0",
-  "description": "Encuentra vendedores en el marketplace de Discogs que tienen mas articulos de tu Wantlist en venta.",
+  "version": "1.0.0",
+  "description": "Encuentra vendedores en el marketplace de Discogs que tienen más artículos de tu Wantlist en venta para ahorrar en envíos combinados.",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "permissions": [
     "cookies",
     "storage",
-    "unlimitedStorage"
+    "unlimitedStorage",
+    "tabs"
   ],
   "host_permissions": [
     "https://*.discogs.com/*",
@@ -21,7 +27,12 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Discogs Matcher"
+    "default_title": "Discogs Matcher",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "options_page": "dashboard.html"
 }

@@ -33,7 +33,7 @@
         </div>
         
         <div class="sidebar-location-box" style="margin-top: 12px;">
-          <label for="buyer-country" style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">País de Envío</label>
+          <label for="buyer-country" style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500;">📍 Tu País de Destino (para envíos)</label>
           <select id="buyer-country" style="width: 100%; background: var(--bg-darkest); border: 1px solid var(--border-glow); border-radius: 8px; color: #fff; padding: 8px 10px; font-size: 12px; cursor: pointer; outline: none;">
             <option value="Uruguay" selected>Uruguay (UY)</option>
             <option value="Spain">España (ES)</option>
@@ -82,9 +82,9 @@
         <div class="cache-control-box" style="margin-top: 12px; font-size: 11px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-glow);">
           <div style="display: flex; align-items: center; gap: 8px;">
             <input type="checkbox" id="use-cache-checkbox" checked style="cursor: pointer; accent-color: var(--color-purple); width: 14px; height: 14px;">
-            <label for="use-cache-checkbox" style="cursor: pointer; color: var(--text-muted); font-weight: 500; user-select: none;">Usar caché inteligente (6h)</label>
+            <label for="use-cache-checkbox" style="cursor: pointer; color: var(--text-muted); font-weight: 500; user-select: none;" title="Guarda los datos por 6 horas para acelerar la búsqueda">⚡ Escaneo rápido (usar datos 6h)</label>
           </div>
-          <button id="clear-cache-btn" class="btn-secondary" style="padding: 6px; font-size: 10px; font-weight: 600; width: 100%;">Limpiar caché de escaneo</button>
+          <button id="clear-cache-btn" class="btn-secondary" style="padding: 6px; font-size: 10px; font-weight: 600; width: 100%;">Limpiar datos guardados</button>
         </div>
       </div>
 
@@ -97,7 +97,7 @@
         </div>
 
         <div class="filter-group">
-          <label for="filter-min-matches">Coincidencias mínimas</label>
+          <label for="filter-min-matches">📦 Mínimo de discos por vendedor</label>
           <select id="filter-min-matches">
             <option value="1">1 o más discos</option>
             <option value="2" selected>2 o más discos</option>
@@ -384,10 +384,13 @@
         </div>
         
         <!-- NO RESULTS FOUND AFTER SCAN -->
-        <div class="no-results-state" id="no-results-state" style="display: none;">
-          <div class="icon">🔍</div>
-          <h3>No se encontraron vendedores coincidentes</h3>
-          <p>Prueba reduciendo la cantidad de coincidencias mínimas o cambiando el filtro de país.</p>
+        <div class="no-results-state" id="no-results-state" style="display: none; text-align: center; padding: 40px 20px;">
+          <div class="icon" style="font-size: 36px; margin-bottom: 12px;">🔍</div>
+          <h3 style="margin: 0 0 8px 0;">No se encontraron vendedores con estos filtros</h3>
+          <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 16px;">Prueba reduciendo la cantidad de discos mínimos o limpiando la búsqueda.</p>
+          <button id="btn-reset-filters" class="btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; margin: 0 auto; font-weight: 600;">
+            🔄 Mostrar todos los vendedores
+          </button>
         </div>
 
         <!-- STATISTICS VIEW -->
@@ -410,6 +413,34 @@
       <div class="modal-footer">
         <button id="btn-discard-session" class="btn-secondary">Descartar</button>
         <button id="btn-resume-session" class="btn-action">Reanudar Búsqueda</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRIVATE WANTLIST HELP MODAL -->
+  <div class="modal-overlay" id="private-wantlist-modal" style="display: none;">
+    <div class="modal-content glass-modal" style="max-width: 460px;">
+      <div class="modal-header" style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 28px;">🔒</span>
+        <h2 style="margin: 0; font-size: 18px; color: #fff;">Tu Lista de Deseos está Privada</h2>
+      </div>
+      <div class="modal-body" style="font-size: 13px; color: var(--text-muted); line-height: 1.6; margin: 16px 0;">
+        <p style="margin-top: 0;">Discogs no permite que herramientas externas lean listas configuradas como privadas.</p>
+        
+        <div style="background: rgba(245, 197, 24, 0.08); border: 1px solid rgba(245, 197, 24, 0.2); padding: 14px; border-radius: 8px; margin: 12px 0;">
+          <p style="margin: 0 0 8px 0; color: #fff; font-weight: 600;">1. Abrí tus ajustes de privacidad:</p>
+          <a href="https://www.discogs.com/settings/privacy" target="_blank" class="btn-action-sm" style="display: inline-flex; align-items: center; gap: 6px; text-decoration: none; padding: 8px 14px; font-weight: 600; margin-bottom: 12px;">
+            ⚙️ Abrir Privacidad en Discogs
+          </a>
+          <p style="margin: 8px 0 0 0; color: #fff; font-weight: 600;">2. Cambiá "Lista de deseos" a "Pública"</p>
+          <span style="color: var(--text-secondary); font-size: 12px;">Guardá los cambios en la página de Discogs y volvé a este panel.</span>
+        </div>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button id="btn-close-private-modal" class="btn-secondary">Cerrar</button>
+        <button id="btn-sync-again" class="btn-primary" style="background: linear-gradient(135deg, #F5C518 0%, #D4A313 100%); color: #111; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+          🔄 Volver a Intentar
+        </button>
       </div>
     </div>
   </div>
