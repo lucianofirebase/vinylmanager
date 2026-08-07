@@ -999,6 +999,10 @@ async function loadWantlist() {
     state.wants = loadedWants;
     metricWantsCount.textContent = state.wants.length;
     
+    // Pre-calculate and render stats immediately when wantlist finishes loading
+    calculateAndRenderStats();
+    enrichWantlistStats();
+    
     // Hide onboarding wizard and load wants manager
     showWantlistManager();
     
@@ -1082,15 +1086,24 @@ function parseWantlistHTML(html) {
     if (img) {
       image = img.getAttribute('data-src') || img.getAttribute('src') || '';
     }
+
+    // Extract want/have counts from row if present
+    let rowWantCount = null;
+    let rowHaveCount = null;
+    const rowText = row.textContent.toLowerCase();
+    const wantMatch = rowText.match(/(\d[\d.,]*)\s*(?:quieren|wants?)/i) || rowText.match(/(?:quieren|wants?)\S*\s*:?\s*(\d[\d.,]*)/i);
+    if (wantMatch) rowWantCount = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
+    const haveMatch = rowText.match(/(\d[\d.,]*)\s*(?:tienen|haves?)/i) || rowText.match(/(?:tienen|haves?)\S*\s*:?\s*(\d[\d.,]*)/i);
+    if (haveMatch) rowHaveCount = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
     
     wants.push({
       id,
-        title,
+      title,
       artist,
       year: '',
       image,
-      wantCount: null,
-      haveCount: null
+      wantCount: rowWantCount,
+      haveCount: rowHaveCount
     });
   });
   
@@ -1602,6 +1615,32 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     const result = parseReleaseHTML(html, item.id);
     parsedListings = result.listings;
     communityStats = result.communityStats;
+
+    // Fallback: If marketplace page HTML did not contain release stats, fetch release stats via API or HTML
+    if (!communityStats || communityStats.wantCount === null) {
+      try {
+        const jsonText = await fetchDirect(`https://api.discogs.com/releases/${item.id}`);
+        const relData = JSON.parse(jsonText);
+        if (relData && relData.community) {
+          communityStats = {
+            wantCount: typeof relData.community.want === 'number' ? relData.community.want : null,
+            haveCount: typeof relData.community.have === 'number' ? relData.community.have : null
+          };
+          console.log(`[StatsFetch 🎯] Release ${item.id} (${item.title}): Want real=${communityStats.wantCount}, Have real=${communityStats.haveCount}`);
+        }
+      } catch (apiErr) {
+        try {
+          const statsUrl = `https://www.discogs.com/release/stats/${item.id}`;
+          const statsHtml = await fetchThroughTab(statsUrl);
+          const statsResult = parseReleaseHTML(statsHtml, item.id);
+          if (statsResult.communityStats && statsResult.communityStats.wantCount !== null) {
+            communityStats = statsResult.communityStats;
+          }
+        } catch (statsErr) {
+          console.warn(`[StatsFetch] Error al obtener /release/stats/${item.id}:`, statsErr);
+        }
+      }
+    }
     
     // Save to cache with version 3 tag
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -3154,6 +3193,45 @@ function switchTab(tabName) {
     smartCard.style.display = 'none';
     statsView.style.display = 'flex';
     calculateAndRenderStats();
+    enrichWantlistStats();
+  }
+}
+
+// Background helper to enrich community stats (wantCount / haveCount) for all wants directly from Discogs API
+async function enrichWantlistStats() {
+  if (!state.wants || state.wants.length === 0) return;
+  const itemsToFetch = state.wants.filter(w => !w._statsEnriched);
+  if (itemsToFetch.length === 0) return;
+
+  console.log(`[StatsEnrich 🚀] Enriqueciendo estadísticas reales para ${itemsToFetch.length} vinilos...`);
+
+  const BATCH_SIZE = 4;
+  for (let i = 0; i < itemsToFetch.length; i += BATCH_SIZE) {
+    if (state.isScanning) {
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    const chunk = itemsToFetch.slice(i, i + BATCH_SIZE);
+    let updated = false;
+
+    await Promise.all(chunk.map(async (item) => {
+      try {
+        const jsonText = await fetchDirect(`https://api.discogs.com/releases/${item.id}`);
+        const data = JSON.parse(jsonText);
+        if (data && data.community) {
+          if (typeof data.community.want === 'number') item.wantCount = data.community.want;
+          if (typeof data.community.have === 'number') item.haveCount = data.community.have;
+          item._statsEnriched = true;
+          updated = true;
+        }
+      } catch (err) {
+        item._statsEnriched = true;
+      }
+    }));
+
+    if (updated) {
+      calculateAndRenderStats();
+    }
+    await new Promise(r => setTimeout(r, 250));
   }
 }
 
@@ -3221,6 +3299,13 @@ function calculateAndRenderStats() {
   
   // Find community wants metrics
   const wantsWithStats = state.wants.filter(w => w.wantCount !== undefined && w.wantCount !== null && w.wantCount > 0);
+  
+  // Diagnostic logger for DevTools console
+  const alpyren = state.wants.find(w => w.id === 32241999 || (w.title && w.title.toLowerCase().includes('musique de niche')));
+  if (alpyren) {
+    console.log(`%c[DIAGNOSTICO DIGGERS 🔍] Alpyren (ID: ${alpyren.id}): title="${alpyren.title}", wantCount=${alpyren.wantCount}, haveCount=${alpyren.haveCount}`, 'color: #a855f7; font-weight: bold; font-size: 13px;');
+  }
+  console.log(`[DIAGNOSTICO DIGGERS 📊] Total vinilos con stats: ${wantsWithStats.length} de ${state.wants.length}`);
   
   let top5MostWanted = [];
   let top5LeastWanted = [];
