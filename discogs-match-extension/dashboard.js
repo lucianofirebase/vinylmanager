@@ -186,6 +186,7 @@ const filterRating = document.getElementById('filter-rating');
 const sortBy = document.getElementById('sort-by');
 const filterPriorityOnly = document.getElementById('filter-priority-only');
 const filterHasShipping = document.getElementById('filter-has-shipping');
+const filterMinCondition = document.getElementById('filter-min-condition');
 const discogsTokenInput = document.getElementById('discogs-token-input');
 
 // Add Event Listeners on Load
@@ -280,6 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
     filterSearchRelease.addEventListener('input', renderResults);
   }
   filterMinMatches.addEventListener('change', renderResults);
+  if (filterMinCondition) {
+    filterMinCondition.addEventListener('change', renderResults);
+  }
   filterCountry.addEventListener('change', renderResults);
   filterRating.addEventListener('change', renderResults);
   sortBy.addEventListener('change', renderResults);
@@ -310,6 +314,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnResetFilters) {
     btnResetFilters.addEventListener('click', () => {
       filterMinMatches.value = "1";
+      if (filterMinCondition) filterMinCondition.value = "any";
       filterCountry.value = "all";
       filterRating.value = "0";
       filterPriorityOnly.checked = false;
@@ -371,11 +376,23 @@ document.addEventListener('click', (e) => {
   }
 });
 
+// Helper to score vinyl media conditions (M = 6, NM = 5, VG+ = 4, VG = 3, G+ = 2, G = 1)
+function getConditionRank(cond) {
+  const c = (cond || '').toUpperCase().trim();
+  if (c === 'M' || (c.includes('MINT') && !c.includes('NEAR'))) return 6;
+  if (c === 'NM' || c.includes('NEAR MINT') || c === 'M-' || c === 'NM-') return 5;
+  if (c === 'VG+' || c === 'VGPLUS' || c.includes('VERY GOOD PLUS')) return 4;
+  if (c === 'VG' || c.includes('VERY GOOD')) return 3;
+  if (c === 'G+' || c === 'GPLUS' || c.includes('GOOD PLUS')) return 2;
+  return 1;
+}
+
 // Dynamic lock/unlock filters section
 function toggleFiltersState(enabled) {
   const displayCurrencySelect = document.getElementById('display-currency');
   if (displayCurrencySelect) displayCurrencySelect.disabled = !enabled;
   filterMinMatches.disabled = !enabled;
+  if (filterMinCondition) filterMinCondition.disabled = !enabled;
   filterCountry.disabled = !enabled;
   filterRating.disabled = !enabled;
   sortBy.disabled = !enabled;
@@ -488,9 +505,98 @@ function restoreSessionAndResume(session) {
   startMarketplaceScan(session.currentIndex + 1);
 }
 
+// Onboarding Wizard navigation helper
+function goToWizardStep(stepNum) {
+  const stepPane1 = document.getElementById('step-pane-1');
+  const stepPane2 = document.getElementById('step-pane-2');
+  const stepPane3 = document.getElementById('step-pane-3');
+  const dot1 = document.getElementById('dot-1');
+  const dot2 = document.getElementById('dot-2');
+  const dot3 = document.getElementById('dot-3');
+
+  if (stepPane1) stepPane1.style.display = stepNum === 1 ? 'block' : 'none';
+  if (stepPane2) stepPane2.style.display = stepNum === 2 ? 'block' : 'none';
+  if (stepPane3) stepPane3.style.display = stepNum === 3 ? 'block' : 'none';
+
+  if (dot1) dot1.classList.toggle('active', stepNum >= 1);
+  if (dot2) dot2.classList.toggle('active', stepNum >= 2);
+  if (dot3) dot3.classList.toggle('active', stepNum >= 3);
+}
+
+// Show Wantlist Manager section when wants are loaded
+function showWantlistManager() {
+  const emptyState = document.getElementById('empty-state');
+  const wantlistManager = document.getElementById('wantlist-manager');
+  
+  if (emptyState) emptyState.style.display = 'none';
+  if (wantlistManager) {
+    wantlistManager.style.display = 'block';
+    renderWantsListInManager();
+  }
+}
+
+// Render loaded wants list inside Wantlist Manager for marking favorites (★)
+function renderWantsListInManager() {
+  const wantsListGrid = document.getElementById('wants-list-grid');
+  if (!wantsListGrid) return;
+  
+  wantsListGrid.innerHTML = '';
+  const searchVal = (wantsSearchInput ? wantsSearchInput.value : '').toLowerCase().trim();
+  
+  const filteredWants = state.wants.filter(w => {
+    if (!searchVal) return true;
+    return (w.title || '').toLowerCase().includes(searchVal) || (w.artist || '').toLowerCase().includes(searchVal);
+  });
+
+  if (filteredWants.length === 0) {
+    wantsListGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">No se encontraron vinilos en la búsqueda.</p>`;
+    return;
+  }
+
+  filteredWants.forEach(item => {
+    const card = document.createElement('div');
+    card.className = `want-manager-card ${item.isPriority ? 'priority' : ''}`;
+    card.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); border-radius: 10px; margin-bottom: 8px;';
+    
+    card.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+        <div style="width: 36px; height: 36px; border-radius: 6px; overflow: hidden; background: #1a2035; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+          ${item.image ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
+        </div>
+        <div style="min-width: 0;">
+          <p style="font-weight: 700; color: #fff; font-size: 13px; margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(item.title)}</p>
+          <p style="font-size: 11px; color: var(--color-purple); margin: 2px 0 0 0; text-transform: uppercase; font-weight: 600;">${escapeHTML(item.artist)}</p>
+        </div>
+      </div>
+      <button class="btn-star ${item.isPriority ? 'active' : ''}" data-id="${item.id}" style="background: none; border: none; font-size: 20px; cursor: pointer; color: ${item.isPriority ? '#f5c518' : '#4b5563'}; transition: transform 0.2s;" title="Destacar como favorito">
+        ★
+      </button>
+    `;
+
+    const starBtn = card.querySelector('.btn-star');
+    if (starBtn) {
+      starBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        item.isPriority = !item.isPriority;
+        starBtn.style.color = item.isPriority ? '#f5c518' : '#4b5563';
+        card.classList.toggle('priority', item.isPriority);
+      });
+    }
+
+    wantsListGrid.appendChild(card);
+  });
+}
+
+function filterWantsInManager() {
+  renderWantsListInManager();
+}
+
 // Initialize Application and detect user session
 async function initApp() {
   log('Iniciando Discogs Wishlist Matcher...');
+  
+  // Check GPU Hardware Acceleration
+  checkHardwareAcceleration();
   
   // Lock filters initially until results exist
   toggleFiltersState(false);
@@ -964,6 +1070,10 @@ function parseWantlistHTML(html) {
       title = parts.slice(1).join(' - ').split('(')[0].trim();
     } else {
       title = text.split('(')[0].trim();
+      const artistEl = row.querySelector('.artist, [class*="artist"], a[href*="/artist/"]');
+      if (artistEl) {
+        artist = artistEl.textContent.trim();
+      }
     }
     
     // Check if we can get the cover image
@@ -988,12 +1098,12 @@ function parseWantlistHTML(html) {
 }
 
 // Step 2: Scan Single Release (Utility)
-async function scanSingleRelease(item, index, totalWants) {
+async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
   const progress = Math.round(((index + 1) / totalWants) * 100);
   
   // Update UI Progress
-  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}`;
+  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}${timeEstText}`;
   progressBar.style.width = `${progress}%`;
   progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
   progressPercent.textContent = `${progress}%`;
@@ -1026,7 +1136,7 @@ async function scanSingleRelease(item, index, totalWants) {
         });
       });
       
-      if (cacheData && cacheData.version === 2) {
+      if (cacheData && cacheData.version === 3) {
         const now = Date.now();
         cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
         
@@ -1050,7 +1160,7 @@ async function scanSingleRelease(item, index, totalWants) {
     return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
   }
   
-  log(`Escaneando en vivo (${index + 1}/${totalWants}): ${item.artist} - ${item.title}...`);
+  log(`Escaneando en vivo (${index + 1}/${totalWants}${timeEstText}): ${item.artist} - ${item.title}...`);
   
   try {
     const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
@@ -1059,13 +1169,13 @@ async function scanSingleRelease(item, index, totalWants) {
     parsedListings = result.listings;
     communityStats = result.communityStats;
     
-    // Save to cache with version 2 tag
+    // Save to cache with version 3 tag
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
       const cacheKey = `release_${item.id}_${buyerCountryVal}`;
       chrome.storage.local.set({
         [cacheKey]: {
           timestamp: Date.now(),
-          version: 2,
+          version: 3,
           listings: parsedListings,
           communityStats: communityStats
         }
@@ -1137,22 +1247,61 @@ async function startMarketplaceScan(startIndex = 0) {
     tabBtnStats.classList.remove('active');
   }
   
+  // Sort wants so priority/starred items are scanned FIRST
+  state.wants.sort((a, b) => (b.isPriority ? 1 : 0) - (a.isPriority ? 1 : 0));
+
+  const BATCH_SIZE = 3;
+  const scanStartTime = Date.now();
+  let liveScannedCount = 0;
+  
   try {
-    for (let i = startIndex; i < state.wants.length; i++) {
+    for (let i = startIndex; i < state.wants.length; i += BATCH_SIZE) {
       if (state.cancelRequested) {
         log('Escaneo cancelado por el usuario.', 'error');
         break;
       }
       
-      const item = state.wants[i];
-      const result = await scanSingleRelease(item, i, state.wants.length);
-      state.allListings.push(...result.listings);
+      const batchItems = state.wants.slice(i, i + BATCH_SIZE);
+      const remainingCount = state.wants.length - i;
+      const elapsedTimeSec = (Date.now() - scanStartTime) / 1000;
+      const avgSecPerItem = liveScannedCount > 0 ? (elapsedTimeSec / liveScannedCount) : 0.4;
+      const estSecRemaining = Math.round(remainingCount * avgSecPerItem);
       
-      // Update community stats on the want item!
-      if (result.communityStats) {
-        if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
-        if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
+      let timeEstText = '';
+      if (remainingCount > 0) {
+        if (estSecRemaining < 60) {
+          timeEstText = ` • ⏱️ Restan ~${Math.max(1, estSecRemaining)} seg`;
+        } else {
+          const mins = Math.floor(estSecRemaining / 60);
+          const secs = estSecRemaining % 60;
+          timeEstText = ` • ⏱️ Restan ~${mins} min ${secs > 0 ? secs + ' seg' : ''}`;
+        }
       }
+      
+      // Execute batch in parallel
+      const results = await Promise.all(
+        batchItems.map((item, bIdx) => scanSingleRelease(item, i + bIdx, state.wants.length, timeEstText))
+      );
+      
+      let hasLiveFetch = false;
+      results.forEach((result, bIdx) => {
+        const item = batchItems[bIdx];
+        if (!result.isFromCache) {
+          liveScannedCount++;
+          hasLiveFetch = true;
+        }
+        state.allListings.push(...result.listings);
+        
+        if (result.communityStats) {
+          if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
+          if (result.communityStats.haveCount !== null && result.communityStats.haveCount !== undefined) item.haveCount = result.communityStats.haveCount;
+          if (result.communityStats.lowPrice) item.lowPrice = result.communityStats.lowPrice;
+          if (result.communityStats.highPrice) item.highPrice = result.communityStats.highPrice;
+          if (result.communityStats.ratingValue) item.ratingValue = result.communityStats.ratingValue;
+          if (result.communityStats.catalogNumber) item.catalogNumber = result.communityStats.catalogNumber;
+          if (result.communityStats.recordLabel) item.recordLabel = result.communityStats.recordLabel;
+        }
+      });
       
       // Update stats on-the-fly
       const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
@@ -1160,11 +1309,11 @@ async function startMarketplaceScan(startIndex = 0) {
       metricMatchesCount.textContent = state.allListings.length;
       
       // Save scan session progress
-      saveScanSession(i);
+      saveScanSession(Math.min(i + BATCH_SIZE - 1, state.wants.length - 1));
       
-      // Skip fetch and delay when using cached data
-      if (!result.isFromCache) {
-        await new Promise(resolve => setTimeout(resolve, 1200));
+      // Short pause between live batches to respect Discogs server limits
+      if (hasLiveFetch) {
+        await new Promise(resolve => setTimeout(resolve, 600));
       }
     }
     
@@ -1310,28 +1459,34 @@ async function refreshWantlistIncremental() {
       
       log(`Escaneando ${newlyAddedWants.length} nuevos discos en venta...`);
       
-      for (let i = 0; i < newlyAddedWants.length; i++) {
+      for (let i = 0; i < newlyAddedWants.length; i += BATCH_SIZE) {
         if (state.cancelRequested) {
           log('Actualización incremental cancelada por el usuario.', 'error');
           break;
         }
         
-        const item = newlyAddedWants[i];
-        const result = await scanSingleRelease(item, i, newlyAddedWants.length);
-        state.allListings.push(...result.listings);
+        const batchItems = newlyAddedWants.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(
+          batchItems.map((item, bIdx) => scanSingleRelease(item, i + bIdx, newlyAddedWants.length))
+        );
         
-        // Update community stats on the want item!
-        if (result.communityStats) {
-          if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
-          if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
-        }
+        let hasLiveFetch = false;
+        results.forEach((result, bIdx) => {
+          const item = batchItems[bIdx];
+          if (!result.isFromCache) hasLiveFetch = true;
+          state.allListings.push(...result.listings);
+          if (result.communityStats) {
+            if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
+            if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
+          }
+        });
         
         const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
         metricSellersCount.textContent = uniqueSellers.size;
         metricMatchesCount.textContent = state.allListings.length;
         
-        if (!result.isFromCache) {
-          await new Promise(resolve => setTimeout(resolve, 1200));
+        if (hasLiveFetch) {
+          await new Promise(resolve => setTimeout(resolve, 600));
         }
       }
       
@@ -1376,6 +1531,97 @@ async function refreshWantlistIncremental() {
   }
 }
 
+// Step 2: Scan Single Release (Utility)
+async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
+  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
+  const progress = Math.round(((index + 1) / totalWants) * 100);
+  
+  // Update UI Progress
+  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}${timeEstText}`;
+  progressBar.style.width = `${progress}%`;
+  progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
+  progressPercent.textContent = `${progress}%`;
+
+  // Update Cover Art Preview for currently scanned item
+  const scanningCoverArt = document.getElementById('scanning-cover-art');
+  const coverPlaceholder = document.getElementById('cover-placeholder');
+  if (scanningCoverArt) {
+    if (item.image) {
+      scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
+      if (coverPlaceholder) coverPlaceholder.style.display = 'none';
+    } else {
+      scanningCoverArt.style.backgroundImage = '';
+      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+    }
+  }
+  
+  let parsedListings = null;
+  let isFromCache = false;
+  let cacheAgeHours = 0;
+  let communityStats = null;
+  
+  // Try fetching from chrome.storage.local cache first
+  if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    try {
+      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
+      const cacheData = await new Promise(resolve => {
+        chrome.storage.local.get([cacheKey], (result) => {
+          resolve(result[cacheKey] || null);
+        });
+      });
+      
+      if (cacheData && cacheData.version === 3) {
+        const now = Date.now();
+        cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
+        
+        // Priority items get live updates if cache is older than 2h; standard items if older than 6h
+        const maxAgeAllowed = item.isPriority ? 2.0 : 6.0;
+        
+        if (cacheAgeHours < maxAgeAllowed) {
+          parsedListings = cacheData.listings;
+          communityStats = cacheData.communityStats || null;
+          isFromCache = true;
+        }
+      }
+    } catch (cacheErr) {
+      console.warn('Error reading from cache:', cacheErr);
+    }
+  }
+  
+  if (isFromCache && parsedListings) {
+    const priorityTag = item.isPriority ? ' ★ Prioritario' : '';
+    log(`[Caché${priorityTag}] Cargadas ${parsedListings.length} copias en venta para este disco (hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
+    return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
+  }
+  
+  log(`Escaneando en vivo (${index + 1}/${totalWants}${timeEstText}): ${item.artist} - ${item.title}...`);
+  
+  try {
+    const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
+    const html = await fetchThroughTab(url);
+    const result = parseReleaseHTML(html, item.id);
+    parsedListings = result.listings;
+    communityStats = result.communityStats;
+    
+    // Save to cache with version 3 tag
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
+      chrome.storage.local.set({
+        [cacheKey]: {
+          timestamp: Date.now(),
+          version: 3,
+          listings: parsedListings,
+          communityStats: communityStats
+        }
+      });
+    }
+    
+    return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
+  } catch (e) {
+    log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
+    return { listings: [], communityStats: null, isFromCache: false };
+  }
+}
 
 // Cancel current scan
 function cancelScan() {
@@ -1388,32 +1634,45 @@ function cancelScan() {
 function parseLocalePrice(cleanPrice, currency) {
   if (!cleanPrice) return 0;
   
-  // If it ends with a dot/comma followed by exactly 3 digits, and has no other dot/comma
-  const hasSingleSeparator = (cleanPrice.match(/[.,]/g) || []).length === 1;
-  if (hasSingleSeparator) {
-    const separator = cleanPrice.match(/[.,]/)[0];
-    const parts = cleanPrice.split(separator);
-    if (parts[1].length === 3) {
-      // JPY, UYU, ARS, CLP, COP are non-decimal; separation is always thousands
-      const nonDecimalCurrencies = ['JPY', 'UYU', 'ARS', 'CLP', 'COP'];
-      if (nonDecimalCurrencies.includes(currency)) {
-        return parseFloat(cleanPrice.replace(/[.,]/g, '')) || 0;
-      }
-      // In Europe/EUR, dot followed by 3 digits is thousands separator (e.g. 1.250 EUR -> 1250)
-      if (currency === 'EUR' && separator === '.') {
-        return parseFloat(cleanPrice.replace('.', '')) || 0;
-      }
+  // Non-decimal currencies (JPY, UYU, ARS, CLP, COP): remove all dots and commas
+  const nonDecimalCurrencies = ['JPY', 'UYU', 'ARS', 'CLP', 'COP'];
+  if (nonDecimalCurrencies.includes(currency)) {
+    return parseFloat(cleanPrice.replace(/[.,]/g, '')) || 0;
+  }
+
+  const hasDot = cleanPrice.includes('.');
+  const hasComma = cleanPrice.includes(',');
+
+  if (hasDot && hasComma) {
+    const lastDotIndex = cleanPrice.lastIndexOf('.');
+    const lastCommaIndex = cleanPrice.lastIndexOf(',');
+    if (lastCommaIndex > lastDotIndex) {
+      // European format: 1.250,50 -> 1250.50
+      const numStr = cleanPrice.replace(/\./g, '').replace(',', '.');
+      return parseFloat(numStr) || 0;
+    } else {
+      // US/UK format: 1,250.50 -> 1250.50
+      const numStr = cleanPrice.replace(/,/g, '');
+      return parseFloat(numStr) || 0;
     }
+  } else if (hasComma && !hasDot) {
+    const parts = cleanPrice.split(',');
+    if (parts[1] && parts[1].length === 3 && currency === 'EUR') {
+      // e.g. 1,250 EUR (thousands)
+      return parseFloat(cleanPrice.replace(',', '')) || 0;
+    }
+    // Single comma decimal: 25,50 -> 25.50
+    return parseFloat(cleanPrice.replace(',', '.')) || 0;
+  } else if (hasDot && !hasComma) {
+    const parts = cleanPrice.split('.');
+    if (parts[1] && parts[1].length === 3 && (currency === 'EUR' || currency === 'BRL')) {
+      // e.g. 1.250 EUR (thousands)
+      return parseFloat(cleanPrice.replace('.', '')) || 0;
+    }
+    return parseFloat(cleanPrice) || 0;
   }
   
-  // Standard parsing
-  let numStr = cleanPrice;
-  if (cleanPrice.includes(',') && !cleanPrice.includes('.')) {
-    numStr = cleanPrice.replace(',', '.');
-  } else if (cleanPrice.includes(',') && cleanPrice.includes('.')) {
-    numStr = cleanPrice.replace(/,/g, '');
-  }
-  return parseFloat(numStr) || 0;
+  return parseFloat(cleanPrice) || 0;
 }
 
 // Parse release HTML response using DOMParser
@@ -1425,62 +1684,98 @@ function parseReleaseHTML(html, releaseId) {
   // Extract community stats for the release (Haves / Wants)
   let haveCount = null;
   let wantCount = null;
-  
-  try {
-    // Try to find the specific statistics section first to avoid false matches in navigation menus
-    const statsSection = doc.querySelector('#release-stats, .release-stats, .statistics, #statistics, [class*="statistics"]');
-    if (statsSection) {
-      // 1. Check list items inside the stats section
-      const lis = statsSection.querySelectorAll('li');
-      lis.forEach(li => {
-        const text = li.textContent.toLowerCase();
-        if (text.includes('tienen') || text.includes('have') || text.includes('haben') || text.includes('possèdent')) {
-          const num = parseInt(text.replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) haveCount = num;
-        }
-        if (text.includes('quieren') || text.includes('want') || text.includes('wollen') || text.includes('veulent')) {
-          const num = parseInt(text.replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) wantCount = num;
-        }
-      });
 
-      // 2. Fallback to anchor tags inside the stats section
-      if (haveCount === null) {
-        const haveEl = statsSection.querySelector('a[href*="collection"], a[href*="have"]');
-        if (haveEl) {
-          const num = parseInt(haveEl.textContent.replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) haveCount = num;
-        }
+  try {
+    // Direct selector for Discogs stats links: <a href="/release/stats/32241999">17</a>
+    const statsAnchors = doc.querySelectorAll('a[href*="/release/stats/"]');
+    statsAnchors.forEach(a => {
+      const cleanText = a.textContent.trim();
+      const num = parseInt(cleanText.replace(/[^\d]/g, ''), 10);
+      if (isNaN(num) || num <= 0) return;
+
+      const parentText = (a.parentElement ? a.parentElement.textContent : '').toLowerCase();
+      const containerText = (a.closest('tr, li, div, section') ? a.closest('tr, li, div, section').textContent : '').toLowerCase();
+      const contextText = parentText + ' ' + containerText;
+
+      if (contextText.includes('quieren') || contextText.includes('want')) {
+        if (wantCount === null) wantCount = num;
+      } else if (contextText.includes('tienen') || contextText.includes('have')) {
+        if (haveCount === null) haveCount = num;
       }
-      if (wantCount === null) {
-        const wantEl = statsSection.querySelector('a[href*="wantlist"], a[href*="want"]');
-        if (wantEl) {
-          const num = parseInt(wantEl.textContent.replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) wantCount = num;
-        }
+    });
+
+    // Fallback: Check __NEXT_DATA__ JSON script tag if present
+    if (wantCount === null || haveCount === null) {
+      const nextDataScript = doc.querySelector('script#__NEXT_DATA__');
+      if (nextDataScript && nextDataScript.textContent) {
+        try {
+          const nextData = JSON.parse(nextDataScript.textContent);
+          const relData = nextData?.props?.pageProps?.release || nextData?.props?.pageProps?.data;
+          if (relData) {
+            if (relData.community?.want && wantCount === null) wantCount = parseInt(relData.community.want, 10);
+            if (relData.community?.have && haveCount === null) haveCount = parseInt(relData.community.have, 10);
+            if (relData.num_want && wantCount === null) wantCount = parseInt(relData.num_want, 10);
+            if (relData.num_have && haveCount === null) haveCount = parseInt(relData.num_have, 10);
+          }
+        } catch (e) {}
       }
     }
-    
-    // Global fallback if no section matches
-    if (haveCount === null || wantCount === null) {
-      const bodyText = doc.body ? doc.body.textContent : '';
-      if (haveCount === null) {
-        const haveMatch = bodyText.match(/(?:lo tienen|have|haves|haben|possèdent)\s*:\s*([\d.,\s]+)/i);
-        if (haveMatch) {
-          const num = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) haveCount = num;
+
+    // Fallback: Precise regex matching on "miembros quieren esto" or "quieren esto"
+    if (wantCount === null || haveCount === null) {
+      const bodyText = doc.body ? doc.body.textContent : html;
+
+      if (wantCount === null) {
+        const esWantText = bodyText.match(/(\d[\d.,]*)\s*(?:miembros\s*)?quieren\s*esto/i) ||
+                           bodyText.match(/(\d[\d.,]*)\s*people\s*want\s*this/i) ||
+                           bodyText.match(/(?:lo quieren|quieren)\s*:\s*(\d[\d.,]*)/i);
+        if (esWantText) {
+          const num = parseInt(esWantText[1].replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num) && num > 0) wantCount = num;
         }
       }
-      if (wantCount === null) {
-        const wantMatch = bodyText.match(/(?:lo quieren|want|wants|wollen|veulent)\s*:\s*([\d.,\s]+)/i);
-        if (wantMatch) {
-          const num = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
-          if (!isNaN(num)) wantCount = num;
+
+      if (haveCount === null) {
+        const esHaveText = bodyText.match(/(\d[\d.,]*)\s*(?:miembros\s*)?tienen\s*esto/i) ||
+                           bodyText.match(/(\d[\d.,]*)\s*people\s*have\s*this/i) ||
+                           bodyText.match(/(?:lo tienen|tienen)\s*:\s*(\d[\d.,]*)/i);
+        if (esHaveText) {
+          const num = parseInt(esHaveText[1].replace(/[^\d]/g, ''), 10);
+          if (!isNaN(num) && num > 0) haveCount = num;
         }
       }
     }
   } catch (err) {
     console.warn('Error parsing community stats:', err);
+  }
+
+  // Extract structured JSON-LD metadata schema if available
+  let lowPrice = null;
+  let highPrice = null;
+  let ratingValue = null;
+  let catalogNumber = null;
+  let recordLabel = null;
+
+  try {
+    const jsonLdEl = doc.querySelector('script#release_schema, script[type="application/ld+json"]');
+    if (jsonLdEl) {
+      const data = JSON.parse(jsonLdEl.textContent);
+      if (data) {
+        if (data.catalogNumber) catalogNumber = data.catalogNumber;
+        if (data.recordLabel && Array.isArray(data.recordLabel) && data.recordLabel[0]?.name) {
+          recordLabel = data.recordLabel[0].name;
+        } else if (data.recordLabel?.name) {
+          recordLabel = data.recordLabel.name;
+        }
+        if (data.aggregateRating?.ratingValue) ratingValue = parseFloat(data.aggregateRating.ratingValue);
+        if (data.offers) {
+          lowPrice = parseFloat(data.offers.lowPrice) || null;
+          highPrice = parseFloat(data.offers.highPrice) || null;
+        }
+      }
+    }
+  } catch (ldErr) {
+    console.warn('Error parsing release_schema JSON-LD:', ldErr);
   }
   
   // Find listings rows
@@ -1653,38 +1948,30 @@ function parseReleaseHTML(html, releaseId) {
         shippingVal = 0; // will fall back to base shipping rate in estimate calculations
       }
 
-      // Detailed price and shipping logs to the console as requested by the user
-      console.log(
-        `%c[Precio & Envío Log]%c\n` +
-        `• Release: ${releaseId}\n` +
-        `• Vendedor: ${sellerName}\n` +
-        `• Origen Precio: ${source}\n` +
-        `• Texto Precio Original: "${priceText}"\n` +
-        `• Valor de Precio Parseado: ${priceVal}\n` +
-        `• Moneda Detectada: "${currency}"\n` +
-        `• Texto Envío Original: "${rawShippingText}"\n` +
-        `• Valor de Envío Parseado: ${shippingVal}`,
-        'color: #9f7aea; font-weight: bold;', 'color: #fff;'
-      );
-      
-      // 6. Condition
+      // 6. Condition (Avoid regex \b boundary bug on '+')
       const conditionEl = row.querySelector('.item_condition, .condition');
       let mediaCondition = 'VG+';
       let sleeveCondition = 'VG';
       
       if (conditionEl) {
         const text = conditionEl.textContent.trim();
-        const grades = text.match(/\b(M|NM|VG\+|VG|G\+|G|F|P)\b/g);
-        if (grades && grades.length > 0) {
-          mediaCondition = grades[0];
-          if (grades.length > 1) sleeveCondition = grades[1];
-        } else {
-          if (text.includes('Near Mint')) mediaCondition = 'NM';
-          else if (text.includes('Mint')) mediaCondition = 'M';
-          else if (text.includes('Very Good Plus')) mediaCondition = 'VG+';
-          else if (text.includes('Very Good')) mediaCondition = 'VG';
-          else if (text.includes('Good Plus')) mediaCondition = 'G+';
-          else if (text.includes('Good')) mediaCondition = 'G';
+        if (/Near Mint|\bNM\b|\bM-\b/i.test(text)) mediaCondition = 'NM';
+        else if (/\bMint\b|\bM\b/i.test(text) && !/Near/i.test(text)) mediaCondition = 'M';
+        else if (/Very Good Plus|VG\+|VGplus/i.test(text)) mediaCondition = 'VG+';
+        else if (/Very Good|\bVG\b/i.test(text)) mediaCondition = 'VG';
+        else if (/Good Plus|G\+|Gplus/i.test(text)) mediaCondition = 'G+';
+        else if (/\bGood\b|\bG\b/i.test(text)) mediaCondition = 'G';
+        else if (/\bFair\b|\bF\b/i.test(text)) mediaCondition = 'F';
+        else if (/\bPoor\b|\bP\b/i.test(text)) mediaCondition = 'P';
+        
+        if (text.includes('(') || text.includes('/')) {
+          const sleeveText = text.split(/[\(/]/)[1] || '';
+          if (/Near Mint|\bNM\b|\bM-\b/i.test(sleeveText)) sleeveCondition = 'NM';
+          else if (/\bMint\b|\bM\b/i.test(sleeveText) && !/Near/i.test(sleeveText)) sleeveCondition = 'M';
+          else if (/Very Good Plus|VG\+|VGplus/i.test(sleeveText)) sleeveCondition = 'VG+';
+          else if (/Very Good|\bVG\b/i.test(sleeveText)) sleeveCondition = 'VG';
+          else if (/Good Plus|G\+|Gplus/i.test(sleeveText)) sleeveCondition = 'G+';
+          else if (/\bGood\b|\bG\b/i.test(sleeveText)) sleeveCondition = 'G';
         }
       }
       
@@ -1721,7 +2008,15 @@ function parseReleaseHTML(html, releaseId) {
   
   return {
     listings: listings,
-    communityStats: { haveCount, wantCount }
+    communityStats: {
+      haveCount,
+      wantCount,
+      lowPrice,
+      highPrice,
+      ratingValue,
+      catalogNumber,
+      recordLabel
+    }
   };
 }
 
@@ -2175,8 +2470,8 @@ function renderSmartPurchase(filteredSellers) {
                 <span style="color: var(--text-muted);">Promedio por disco:</span>
                 <span style="color: var(--color-amber);">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
               </div>
-              <a href="#" class="btn-action-sm smart-option-seller-name" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 8px; display: block; text-align: center; text-decoration: none; padding: 6px; font-size: 10px;">
-                Ver detalles y WhatsApp ↓
+              <a href="#" class="btn-scroll-to-seller" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 10px; display: block; text-align: center; text-decoration: none; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, rgba(159, 122, 234, 0.3) 0%, rgba(128, 90, 213, 0.3) 100%); border: 1px solid rgba(159, 122, 234, 0.6); border-radius: 8px; transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;">
+                Ver oferta y discos ↓
               </a>
             </div>
           </div>
@@ -2325,6 +2620,8 @@ function renderResults() {
   const minRating = parseFloat(filterRating.value);
   const sortCriteria = sortBy.value;
   const searchQuery = filterSearchRelease ? filterSearchRelease.value.trim().toLowerCase() : '';
+  const minCondVal = filterMinCondition ? filterMinCondition.value : 'any';
+  const minCondRank = minCondVal === 'any' ? 0 : getConditionRank(minCondVal);
   
   // Priority items filtering setup
   const priorityIds = state.wants.filter(w => w.isPriority).map(w => w.id);
@@ -2332,8 +2629,15 @@ function renderResults() {
   
   // Filter list
   let filtered = state.groupedSellers.filter(seller => {
+    // Filter listings matching min condition requirement
+    const validListings = minCondRank > 0 
+      ? seller.listings.filter(l => getConditionRank(l.mediaCondition) >= minCondRank)
+      : seller.listings;
+    
+    seller.displayListings = validListings;
+    
     // 1. Matches limit
-    if (seller.matchCount < minMatches) return false;
+    if (validListings.length < minMatches) return false;
     
     // 2. Rating limit
     if (seller.rating < minRating) return false;
@@ -2444,9 +2748,14 @@ function renderResults() {
       ? `<span class="badge-shipping domestic">Nacional</span>` 
       : (seller.isEUToEU ? `<span class="badge-shipping eu">UE a UE</span>` : `<span class="badge-shipping international">Internacional</span>`);
     
+    const activeListings = seller.displayListings || seller.listings;
+    const activeSubtotal = activeListings.reduce((sum, item) => sum + item.priceVal, 0);
+    const activeShipping = calculateSellerShipping(seller, activeListings);
+    const activeTotalPrice = activeSubtotal + activeShipping;
+
     // Generate inner listing table
     let listingsHtml = '';
-    seller.listings.forEach(list => {
+    activeListings.forEach(list => {
       // Find wants info
       const wantInfo = state.wants.find(w => w.id === list.releaseId) || { title: 'Unknown Title', artist: 'Unknown Artist' };
       const isPriority = priorityIds.includes(list.releaseId);
@@ -2502,28 +2811,29 @@ function renderResults() {
             <span>📍 ${escapeHTML(seller.shipsFrom)}</span>
             ${shippingTypeBadge}
             <span>⭐ ${seller.ratingCount.toLocaleString()} calificaciones</span>
+            <a href="https://www.discogs.com/seller/${encodeURIComponent(seller.name)}/shipping" target="_blank" class="btn-search-discogs-sm" style="font-size: 10px; padding: 2px 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 197, 24, 0.1); border-color: rgba(245, 197, 24, 0.3); color: var(--color-amber); font-weight: 600;" title="Ver política y condiciones de envío oficiales del vendedor en Discogs">📜 Política de envío</a>
           </div>
         </div>
         
         <div class="seller-totals">
           <div class="total-group">
             <span class="total-label">Coincidencias</span>
-            <span class="total-value-normal">${seller.matchCount} de ${state.wants.length}</span>
+            <span class="total-value-normal">${activeListings.length} de ${state.wants.length}</span>
           </div>
           
           <div class="total-group">
             <span class="total-label">Subtotal</span>
-            <span class="total-value-normal">${formatPrice(seller.subtotal, seller.currency)}</span>
+            <span class="total-value-normal">${formatPrice(activeSubtotal, seller.currency)}</span>
           </div>
           
           <div class="total-group" title="Envío estimado según ubicación (${seller.isDomestic ? 'Nacional' : (seller.isEUToEU ? 'UE a UE' : 'Internacional')})">
             <span class="total-label">Envío (${seller.isDomestic ? 'Nac.' : (seller.isEUToEU ? 'UE' : 'Int.')})</span>
-            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(seller.estimatedShipping, seller.currency)}${sellerShippingWarning}</span>
+            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}</span>
           </div>
           
           <div class="total-group">
             <span class="total-label">Total Estimado</span>
-            <span class="total-value-highlight">${formatPrice(seller.totalPrice, seller.currency)}${sellerShippingWarning}</span>
+            <span class="total-value-highlight">${formatPrice(activeTotalPrice, seller.currency)}${sellerShippingWarning}</span>
           </div>
         </div>
         
@@ -2712,23 +3022,110 @@ function saveWizardManualUsername() {
   }
 }
 
-// Clear the storage-based scan cache
+// Show sleek toast notifications
+function showToast(message, type = 'info', duration = 3500) {
+  let container = document.querySelector('.toast-container');
+  if (!container) {
+    container = document.createElement('div');
+    container.className = 'toast-container';
+    document.body.appendChild(container);
+  }
+
+  const icons = {
+    info: 'ℹ️',
+    success: '✨',
+    warning: '⚠️',
+    error: '❌'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = `toast-item ${type}`;
+  toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || 'ℹ️'}</span>
+    <span>${escapeHTML(message)}</span>
+  `;
+
+  container.appendChild(toast);
+
+  // Trigger smooth enter animation
+  requestAnimationFrame(() => {
+    toast.classList.add('show');
+  });
+
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => {
+      if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 300);
+  }, duration);
+}
+
+// Hardware Acceleration Detection
+function checkHardwareAcceleration() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) {
+      showGPUWarningBanner();
+      return;
+    }
+
+    const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+    if (debugInfo) {
+      const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) || '';
+      if (/swiftshader|software|llvmpipe|basic render|microsoft basic/i.test(renderer)) {
+        showGPUWarningBanner();
+      }
+    }
+  } catch (e) {
+    console.warn('GPU Hardware acceleration check skipped:', e);
+  }
+}
+
+function showGPUWarningBanner() {
+  if (localStorage.getItem('dismissed_gpu_warning') === 'true') return;
+
+  const banner = document.createElement('div');
+  banner.className = 'gpu-warning-banner';
+  banner.innerHTML = `
+    <span class="gpu-banner-icon">⚡</span>
+    <div class="gpu-banner-text">
+      <strong>Aceleración por Hardware Desactivada</strong>
+      <p>Para mayor fluidez a 60 FPS, activa la Aceleración por Hardware en <code>chrome://settings/system</code> o <code>brave://settings/system</code>.</p>
+    </div>
+    <button class="gpu-banner-close" title="Cerrar aviso">✕</button>
+  `;
+
+  document.body.appendChild(banner);
+  requestAnimationFrame(() => banner.classList.add('show'));
+
+  const closeBtn = banner.querySelector('.gpu-banner-close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      banner.classList.remove('show');
+      localStorage.setItem('dismissed_gpu_warning', 'true');
+      setTimeout(() => banner.remove(), 400);
+    });
+  }
+}
+
+// Clear the storage-based scan cache with sleek Toast feedback
 async function clearScanCache() {
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(null, (items) => {
       const keysToRemove = Object.keys(items).filter(k => k.startsWith('release_'));
       if (keysToRemove.length === 0) {
         log('La caché de escaneo ya está vacía.', 'info');
-        alert('La caché de escaneo ya está vacía.');
+        showToast('La caché de escaneo ya está completamente vacía.', 'info');
         return;
       }
       chrome.storage.local.remove(keysToRemove, () => {
         log(`Caché de escaneo limpiada con éxito (${keysToRemove.length} elementos eliminados).`, 'success');
-        alert(`¡Caché de escaneo limpiada con éxito!\nSe eliminaron ${keysToRemove.length} discos guardados.`);
+        showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${keysToRemove.length} discos guardados.`, 'success');
       });
     });
   } else {
-    alert('La API de almacenamiento local no está disponible en este entorno.');
+    showToast('La caché de almacenamiento local no está disponible.', 'error');
   }
 }
 
@@ -2898,10 +3295,14 @@ function calculateAndRenderStats() {
       mostWantedHtml += `
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 6px 8px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.03); text-align: left;">
           <div style="min-width: 0; flex: 1; margin-right: 8px;">
-            <strong style="color: #fff; font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.title)}">${idx + 1}. ${escapeHTML(w.title)}</strong>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: #fff; font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
+              ${idx + 1}. ${escapeHTML(w.title)} 🔗
+            </a>
             <span style="font-size: 10px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
           </div>
-          <strong style="color: var(--color-amber); font-size: 11px; flex-shrink: 0;">${w.wantCount.toLocaleString()} wants</strong>
+          <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
+            <strong style="color: var(--color-amber); font-size: 11px; flex-shrink: 0; cursor: pointer;">${w.wantCount.toLocaleString()} wants ↗</strong>
+          </a>
         </div>
       `;
     });
@@ -2911,10 +3312,14 @@ function calculateAndRenderStats() {
       leastWantedHtml += `
         <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 6px 8px; background: rgba(255,255,255,0.02); border-radius: 4px; margin-bottom: 6px; border: 1px solid rgba(255,255,255,0.03); text-align: left;">
           <div style="min-width: 0; flex: 1; margin-right: 8px;">
-            <strong style="color: #fff; font-size: 12px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.title)}">${idx + 1}. ${escapeHTML(w.title)}</strong>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: #fff; font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
+              ${idx + 1}. ${escapeHTML(w.title)} 🔗
+            </a>
             <span style="font-size: 10px; color: var(--text-muted); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
           </div>
-          <strong style="color: #a855f7; font-size: 11px; flex-shrink: 0;">${w.wantCount.toLocaleString()} wants</strong>
+          <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
+            <strong style="color: #a855f7; font-size: 11px; flex-shrink: 0; cursor: pointer;">${w.wantCount.toLocaleString()} wants ↗</strong>
+          </a>
         </div>
       `;
     });

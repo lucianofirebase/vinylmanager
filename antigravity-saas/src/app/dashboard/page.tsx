@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import DashboardShell from '../../components/DashboardShell';
+import VinylItemCard from '../../components/VinylItemCard';
 import { 
   collection, 
   query, 
@@ -171,11 +172,11 @@ export default function DashboardPage() {
     setSortBy('recent');
   }, [activeTab]);
 
-  const openInstagramModal = (item: VinylItem, e: React.MouseEvent) => {
+  const openInstagramModal = useCallback((item: VinylItem, e: React.MouseEvent) => {
     e.stopPropagation();
     setInstagramVinyl(item);
     setIsInstagramOpen(true);
-  };
+  }, []);
   
   // Autocomplete and Discogs Search states inside Add/Edit Modal
   const [discogsSearchQuery, setDiscogsSearchQuery] = useState('');
@@ -516,69 +517,86 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [user]);
 
-  // Statistics
-  const tabStock = stock.filter((item) => 
-    activeTab === 'tienda' 
-      ? (item.status !== 'coleccion' && item.status !== 'vendido') 
-      : item.status === 'coleccion'
-  );
+  // Statistics (memoized)
+  const tabStock = useMemo(() => {
+    return stock.filter((item) => 
+      activeTab === 'tienda' 
+        ? (item.status !== 'coleccion' && item.status !== 'vendido') 
+        : item.status === 'coleccion'
+    );
+  }, [stock, activeTab]);
 
-  const totalItems = tabStock.reduce((sum, item) => sum + (item.qty || 1), 0);
-  const availableItems = tabStock
-    .filter((i) => i.status === 'disponible')
-    .reduce((sum, item) => sum + (item.qty || 1), 0);
-  const totalValue = tabStock
-    .filter((i) => i.status === 'disponible' || i.status === 'coleccion')
-    .reduce((sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1), 0);
+  const { totalItems, availableItems, totalValue, recentItemsCount, growthPercent, recentAvailableCount } = useMemo(() => {
+    const total = tabStock.reduce((sum, item) => sum + (item.qty || 1), 0);
+    const available = tabStock
+      .filter((i) => i.status === 'disponible')
+      .reduce((sum, item) => sum + (item.qty || 1), 0);
+    const val = tabStock
+      .filter((i) => i.status === 'disponible' || i.status === 'coleccion')
+      .reduce((sum, item) => sum + (Number(item.price) || 0) * (item.qty || 1), 0);
 
-  // Dynamic trends (last 30 days)
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-  const recentItemsCount = tabStock
-    .filter((item) => item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
-    .reduce((sum, item) => sum + (item.qty || 1), 0);
+    const recent = tabStock
+      .filter((item) => item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
+      .reduce((sum, item) => sum + (item.qty || 1), 0);
 
-  const previousTotal = totalItems - recentItemsCount;
-  const growthPercent = previousTotal > 0
-    ? Math.round((recentItemsCount / previousTotal) * 100)
-    : (recentItemsCount > 0 ? 100 : 0);
+    const recentAvailable = tabStock
+      .filter((item) => item.status === 'disponible' && item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
+      .reduce((sum, item) => sum + (item.qty || 1), 0);
 
-  const recentAvailableCount = tabStock
-    .filter((item) => item.status === 'disponible' && item.dateAdded && new Date(item.dateAdded) > thirtyDaysAgo)
-    .reduce((sum, item) => sum + (item.qty || 1), 0);
+    const prevTotal = total - recent;
+    const growth = prevTotal > 0
+      ? Math.round((recent / prevTotal) * 100)
+      : (recent > 0 ? 100 : 0);
 
-  // Sorting and Filtering
-  const filteredStock = tabStock.filter((item) => {
-    const matchesSearch = 
-      item.artist.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.label && item.label.toLowerCase().includes(searchQuery.toLowerCase()));
+    return {
+      totalItems: total,
+      availableItems: available,
+      totalValue: val,
+      recentItemsCount: recent,
+      growthPercent: growth,
+      recentAvailableCount: recentAvailable
+    };
+  }, [tabStock]);
 
-    const matchesFormat = formatFilter === 'All' || item.format === formatFilter;
-    const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
+  // Sorting and Filtering (memoized)
+  const filteredStock = useMemo(() => {
+    const queryLower = searchQuery.toLowerCase();
+    return tabStock.filter((item) => {
+      const matchesSearch = 
+        item.artist.toLowerCase().includes(queryLower) ||
+        item.title.toLowerCase().includes(queryLower) ||
+        (item.label && item.label.toLowerCase().includes(queryLower));
 
-    return matchesSearch && matchesFormat && matchesStatus;
-  });
+      const matchesFormat = formatFilter === 'All' || item.format === formatFilter;
+      const matchesStatus = statusFilter === 'All' || item.status === statusFilter;
 
-  const sortedStock = [...filteredStock].sort((a, b) => {
-    if (sortBy === 'recent') {
-      return new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime();
-    }
-    if (sortBy === 'price_asc') {
-      return Number(a.price || 0) - Number(b.price || 0);
-    }
-    if (sortBy === 'price_desc') {
-      return Number(b.price || 0) - Number(a.price || 0);
-    }
-    if (sortBy === 'artist_asc') {
-      return a.artist.localeCompare(b.artist);
-    }
-    if (sortBy === 'title_asc') {
-      return a.title.localeCompare(b.title);
-    }
-    return 0;
-  });
+      return matchesSearch && matchesFormat && matchesStatus;
+    });
+  }, [tabStock, searchQuery, formatFilter, statusFilter]);
+
+  const sortedStock = useMemo(() => {
+    return [...filteredStock].sort((a, b) => {
+      if (sortBy === 'recent') {
+        return new Date(b.dateAdded || 0).getTime() - new Date(a.dateAdded || 0).getTime();
+      }
+      if (sortBy === 'price_asc') {
+        return Number(a.price || 0) - Number(b.price || 0);
+      }
+      if (sortBy === 'price_desc') {
+        return Number(b.price || 0) - Number(a.price || 0);
+      }
+      if (sortBy === 'artist_asc') {
+        return a.artist.localeCompare(b.artist);
+      }
+      if (sortBy === 'title_asc') {
+        return a.title.localeCompare(b.title);
+      }
+      return 0;
+    });
+  }, [filteredStock, sortBy]);
 
   const [visibleCount, setVisibleCount] = useState(30);
 
@@ -586,10 +604,12 @@ export default function DashboardPage() {
     setVisibleCount(30);
   }, [searchQuery, formatFilter, statusFilter, activeTab, sortBy]);
 
-  const slicedStock = sortedStock.slice(0, visibleCount);
+  const slicedStock = useMemo(() => {
+    return sortedStock.slice(0, visibleCount);
+  }, [sortedStock, visibleCount]);
 
-  // Handle individual item selection
-  const toggleSelect = (id: string, e: React.MouseEvent) => {
+  // Handle individual item selection (memoized)
+  const toggleSelect = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -600,7 +620,12 @@ export default function DashboardPage() {
       }
       return next;
     });
-  };
+  }, []);
+
+  const handlePreviewCard = useCallback((item: VinylItem) => {
+    setPreviewModalItem(item);
+    setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
+  }, []);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === sortedStock.length) {
@@ -1433,13 +1458,13 @@ export default function DashboardPage() {
 
 
 
-  const getFormatBadgeColor = (format: string) => {
+  const getFormatBadgeColor = useCallback((format: string) => {
     if (format === 'CD') return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
     if (format === 'Cassette') return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
     return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
-  };
+  }, []);
 
-  const getStatusBadgeColor = (status: string) => {
+  const getStatusBadgeColor = useCallback((status: string) => {
     switch (status) {
       case 'disponible':
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
@@ -1454,7 +1479,7 @@ export default function DashboardPage() {
       default:
         return 'bg-gray-500/10 text-gray-400 border-transparent';
     }
-  };
+  }, []);
 
   return (
     <DashboardShell>
@@ -1799,110 +1824,25 @@ export default function DashboardPage() {
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 select-none">
-            {slicedStock.map((item) => {
-              const isSelected = selectedIds.has(item.id);
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setPreviewModalItem(item);
-                    setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
-                  }}
-                  className={`p-2 rounded-[2rem] bg-white/5 border transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group flex flex-col relative hover:-translate-y-1 hover:shadow-[0_20px_40px_-15px_rgba(99,102,241,0.15)] ${
-                    isSelected ? 'border-indigo-500/40 bg-indigo-500/10' : 'border-white/10 hover:border-indigo-500/25'
-                  }`}
-                >
-                  <div className={`flex-1 flex flex-col overflow-hidden bg-[#0d1326] rounded-[calc(2rem-0.5rem)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.05)] border border-white/5 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${isSelected ? 'bg-indigo-950/20' : ''}`}>
-                    {/* Select Checkbox Indicator */}
-                    <div 
-                      onClick={(e) => toggleSelect(item.id, e)}
-                      className="absolute top-5 left-5 z-10 w-6 h-6 rounded-lg bg-black/60 backdrop-blur-sm flex items-center justify-center border border-white/10 hover:border-indigo-400 hover:bg-black/80 transition-all"
-                    >
-                      {isSelected ? (
-                        <Check className="w-4 h-4 text-indigo-400" />
-                      ) : (
-                        <div className="w-4 h-4" />
-                      )}
-                    </div>
-
-                    {/* Album Cover */}
-                    <div className="aspect-square w-full bg-slate-900 flex items-center justify-center relative overflow-hidden border-b border-white/5">
-                      {item.cover ? (
-                        <img 
-                          src={item.cover} 
-                          alt={`${item.artist} - ${item.title}`} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center gap-2 text-gray-600">
-                          <Music className="w-12 h-12" />
-                          <span className="text-[10px] font-semibold uppercase tracking-widest">Sin Portada</span>
-                        </div>
-                      )}
-
-                      {/* Format and Status Badges */}
-                      <div className="absolute bottom-3 right-3 flex gap-2">
-                        <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border shadow-lg backdrop-blur-md ${getFormatBadgeColor(item.format)}`}>
-                          {item.format}
-                        </span>
-                        {activeTab === 'tienda' && (
-                          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider shadow-lg backdrop-blur-md ${getStatusBadgeColor(item.status)}`}>
-                            {item.status}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Hover Quick Actions */}
-                      <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-3">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingItem(item);
-                            setIsAddEditOpen(true);
-                          }}
-                          className="p-3 rounded-full bg-indigo-500 hover:bg-indigo-600 text-white shadow-xl hover:scale-110 transition-all"
-                          title="Editar"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Main Details */}
-                    <div className="p-4 flex-1 flex flex-col justify-between space-y-4">
-                      <div className="space-y-1">
-                        <h4 className="text-xs font-black text-indigo-400 tracking-wider uppercase leading-none truncate">
-                          {item.artist || 'Artista Desconocido'}
-                        </h4>
-                        <h3 className="text-base font-bold text-white leading-tight truncate">
-                          {item.title}
-                        </h3>
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-white/5 pt-3">
-                        <span className="text-xs text-gray-500 font-medium">
-                          Estado: <strong className="text-gray-300 font-semibold">{item.grade}</strong>
-                        </span>
-                        {activeTab === 'tienda' && (
-                          <div className="text-right">
-                            <div className="text-lg font-black text-emerald-400">
-                              {formatCurrency(item.price, userData?.currency)}
-                            </div>
-                            {item.qty > 1 && (
-                              <div className="text-[10px] text-gray-500 font-bold -mt-1">
-                                x{item.qty} disponibles
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {slicedStock.map((item) => (
+              <VinylItemCard
+                key={item.id}
+                item={item}
+                viewMode="grid"
+                isSelected={selectedIds.has(item.id)}
+                activeTab={activeTab}
+                currency={userData?.currency}
+                getFormatBadgeColor={getFormatBadgeColor}
+                getStatusBadgeColor={getStatusBadgeColor}
+                onPreview={handlePreviewCard}
+                onToggleSelect={toggleSelect}
+                onToggleCollectionStatus={handleToggleCollectionStatus}
+                onSellItem={handleSellItem}
+                onOpenInstagram={openInstagramModal}
+                onEdit={openEditModal}
+                onDelete={handleDeleteItem}
+              />
+            ))}
           </div>
         ) : (
           /* LIST VIEW */
@@ -1912,7 +1852,7 @@ export default function DashboardPage() {
               <div className="col-span-1 flex items-center gap-2 pl-1">
                 <button 
                   onClick={toggleSelectAll} 
-                  className="p-1 rounded hover:bg-white/5 transition-all text-gray-400 hover:text-white"
+                  className="p-1 rounded hover:bg-white/5 transition-colors text-gray-400 hover:text-white"
                 >
                   {selectedIds.size === sortedStock.length ? (
                     <CheckSquare className="w-4.5 h-4.5 text-indigo-400" />
@@ -1928,110 +1868,25 @@ export default function DashboardPage() {
               <div className={`text-right pr-2 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-5'}`}>Acciones</div>
             </div>
 
-            {slicedStock.map((item) => {
-              const isSelected = selectedIds.has(item.id);
-              return (
-                <div
-                  key={item.id}
-                  onClick={() => {
-                    setPreviewModalItem(item);
-                    setPreviewActivePhoto(item.photos?.[0] || item.discogsPhotos?.[0] || item.cover || null);
-                  }}
-                  className={`grid grid-cols-12 p-3.5 items-center hover:bg-white/5 cursor-pointer text-sm font-medium ${
-                    isSelected ? 'bg-indigo-950/5' : ''
-                  }`}
-                >
-                  <div className="col-span-1 pl-1 flex items-center" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      onClick={(e) => toggleSelect(item.id, e)}
-                      className="p-1 rounded hover:bg-white/5 transition-all text-gray-400 hover:text-white"
-                    >
-                      {isSelected ? (
-                        <CheckSquare className="w-4.5 h-4.5 text-indigo-400" />
-                      ) : (
-                        <Square className="w-4.5 h-4.5" />
-                      )}
-                    </button>
-                  </div>
-                  
-                  <div className="col-span-4 pl-2 flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-md bg-slate-900 overflow-hidden shrink-0 flex items-center justify-center">
-                      {item.cover ? (
-                        <img src={item.cover} alt="" className="w-full h-full object-cover" />
-                      ) : (
-                        <Music className="w-4 h-4 text-gray-500" />
-                      )}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="font-bold text-white truncate">{item.title}</p>
-                      <p className="text-xs text-indigo-400 font-semibold truncate uppercase">{item.artist}</p>
-                    </div>
-                  </div>
-
-                  <div className="col-span-2">
-                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border ${getFormatBadgeColor(item.format)}`}>
-                      {item.format}
-                    </span>
-                  </div>
-
-                  {activeTab === 'tienda' && (
-                    <div className="col-span-2">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold border uppercase tracking-wider ${getStatusBadgeColor(item.status)}`}>
-                        {item.status}
-                      </span>
-                    </div>
-                  )}
-
-                  {activeTab === 'tienda' && (
-                    <div className="col-span-2 font-black text-emerald-400">
-                      {formatCurrency(item.price, userData?.currency)}
-                    </div>
-                  )}
-
-                  <div className={`text-right pr-2 flex items-center justify-end gap-1.5 ${activeTab === 'tienda' ? 'col-span-1' : 'col-span-5'}`} onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={(e) => handleToggleCollectionStatus(item, e)}
-                      title={activeTab === 'coleccion' ? "Mover a Tienda" : "Mover a Colección"}
-                      className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 transition-all"
-                    >
-                      {activeTab === 'coleccion' ? <Store className="w-4 h-4" /> : <Archive className="w-4 h-4" />}
-                    </button>
-                    {activeTab === 'tienda' && (
-                      <>
-                        <button
-                          onClick={(e) => handleSellItem(item, e)}
-                          title="Vender 1 Unidad"
-                          className="p-1.5 rounded-lg hover:bg-emerald-500/10 text-emerald-400 transition-all"
-                        >
-                          <DollarSign className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={(e) => openInstagramModal(item, e)}
-                          title="Compartir en Instagram"
-                          className="p-1.5 rounded-lg hover:bg-indigo-500/10 text-indigo-400 transition-all"
-                        >
-                          <Instagram className="w-4 h-4" />
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={(e) => openEditModal(item, e)}
-                      title="Editar"
-                      className="p-1.5 rounded-lg hover:bg-white/5 text-gray-400 hover:text-white transition-all"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={(e) => handleDeleteItem(item.id, e)}
-                      title="Eliminar"
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-450 hover:text-red-400 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            {slicedStock.map((item) => (
+              <VinylItemCard
+                key={item.id}
+                item={item}
+                viewMode="list"
+                isSelected={selectedIds.has(item.id)}
+                activeTab={activeTab}
+                currency={userData?.currency}
+                getFormatBadgeColor={getFormatBadgeColor}
+                getStatusBadgeColor={getStatusBadgeColor}
+                onPreview={handlePreviewCard}
+                onToggleSelect={toggleSelect}
+                onToggleCollectionStatus={handleToggleCollectionStatus}
+                onSellItem={handleSellItem}
+                onOpenInstagram={openInstagramModal}
+                onEdit={openEditModal}
+                onDelete={handleDeleteItem}
+              />
+            ))}
             </div>
           </div>
         )}

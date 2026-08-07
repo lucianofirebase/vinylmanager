@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '../context/AuthContext';
+import GpuAccelerationBanner from '../components/GpuAccelerationBanner';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -27,6 +28,7 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased bg-[#030712] text-[#f9fafb] min-h-screen">
         <AuthProvider>
+          <GpuAccelerationBanner />
           {children}
         </AuthProvider>
       </body>
