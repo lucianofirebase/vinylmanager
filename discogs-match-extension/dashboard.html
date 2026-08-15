@@ -77,6 +77,12 @@
         <button id="start-scan-btn" class="btn-primary" disabled style="margin-top: 10px;">
           <span>2. Iniciar Análisis de Ventas</span>
         </button>
+        <button id="export-sheets-sidebar-btn" class="btn-secondary" disabled style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; border-color: rgba(52, 168, 83, 0.4); color: #4ade80;" title="Exportar para Google Sheets / Excel">
+          📊 Exportar para Sheets
+        </button>
+        <button id="import-local-sheet-sidebar-btn" class="btn-secondary" disabled style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;" title="Pegar / Cargar planilla de disquería local de Montevideo y cruzar con Wantlist">
+          📥 Cruzar Planilla Local (Drive)
+        </button>
         
         <!-- Cache persistency controls -->
         <div class="cache-control-box" style="margin-top: 12px; font-size: 11px; display: flex; flex-direction: column; gap: 8px; padding: 10px; background: rgba(255,255,255,0.02); border-radius: 8px; border: 1px solid var(--border-glow);">
@@ -261,7 +267,8 @@
       <div class="results-container">
         <!-- TAB NAVIGATION -->
         <div class="tab-navigation" id="tab-navigation" style="display: none;">
-          <button class="tab-btn active" id="tab-btn-sellers">🛍️ Vendedores</button>
+          <button class="tab-btn active" id="tab-btn-sellers">🛍️ Vendedores Marketplace</button>
+          <button class="tab-btn" id="tab-btn-local">🇺🇾 Coincidencias Local (Sheets) <span id="badge-local-count" style="display: none; background: #38bdf8; color: #111; font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 10px; margin-left: 4px;">0</span></button>
           <button class="tab-btn" id="tab-btn-stats">📊 Estadísticas de Lista</button>
         </div>
         <!-- INTERACTIVE ONBOARDING WIZARD -->
@@ -372,8 +379,14 @@
               <h2>Marca tus discos favoritos / prioritarios</h2>
               <p>Usa la estrella (★) para destacar los vinilos que más deseas. Podrás filtrar vendedores que tengan al menos uno de tus seleccionados.</p>
             </div>
-            <div class="search-box">
+            <div class="search-box" style="display: flex; gap: 10px; align-items: center;">
               <input type="text" id="wants-search-input" placeholder="Buscar por título o artista...">
+              <button id="export-wants-manager-btn" class="btn-secondary" style="white-space: nowrap; display: flex; align-items: center; gap: 6px; border-color: rgba(52, 168, 83, 0.4); color: #4ade80; font-weight: 600; padding: 8px 14px; cursor: pointer;">
+                📊 Exportar a Sheets
+              </button>
+              <button id="import-local-sheet-manager-btn" class="btn-secondary" style="white-space: nowrap; display: flex; align-items: center; gap: 6px; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 600; padding: 8px 14px; cursor: pointer;">
+                📥 Cruzar con Planilla Local
+              </button>
             </div>
           </div>
           <div class="wants-list-grid" id="wants-list-grid">
@@ -406,6 +419,11 @@
 
         <!-- STATISTICS VIEW -->
         <div class="stats-view-container" id="stats-view" style="display: none;">
+          <!-- Content will be injected dynamically by dashboard.js -->
+        </div>
+
+        <!-- LOCAL MATCHES VIEW CONTAINER -->
+        <div class="local-view-container" id="local-view" style="display: none;">
           <!-- Content will be injected dynamically by dashboard.js -->
         </div>
       </div>
@@ -452,6 +470,137 @@
         <button id="btn-sync-again" class="btn-primary" style="background: linear-gradient(135deg, #F5C518 0%, #D4A313 100%); color: #111; font-weight: 700; display: flex; align-items: center; gap: 6px;">
           🔄 Volver a Intentar
         </button>
+      </div>
+    </div>
+  </div>
+  <!-- EXPORT TO SHEETS / EXCEL MODAL -->
+  <div class="modal-overlay" id="export-sheets-modal" style="display: none;">
+    <div class="modal-content glass-modal" style="max-width: 560px; width: 92%;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 28px;">📊</span>
+          <div>
+            <h2 style="margin: 0; font-size: 18px; color: #fff;">Exportar para Google Sheets / Excel</h2>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted);">Compará tus vinilos con los Drives de tiendas locales de Montevideo</p>
+          </div>
+        </div>
+        <button id="btn-close-export-modal-top" style="background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px;">&times;</button>
+      </div>
+
+      <div class="modal-body" style="font-size: 13px; color: var(--text-main); margin: 16px 0; display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- SCOPE SELECTOR -->
+        <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); padding: 14px; border-radius: 10px;">
+          <label style="font-weight: 600; color: #fff; display: block; margin-bottom: 10px;">1. ¿Qué querés exportar?</label>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px;">
+              <input type="radio" name="export-scope" value="all" checked style="accent-color: #10b981; width: 16px; height: 16px;">
+              <span>Toda mi Lista de Deseos (<strong id="export-count-all" style="color: #4ade80;">0</strong> discos)</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px;">
+              <input type="radio" name="export-scope" value="priority" style="accent-color: #10b981; width: 16px; height: 16px;">
+              <span>Solo marcados con Estrella ★ (<strong id="export-count-priority" style="color: #f5c518;">0</strong> discos)</span>
+            </label>
+            <label id="export-scope-offers-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-size: 13px; opacity: 0.5;">
+              <input type="radio" name="export-scope" value="offers" id="radio-export-offers" disabled style="accent-color: #10b981; width: 16px; height: 16px;">
+              <span>Ofertas del Marketplace encontradas (<strong id="export-count-offers" style="color: #38bdf8;">0</strong> ofertas)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTONS -->
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <label style="font-weight: 600; color: #fff;">2. Elegí el formato:</label>
+          
+          <div style="display: flex; gap: 10px;">
+            <button id="btn-copy-sheets-action" class="btn-primary" style="flex: 1; background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px;">
+              📋 Copiar para Google Sheets (1-Clic)
+            </button>
+            <button id="btn-download-csv-action" class="btn-secondary" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; border-radius: 8px; border: 1px solid var(--border-glow); font-weight: 600; cursor: pointer; font-size: 13px;">
+              📥 Descargar CSV (.csv)
+            </button>
+          </div>
+          <div id="export-toast-msg" style="display: none; padding: 10px 14px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 8px; color: #34d399; font-size: 12px; font-weight: 600; text-align: center; margin-top: 4px;">
+            ✓ ¡Copiado al portapapeles! Abrí tu Google Sheet y presioná Ctrl + V.
+          </div>
+        </div>
+
+        <!-- HINT CARD: MONTEVIDEO DRIVE COMPARISON GUIDE -->
+        <div style="background: rgba(56, 189, 248, 0.06); border: 1px solid rgba(56, 189, 248, 0.25); padding: 14px; border-radius: 10px; font-size: 12px; line-height: 1.5; color: var(--text-muted);">
+          <div style="display: flex; align-items: center; gap: 6px; color: #38bdf8; font-weight: 700; margin-bottom: 6px;">
+            <span>💡 ¿Cómo comparar con el Drive de una tienda local de Montevideo?</span>
+          </div>
+          <ol style="margin: 4px 0 0 0; padding-left: 18px; color: var(--text-main);">
+            <li style="margin-bottom: 4px;">Hacé clic en <strong>"Copiar para Google Sheets"</strong>.</li>
+            <li style="margin-bottom: 4px;">Abrí tu hoja en Google Sheets (o la planilla de la disquería montevideana).</li>
+            <li style="margin-bottom: 4px;">En una celda libre, presioná <strong>Ctrl + V</strong> para pegar tus vinilos en columnas (`Artista`, `Título`, `Discogs ID`...).</li>
+            <li>Usá la fórmula: <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #34d399; font-family: monospace;">=BUSCARV(A2; 'PlanillaTienda'!A:D; 2; FALSO)</code> o <code style="background: rgba(0,0,0,0.4); padding: 2px 6px; border-radius: 4px; color: #34d399; font-family: monospace;">=XLOOKUP(A2; 'PlanillaTienda'!A:A; 'PlanillaTienda'!B:B)</code> para cruzar instantáneamente qué discos tienen en Montevideo.</li>
+          </ol>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+        <button id="btn-close-export-modal" class="btn-secondary" style="padding: 8px 18px; font-weight: 600;">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT LOCAL SHEET MODAL -->
+  <div class="modal-overlay" id="local-sheet-modal" style="display: none;">
+    <div class="modal-content glass-modal" style="max-width: 680px; width: 94%;">
+      <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <span style="font-size: 28px;">📥</span>
+          <div>
+            <h2 style="margin: 0; font-size: 18px; color: #fff;">Importar y Cruzar Planilla Local (Montevideo / Drive)</h2>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: var(--text-muted);">Pegá el stock de cualquier disquería local o subí su archivo para encontrar coincidencias con tu Wantlist</p>
+          </div>
+        </div>
+        <button id="btn-close-local-modal-top" style="background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; padding: 4px;">&times;</button>
+      </div>
+
+      <div class="modal-body" style="font-size: 13px; color: var(--text-main); margin: 16px 0; display: flex; flex-direction: column; gap: 16px;">
+        
+        <!-- STEP 1: PASTE / UPLOAD AREA -->
+        <div id="local-step-1">
+          <label style="font-weight: 600; color: #fff; display: block; margin-bottom: 8px;">1. Pegá aquí las celdas copiadas del Google Sheet / Excel de la tienda:</label>
+          <textarea id="local-sheet-paste-area" placeholder="Copiar las filas directamente de Google Sheets o Excel (ej: Artista | Título | Precio | Estado...) y pegarlas aquí..." style="width: 100%; height: 160px; background: var(--bg-darkest); border: 1px solid var(--border-glow); border-radius: 10px; color: #fff; padding: 12px; font-family: monospace; font-size: 12px; outline: none; resize: vertical;"></textarea>
+          
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; gap: 10px; flex-wrap: wrap;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-size: 11px; color: var(--text-muted);">O subí un archivo CSV/TSV:</span>
+              <input type="file" id="local-sheet-file-input" accept=".csv,.tsv,.txt" style="font-size: 11px; color: var(--text-muted);">
+            </div>
+            <button id="btn-analyze-local-paste" class="btn-primary" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 8px; border: none; cursor: pointer;">
+              Analizar Filas
+            </button>
+          </div>
+        </div>
+
+        <!-- STEP 2: PREVIEW & COLUMN MAPPING -->
+        <div id="local-step-2" style="display: none; background: rgba(255,255,255,0.02); border: 1px solid var(--border-glow); padding: 14px; border-radius: 10px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #fff; font-size: 14px;">2. Asigná cada columna al dato correspondiente:</h4>
+            <span id="local-detected-rows-count" style="font-size: 11px; color: #38bdf8; font-weight: 600;">0 filas detectadas</span>
+          </div>
+          
+          <div style="overflow-x: auto; max-height: 220px; border-radius: 8px; border: 1px solid var(--border-glow);">
+            <table id="local-mapping-table" style="width: 100%; border-collapse: collapse; font-size: 11px; text-align: left;">
+              <!-- Header selects and preview rows injected dynamically -->
+            </table>
+          </div>
+          
+          <div style="display: flex; gap: 10px; margin-top: 14px; justify-content: flex-end;">
+            <button id="btn-back-local-step-1" class="btn-secondary" style="padding: 8px 14px;">Atrás</button>
+            <button id="btn-run-local-match" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+              🔍 Cruzar con mi Wantlist
+            </button>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer" style="display: flex; justify-content: flex-end;">
+        <button id="btn-close-local-modal" class="btn-secondary" style="padding: 8px 18px; font-weight: 600;">Cerrar</button>
       </div>
     </div>
   </div>

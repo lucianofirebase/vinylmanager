@@ -159,6 +159,15 @@ const managerStartScanBtn = document.getElementById('manager-start-scan-btn');
 const buyerCountry = document.getElementById('buyer-country');
 const wizardBuyerCountry = document.getElementById('wizard-buyer-country');
 
+// Export to Sheets Elements
+const exportSheetsSidebarBtn = document.getElementById('export-sheets-sidebar-btn');
+const exportWantsManagerBtn = document.getElementById('export-wants-manager-btn');
+const exportSheetsModal = document.getElementById('export-sheets-modal');
+const btnCloseExportModal = document.getElementById('btn-close-export-modal');
+const btnCloseExportModalTop = document.getElementById('btn-close-export-modal-top');
+const btnCopySheetsAction = document.getElementById('btn-copy-sheets-action');
+const btnDownloadCsvAction = document.getElementById('btn-download-csv-action');
+
 // Onboarding Wizard Elements
 const wizardNext1Btn = document.getElementById('wizard-next-1-btn');
 const wizardNext2Btn = document.getElementById('wizard-next-2-btn');
@@ -218,6 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelScanBtn.addEventListener('click', cancelScan);
   saveUsernameBtn.addEventListener('click', saveManualUsername);
   clearCacheBtn.addEventListener('click', clearScanCache);
+  
+  // Export to Sheets listeners
+  if (exportSheetsSidebarBtn) exportSheetsSidebarBtn.addEventListener('click', openExportSheetsModal);
+  if (exportWantsManagerBtn) exportWantsManagerBtn.addEventListener('click', openExportSheetsModal);
+  if (btnCloseExportModal) btnCloseExportModal.addEventListener('click', closeExportSheetsModal);
+  if (btnCloseExportModalTop) btnCloseExportModalTop.addEventListener('click', closeExportSheetsModal);
+  if (btnCopySheetsAction) btnCopySheetsAction.addEventListener('click', handleCopySheetsAction);
+  if (btnDownloadCsvAction) btnDownloadCsvAction.addEventListener('click', handleDownloadCsvAction);
   
   // Onboarding Wizard Navigation
   wizardNext1Btn.addEventListener('click', () => {
@@ -1014,6 +1031,7 @@ async function loadWantlist() {
       refreshWantsBtn.style.display = 'flex';
       refreshWantsBtn.disabled = false;
     }
+    if (exportSheetsSidebarBtn) exportSheetsSidebarBtn.disabled = false;
     
   } catch (error) {
     log(`Error al cargar Wantlist: ${error.message}`, 'error');
@@ -3514,3 +3532,210 @@ function calculateAndRenderStats() {
   
   statsView.innerHTML = html;
 }
+
+// ==========================================
+// EXPORT FOR GOOGLE SHEETS / EXCEL FUNCTIONS
+// ==========================================
+
+function openExportSheetsModal() {
+  const exportSheetsModal = document.getElementById('export-sheets-modal');
+  if (!exportSheetsModal) return;
+  
+  const exportCountAll = document.getElementById('export-count-all');
+  const exportCountPriority = document.getElementById('export-count-priority');
+  const exportCountOffers = document.getElementById('export-count-offers');
+  const radioExportOffers = document.getElementById('radio-export-offers');
+  const exportScopeOffersLabel = document.getElementById('export-scope-offers-label');
+  
+  const allWantsCount = state.wants ? state.wants.length : 0;
+  const priorityCount = state.wants ? state.wants.filter(w => w.isPriority).length : 0;
+  const offersCount = state.allListings ? state.allListings.length : 0;
+  
+  if (exportCountAll) exportCountAll.textContent = allWantsCount;
+  if (exportCountPriority) exportCountPriority.textContent = priorityCount;
+  if (exportCountOffers) exportCountOffers.textContent = offersCount;
+  
+  if (radioExportOffers && exportScopeOffersLabel) {
+    if (offersCount > 0) {
+      radioExportOffers.disabled = false;
+      exportScopeOffersLabel.style.opacity = '1';
+    } else {
+      radioExportOffers.disabled = true;
+      exportScopeOffersLabel.style.opacity = '0.5';
+    }
+  }
+  
+  const toastMsg = document.getElementById('export-toast-msg');
+  if (toastMsg) toastMsg.style.display = 'none';
+  
+  exportSheetsModal.style.display = 'flex';
+}
+
+function closeExportSheetsModal() {
+  const exportSheetsModal = document.getElementById('export-sheets-modal');
+  if (exportSheetsModal) exportSheetsModal.style.display = 'none';
+}
+
+function escapeCSVCell(val) {
+  if (val === null || val === undefined) return '';
+  let str = String(val).replace(/"/g, '""');
+  if (str.includes(',') || str.includes('\n') || str.includes('"') || str.includes(';')) {
+    str = `"${str}"`;
+  }
+  return str;
+}
+
+function generateWantsTSV(items) {
+  const headers = ['Artista', 'Título', 'Año', 'Prioritario (★)', 'Discogs ID', 'Imagen Cover', 'URL Discogs'];
+  const rows = items.map(item => [
+    item.artist || '',
+    item.title || '',
+    item.year || '',
+    item.isPriority ? '★ SÍ' : 'NO',
+    item.id || '',
+    item.image || '',
+    `https://www.discogs.com/release/${item.id}`
+  ]);
+  
+  return [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+}
+
+function generateWantsCSV(items) {
+  const headers = ['Artista', 'Título', 'Año', 'Prioritario (★)', 'Discogs ID', 'URL Discogs'];
+  const rows = items.map(item => [
+    escapeCSVCell(item.artist || ''),
+    escapeCSVCell(item.title || ''),
+    escapeCSVCell(item.year || ''),
+    escapeCSVCell(item.isPriority ? 'SÍ' : 'NO'),
+    escapeCSVCell(item.id || ''),
+    escapeCSVCell(`https://www.discogs.com/release/${item.id}`)
+  ]);
+  
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  return '\uFEFF' + csvContent;
+}
+
+function generateOffersCSV(listings) {
+  const headers = ['Vendedor', 'País Vendedor', 'Reputación Vendedor', 'Artista', 'Título', 'Estado Vinilo', 'Estado Tapa', 'Precio', 'Moneda', 'Envío Estimado USD', 'Total Estimado USD', 'Link Oferta'];
+  const rows = listings.map(l => [
+    escapeCSVCell(l.sellerName || ''),
+    escapeCSVCell(l.sellerCountry || ''),
+    escapeCSVCell(l.sellerRating ? `${l.sellerRating}%` : ''),
+    escapeCSVCell(l.artist || ''),
+    escapeCSVCell(l.releaseTitle || ''),
+    escapeCSVCell(l.condition || ''),
+    escapeCSVCell(l.sleeveCondition || ''),
+    escapeCSVCell(l.price || 0),
+    escapeCSVCell(l.currency || 'USD'),
+    escapeCSVCell((l.shippingVal || 0).toFixed(2)),
+    escapeCSVCell((l.totalPrice || l.price || 0).toFixed(2)),
+    escapeCSVCell(l.listingUrl || `https://www.discogs.com/release/${l.releaseId}`)
+  ]);
+  
+  const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+  return '\uFEFF' + csvContent;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {
+      console.warn('Clipboard API failed, trying fallback:', e);
+    }
+  }
+  
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return true;
+  } catch (e) {
+    if (textarea.parentNode) document.body.removeChild(textarea);
+    return false;
+  }
+}
+
+function downloadFile(content, fileName, mimeType = 'text/csv;charset=utf-8;') {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => {
+    if (a.parentNode) document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 100);
+}
+
+async function handleCopySheetsAction() {
+  const scopeRadio = document.querySelector('input[name="export-scope"]:checked');
+  const scope = scopeRadio ? scopeRadio.value : 'all';
+  
+  let textToCopy = '';
+  if (scope === 'offers' && state.allListings && state.allListings.length > 0) {
+    const headers = ['Vendedor', 'País', 'Reputación', 'Artista', 'Título', 'Estado Vinilo', 'Precio', 'Envío USD', 'Total USD', 'Link Oferta'];
+    const rows = state.allListings.map(l => [
+      l.sellerName || '', l.sellerCountry || '', l.sellerRating ? `${l.sellerRating}%` : '',
+      l.artist || '', l.releaseTitle || '', l.condition || '', l.price || 0,
+      (l.shippingVal || 0).toFixed(2), (l.totalPrice || l.price || 0).toFixed(2),
+      l.listingUrl || ''
+    ]);
+    textToCopy = [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
+  } else {
+    let targetWants = state.wants || [];
+    if (scope === 'priority') {
+      targetWants = targetWants.filter(w => w.isPriority);
+    }
+    if (targetWants.length === 0) {
+      alert('No hay discos en esta selección para exportar.');
+      return;
+    }
+    textToCopy = generateWantsTSV(targetWants);
+  }
+  
+  const success = await copyTextToClipboard(textToCopy);
+  if (success) {
+    const toastMsg = document.getElementById('export-toast-msg');
+    if (toastMsg) {
+      toastMsg.style.display = 'block';
+      setTimeout(() => { toastMsg.style.display = 'none'; }, 5000);
+    }
+  } else {
+    alert('No se pudo copiar automáticamente. Podés usar la opción de Descargar CSV.');
+  }
+}
+
+function handleDownloadCsvAction() {
+  const scopeRadio = document.querySelector('input[name="export-scope"]:checked');
+  const scope = scopeRadio ? scopeRadio.value : 'all';
+  
+  const usernameStr = state.username ? state.username : 'discogs';
+  const dateStr = new Date().toISOString().slice(0, 10);
+  
+  if (scope === 'offers' && state.allListings && state.allListings.length > 0) {
+    const csvData = generateOffersCSV(state.allListings);
+    downloadFile(csvData, `Discogs_Marketplace_Ofertas_${usernameStr}_${dateStr}.csv`);
+  } else {
+    let targetWants = state.wants || [];
+    if (scope === 'priority') {
+      targetWants = targetWants.filter(w => w.isPriority);
+    }
+    if (targetWants.length === 0) {
+      alert('No hay discos en esta selección para exportar.');
+      return;
+    }
+    const csvData = generateWantsCSV(targetWants);
+    const scopeName = scope === 'priority' ? 'Prioritarios' : 'Wantlist';
+    downloadFile(csvData, `Discogs_${scopeName}_${usernameStr}_${dateStr}.csv`);
+  }
+}
+

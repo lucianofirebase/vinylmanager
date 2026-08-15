@@ -1171,3 +1171,58 @@ if (!document.getElementById('login-screen')) {
         }
     });
 }
+
+// Botón de exportación a Sheets/CSV para inventario
+const btnExportExcel = document.getElementById('btn-export-excel');
+if (btnExportExcel) {
+    btnExportExcel.addEventListener('click', () => {
+        exportStockToCSV();
+    });
+}
+
+function exportStockToCSV() {
+    if (!currentStock || currentStock.length === 0) {
+        showToast("No tienes vinilos en tu inventario para exportar", "warning");
+        return;
+    }
+    
+    function escapeCSVCell(val) {
+        if (val === null || val === undefined) return '';
+        let str = String(val).replace(/"/g, '""');
+        if (str.includes(',') || str.includes('\n') || str.includes('"') || str.includes(';')) {
+            str = `"${str}"`;
+        }
+        return str;
+    }
+    
+    const headers = ['Artista', 'Título', 'Año', 'Formato', 'Estado Disco', 'Estado Tapa', 'Precio USD', 'Precio UYU', 'Estado Venta', 'Notas', 'Discogs ID'];
+    const rows = currentStock.map(item => [
+        escapeCSVCell(item.artist || ''),
+        escapeCSVCell(item.title || ''),
+        escapeCSVCell(item.year || ''),
+        escapeCSVCell(item.format || 'Vinyl'),
+        escapeCSVCell(item.mediaGrade || item.condition || ''),
+        escapeCSVCell(item.sleeveGrade || item.sleeveCondition || ''),
+        escapeCSVCell(item.price || 0),
+        escapeCSVCell(item.priceUYU || Math.round((item.price || 0) * 40)),
+        escapeCSVCell(item.status || 'Disponible'),
+        escapeCSVCell(item.notes || ''),
+        escapeCSVCell(item.discogsId || '')
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Stock_Vinilos_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+        if (a.parentNode) document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }, 100);
+    
+    showToast("¡Inventario exportado a CSV para Sheets/Excel!", "success");
+}
+
