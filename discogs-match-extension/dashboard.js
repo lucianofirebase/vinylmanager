@@ -6,7 +6,9 @@ let state = {
   groupedSellers: [],
   isScanning: false,
   cancelRequested: false,
-  proxyTabId: null
+  proxyTabId: null,
+  localSheetRows: [],
+  localMatches: []
 };
 
 const CURRENCY_MAP = {
@@ -168,6 +170,16 @@ const btnCloseExportModalTop = document.getElementById('btn-close-export-modal-t
 const btnCopySheetsAction = document.getElementById('btn-copy-sheets-action');
 const btnDownloadCsvAction = document.getElementById('btn-download-csv-action');
 
+// Local Sheet Import Elements
+const importLocalSheetSidebarBtn = document.getElementById('import-local-sheet-sidebar-btn');
+const importLocalSheetManagerBtn = document.getElementById('import-local-sheet-manager-btn');
+const localSheetModal = document.getElementById('local-sheet-modal');
+const btnCloseLocalModal = document.getElementById('btn-close-local-modal');
+const btnCloseLocalModalTop = document.getElementById('btn-close-local-modal-top');
+const btnAnalyzeLocalPaste = document.getElementById('btn-analyze-local-paste');
+const btnRunLocalMatch = document.getElementById('btn-run-local-match');
+const btnBackLocalStep1 = document.getElementById('btn-back-local-step-1');
+
 // Onboarding Wizard Elements
 const wizardNext1Btn = document.getElementById('wizard-next-1-btn');
 const wizardNext2Btn = document.getElementById('wizard-next-2-btn');
@@ -212,15 +224,17 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Tab Navigation switching
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
+  const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
-  if (tabBtnSellers && tabBtnStats) {
-    tabBtnSellers.addEventListener('click', () => switchTab('sellers'));
-    tabBtnStats.addEventListener('click', () => switchTab('stats'));
-  }
+  if (tabBtnSellers) tabBtnSellers.addEventListener('click', () => switchTab('sellers'));
+  if (tabBtnLocal) tabBtnLocal.addEventListener('click', () => switchTab('local'));
+  if (tabBtnStats) tabBtnStats.addEventListener('click', () => switchTab('stats'));
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);
   if (refreshWantsBtn) {
+    refreshWantsBtn.style.display = 'flex';
+    refreshWantsBtn.disabled = false;
     refreshWantsBtn.addEventListener('click', refreshWantlistIncremental);
   }
   startScanBtn.addEventListener('click', startMarketplaceScan);
@@ -235,6 +249,22 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseExportModalTop) btnCloseExportModalTop.addEventListener('click', closeExportSheetsModal);
   if (btnCopySheetsAction) btnCopySheetsAction.addEventListener('click', handleCopySheetsAction);
   if (btnDownloadCsvAction) btnDownloadCsvAction.addEventListener('click', handleDownloadCsvAction);
+  
+  // Local Sheet Import listeners
+  if (importLocalSheetSidebarBtn) importLocalSheetSidebarBtn.addEventListener('click', openLocalSheetModal);
+  if (importLocalSheetManagerBtn) importLocalSheetManagerBtn.addEventListener('click', openLocalSheetModal);
+  if (btnCloseLocalModal) btnCloseLocalModal.addEventListener('click', closeLocalSheetModal);
+  if (btnCloseLocalModalTop) btnCloseLocalModalTop.addEventListener('click', closeLocalSheetModal);
+  if (btnAnalyzeLocalPaste) btnAnalyzeLocalPaste.addEventListener('click', handleAnalyzeLocalSheet);
+  if (btnRunLocalMatch) btnRunLocalMatch.addEventListener('click', handleRunLocalMatch);
+  if (btnBackLocalStep1) {
+    btnBackLocalStep1.addEventListener('click', () => {
+      const step1 = document.getElementById('local-step-1');
+      const step2 = document.getElementById('local-step-2');
+      if (step1) step1.style.display = 'block';
+      if (step2) step2.style.display = 'none';
+    });
+  }
   
   // Onboarding Wizard Navigation
   wizardNext1Btn.addEventListener('click', () => {
@@ -1032,6 +1062,7 @@ async function loadWantlist() {
       refreshWantsBtn.disabled = false;
     }
     if (exportSheetsSidebarBtn) exportSheetsSidebarBtn.disabled = false;
+    if (importLocalSheetSidebarBtn) importLocalSheetSidebarBtn.disabled = false;
     
   } catch (error) {
     log(`Error al cargar Wantlist: ${error.message}`, 'error');
@@ -3738,4 +3769,451 @@ function handleDownloadCsvAction() {
     downloadFile(csvData, `Discogs_${scopeName}_${usernameStr}_${dateStr}.csv`);
   }
 }
+
+// ===============================================
+// TAB SWITCHING FUNCTION
+// ===============================================
+
+function switchTab(tabName) {
+  const tabBtnSellers = document.getElementById('tab-btn-sellers');
+  const tabBtnLocal = document.getElementById('tab-btn-local');
+  const tabBtnStats = document.getElementById('tab-btn-stats');
+  const resultsGrid = document.getElementById('results-grid');
+  const statsView = document.getElementById('stats-view');
+  const localView = document.getElementById('local-view');
+  const smartPurchaseCard = document.getElementById('smart-purchase-card');
+
+  if (tabBtnSellers) tabBtnSellers.classList.toggle('active', tabName === 'sellers');
+  if (tabBtnLocal) tabBtnLocal.classList.toggle('active', tabName === 'local');
+  if (tabBtnStats) tabBtnStats.classList.toggle('active', tabName === 'stats');
+
+  if (resultsGrid) resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
+  if (smartPurchaseCard) smartPurchaseCard.style.display = tabName === 'sellers' ? 'block' : 'none';
+  if (statsView) statsView.style.display = tabName === 'stats' ? 'block' : 'none';
+  if (localView) localView.style.display = tabName === 'local' ? 'block' : 'none';
+
+  if (tabName === 'stats' && typeof calculateAndRenderStats === 'function') {
+    calculateAndRenderStats();
+  }
+  if (tabName === 'local' && typeof renderLocalMatches === 'function') {
+    renderLocalMatches();
+  }
+}
+
+// ===============================================
+// LOCAL SELLER SHEET IMPORT & MATCHING FUNCTIONS
+// ===============================================
+
+function openLocalSheetModal() {
+  const localSheetModal = document.getElementById('local-sheet-modal');
+  if (!localSheetModal) return;
+  localSheetModal.style.display = 'flex';
+  const step1 = document.getElementById('local-step-1');
+  const step2 = document.getElementById('local-step-2');
+  if (step1) step1.style.display = 'block';
+  if (step2) step2.style.display = 'none';
+}
+
+function closeLocalSheetModal() {
+  const localSheetModal = document.getElementById('local-sheet-modal');
+  if (localSheetModal) localSheetModal.style.display = 'none';
+}
+
+function parseSheetText(text) {
+  if (!text || !text.trim()) return [];
+  const lines = text.split(/\r?\n/).filter(line => line.trim().length > 0);
+  if (lines.length === 0) return [];
+  
+  const sample = lines[0];
+  let delimiter = '\t';
+  if (sample.includes('\t')) {
+    delimiter = '\t';
+  } else if (sample.includes(';')) {
+    delimiter = ';';
+  } else if (sample.includes(',')) {
+    delimiter = ',';
+  }
+
+  return lines.map(line => {
+    return line.split(delimiter).map(cell => cell.trim().replace(/^"(.*)"$/, '$1'));
+  });
+}
+
+function handleAnalyzeLocalSheet() {
+  const pasteArea = document.getElementById('local-sheet-paste-area');
+  const fileInput = document.getElementById('local-sheet-file-input');
+  
+  let rawText = pasteArea ? pasteArea.value : '';
+  
+  if (!rawText.trim() && fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      processParsedLocalMatrix(parseSheetText(e.target.result));
+    };
+    reader.readAsText(file);
+    return;
+  }
+  
+  if (!rawText.trim()) {
+    alert('Por favor pegá el contenido de las celdas de la planilla o seleccioná un archivo.');
+    return;
+  }
+  
+  processParsedLocalMatrix(parseSheetText(rawText));
+}
+
+function processParsedLocalMatrix(matrix) {
+  if (!matrix || matrix.length === 0) {
+    alert('No se pudieron detectar filas válidas en el texto proporcionado.');
+    return;
+  }
+  
+  state.localSheetRows = matrix;
+  
+  const step1 = document.getElementById('local-step-1');
+  const step2 = document.getElementById('local-step-2');
+  const detectedRowsCount = document.getElementById('local-detected-rows-count');
+  
+  if (detectedRowsCount) {
+    detectedRowsCount.textContent = `${matrix.length} filas detectadas`;
+  }
+  
+  renderLocalMappingTable(matrix);
+  
+  if (step1) step1.style.display = 'none';
+  if (step2) step2.style.display = 'block';
+}
+
+function renderLocalMappingTable(matrix) {
+  const table = document.getElementById('local-mapping-table');
+  if (!table || matrix.length === 0) return;
+  
+  const colCount = Math.max(...matrix.slice(0, 5).map(row => row.length));
+  const firstRow = matrix[0];
+  
+  const candidateMappings = autoDetectColumnTypes(matrix);
+  
+  let html = '<thead><tr>';
+  for (let c = 0; c < colCount; c++) {
+    const headerName = firstRow[c] || `Columna ${c + 1}`;
+    const selectedType = candidateMappings[c] || 'ignore';
+    
+    html += `
+      <th style="padding: 8px; border-bottom: 1px solid var(--border-glow); background: rgba(0,0,0,0.3);">
+        <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px; font-size: 11px;">${escapeHTML(headerName)}</div>
+        <select class="col-mapper-select" data-col="${c}" style="width: 100%; background: var(--bg-darkest); border: 1px solid var(--border-glow); color: #fff; border-radius: 6px; padding: 4px; font-size: 10px;">
+          <option value="ignore" ${selectedType === 'ignore' ? 'selected' : ''}>-- Ignorar --</option>
+          <option value="artist" ${selectedType === 'artist' ? 'selected' : ''}>🎤 Artista</option>
+          <option value="title" ${selectedType === 'title' ? 'selected' : ''}>🎵 Título</option>
+          <option value="price" ${selectedType === 'price' ? 'selected' : ''}>💰 Precio</option>
+          <option value="format" ${selectedType === 'format' ? 'selected' : ''}>💿 Formato</option>
+          <option value="condition" ${selectedType === 'condition' ? 'selected' : ''}>⭐ Estado / Condición</option>
+          <option value="discogs_id" ${selectedType === 'discogs_id' ? 'selected' : ''}>🆔 Discogs ID / Link</option>
+        </select>
+      </th>
+    `;
+  }
+  html += '</tr></thead><tbody>';
+  
+  const previewRows = matrix.slice(0, 6);
+  previewRows.forEach((row, idx) => {
+    html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.03); background: ${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'};">`;
+    for (let c = 0; c < colCount; c++) {
+      html += `<td style="padding: 6px 8px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;">${escapeHTML(row[c] || '')}</td>`;
+    }
+    html += '</tr>';
+  });
+  
+  html += '</tbody>';
+  table.innerHTML = html;
+}
+
+function autoDetectColumnTypes(matrix) {
+  if (!matrix || matrix.length === 0) return {};
+  const header = matrix[0].map(h => (h || '').toLowerCase().trim());
+  const colCount = Math.max(...matrix.slice(0, 5).map(r => r.length));
+  const mapping = {};
+  
+  for (let c = 0; c < colCount; c++) {
+    const h = header[c] || '';
+    if (h.includes('artist') || h.includes('banda') || h.includes('autor') || h.includes('interprete')) {
+      mapping[c] = 'artist';
+    } else if (h.includes('title') || h.includes('titulo') || h.includes('album') || h.includes('disco')) {
+      mapping[c] = 'title';
+    } else if (h.includes('precio') || h.includes('price') || h.includes('costo') || h.includes('$') || h.includes('uyu')) {
+      mapping[c] = 'price';
+    } else if (h.includes('format') || h.includes('formato') || h.includes('tipo')) {
+      mapping[c] = 'format';
+    } else if (h.includes('estado') || h.includes('condic') || h.includes('grade') || h.includes('media')) {
+      mapping[c] = 'condition';
+    } else if (h.includes('discogs') || h.includes('release') || h.includes('id')) {
+      mapping[c] = 'discogs_id';
+    }
+  }
+  
+  if (!Object.values(mapping).includes('artist') && colCount >= 2) mapping[0] = 'artist';
+  if (!Object.values(mapping).includes('title') && colCount >= 2) mapping[1] = 'title';
+  if (!Object.values(mapping).includes('price') && colCount >= 3) mapping[2] = 'price';
+  
+  return mapping;
+}
+
+function normalizeText(str) {
+  if (!str) return '';
+  return String(str)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\(.*?\)/g, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/[^a-z0-9\s]/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function handleRunLocalMatch() {
+  const selects = document.querySelectorAll('.col-mapper-select');
+  const mapping = {};
+  selects.forEach(select => {
+    const colIdx = parseInt(select.getAttribute('data-col'), 10);
+    mapping[colIdx] = select.value;
+  });
+  
+  if (!Object.values(mapping).includes('artist') && !Object.values(mapping).includes('title') && !Object.values(mapping).includes('discogs_id')) {
+    alert('Debes asignar al menos una columna de Artista, Título o Discogs ID.');
+    return;
+  }
+  
+  if (!state.wants || state.wants.length === 0) {
+    alert('Primero debes cargar tu Lista de Deseos (Wantlist) de Discogs.');
+    return;
+  }
+  
+  const matches = [];
+  const wants = state.wants;
+  const rows = state.localSheetRows;
+  
+  const startIndex = (rows.length > 1 && (rows[0].some(cell => ['artist', 'artista', 'titulo', 'title', 'precio'].includes(cell.toLowerCase().trim())))) ? 1 : 0;
+  
+  for (let r = startIndex; r < rows.length; r++) {
+    const row = rows[r];
+    
+    let sellerArtist = '';
+    let sellerTitle = '';
+    let sellerPrice = '';
+    let sellerFormat = '';
+    let sellerCondition = '';
+    let sellerDiscogsId = null;
+    
+    Object.keys(mapping).forEach(colIdx => {
+      const idx = parseInt(colIdx, 10);
+      const val = row[idx] || '';
+      const field = mapping[colIdx];
+      
+      if (field === 'artist') sellerArtist = val;
+      else if (field === 'title') sellerTitle = val;
+      else if (field === 'price') sellerPrice = val;
+      else if (field === 'format') sellerFormat = val;
+      else if (field === 'condition') sellerCondition = val;
+      else if (field === 'discogs_id') {
+        const idMatch = val.match(/\d{5,9}/);
+        if (idMatch) sellerDiscogsId = parseInt(idMatch[0], 10);
+      }
+    });
+    
+    const normSellerArtist = normalizeText(sellerArtist);
+    const normSellerTitle = normalizeText(sellerTitle);
+    const normCombined = `${normSellerArtist} ${normSellerTitle}`;
+    
+    if (!normSellerArtist && !normSellerTitle && !sellerDiscogsId) continue;
+    
+    for (const want of wants) {
+      let isMatch = false;
+      let matchScore = 0;
+      let matchReason = '';
+      
+      if (sellerDiscogsId && sellerDiscogsId === want.id) {
+        isMatch = true;
+        matchScore = 100;
+        matchReason = '🆔 Coincidencia por Discogs ID';
+      } else {
+        const normWantArtist = normalizeText(want.artist);
+        const normWantTitle = normalizeText(want.title);
+        
+        if (normSellerArtist && normSellerTitle && normWantArtist === normSellerArtist && normWantTitle === normSellerTitle) {
+          isMatch = true;
+          matchScore = 98;
+          matchReason = '🎯 Coincidencia exacta de Artista y Título';
+        } 
+        else if (normSellerTitle && normWantArtist && normWantTitle && normSellerTitle.includes(normWantArtist) && normSellerTitle.includes(normWantTitle)) {
+          isMatch = true;
+          matchScore = 90;
+          matchReason = '🔍 Coincidencia de Artista y Título en columna';
+        }
+        else if (normWantArtist && normWantTitle) {
+          const normWantCombined = `${normWantArtist} ${normWantTitle}`;
+          if (normCombined && (normCombined.includes(normWantCombined) || normWantCombined.includes(normCombined))) {
+            isMatch = true;
+            matchScore = 85;
+            matchReason = '✨ Coincidencia difusa de nombre';
+          } else {
+            const wantWords = normWantCombined.split(' ').filter(w => w.length > 2);
+            const sellerWords = normCombined.split(' ').filter(w => w.length > 2);
+            if (wantWords.length > 0 && sellerWords.length > 0) {
+              const shared = wantWords.filter(w => sellerWords.includes(w));
+              const ratio = shared.length / wantWords.length;
+              if (ratio >= 0.75 && shared.length >= 2) {
+                isMatch = true;
+                matchScore = Math.round(ratio * 90);
+                matchReason = `💡 Coincidencia parcial (${Math.round(ratio * 100)}% palabras clave)`;
+              }
+            }
+          }
+        }
+      }
+      
+      if (isMatch) {
+        matches.push({
+          wantItem: want,
+          sellerArtist,
+          sellerTitle,
+          sellerPrice,
+          sellerFormat,
+          sellerCondition,
+          matchScore,
+          matchReason,
+          rawRow: row
+        });
+        break;
+      }
+    }
+  }
+  
+  state.localMatches = matches;
+  closeLocalSheetModal();
+  
+  const tabBtnLocal = document.getElementById('tab-btn-local');
+  const badgeLocalCount = document.getElementById('badge-local-count');
+  
+  if (tabBtnLocal) tabBtnLocal.style.display = 'inline-flex';
+  if (badgeLocalCount) {
+    badgeLocalCount.textContent = matches.length;
+    badgeLocalCount.style.display = 'inline-block';
+  }
+  
+  switchTab('local');
+  log(`Cruce con planilla local completado. ¡Encontradas ${matches.length} coincidencias!`, 'success');
+}
+
+function renderLocalMatches() {
+  const localView = document.getElementById('local-view');
+  if (!localView) return;
+  
+  const matches = state.localMatches || [];
+  
+  if (matches.length === 0) {
+    localView.innerHTML = `
+      <div style="text-align: center; padding: 60px 20px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-glow); border-radius: 16px;">
+        <div style="font-size: 42px; margin-bottom: 14px;">🇺🇾</div>
+        <h3 style="margin: 0 0 8px 0; color: #fff;">Sin coincidencias locales cargadas</h3>
+        <p style="color: var(--text-muted); font-size: 13px; max-width: 440px; margin: 0 auto 20px auto; line-height: 1.5;">
+          Pegá las celdas o subí el archivo del catálogo de cualquier disquería montevideana para cruzarlo automáticamente con tu Wantlist.
+        </p>
+        <button id="btn-open-local-modal-empty" class="btn-primary" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
+          📥 Cargar Planilla Local
+        </button>
+      </div>
+    `;
+    const btnEmpty = document.getElementById('btn-open-local-modal-empty');
+    if (btnEmpty) btnEmpty.addEventListener('click', openLocalSheetModal);
+    return;
+  }
+  
+  const priorityMatchesCount = matches.filter(m => m.wantItem.isPriority).length;
+  
+  let html = `
+    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); padding: 16px 20px; border-radius: 14px;">
+      <div>
+        <h2 style="margin: 0; font-size: 20px; color: #fff;">🇺🇾 Coincidencias en Disquería Local</h2>
+        <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">
+          Se encontraron <strong style="color: #38bdf8;">${matches.length} vinilos</strong> de tu Wantlist en la planilla local (${priorityMatchesCount} marcados con estrella ★).
+        </p>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <button id="btn-reopen-local-modal" class="btn-secondary" style="font-size: 12px; font-weight: 600; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">
+          🔄 Cargar otra Planilla
+        </button>
+        <button id="btn-copy-local-matches" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 700; font-size: 12px; padding: 8px 14px;">
+          📋 Copiar Lista de Pedido
+        </button>
+      </div>
+    </div>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+  `;
+  
+  matches.forEach(m => {
+    const item = m.wantItem;
+    html += `
+      <div style="background: var(--bg-card); border: 1px solid ${item.isPriority ? 'rgba(245, 197, 24, 0.4)' : 'var(--border-glow)'}; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
+        ${item.isPriority ? `<span style="position: absolute; top: 12px; right: 12px; background: rgba(245, 197, 24, 0.2); color: #f5c518; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(245, 197, 24, 0.4);">★ Prioritario</span>` : ''}
+        
+        <div style="display: flex; gap: 14px; margin-bottom: 12px;">
+          <div style="width: 54px; height: 54px; border-radius: 8px; overflow: hidden; background: #1a2035; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+            ${item.image ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
+          </div>
+          <div style="min-width: 0; flex-grow: 1; padding-right: ${item.isPriority ? '80px' : '0'};">
+            <p style="font-weight: 700; color: #fff; font-size: 14px; margin: 0 0 2px 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(item.title)}</p>
+            <p style="font-size: 12px; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 600;">${escapeHTML(item.artist)}</p>
+            <span style="font-size: 10px; color: #34d399; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px;">${escapeHTML(m.matchReason)}</span>
+          </div>
+        </div>
+        
+        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <span style="color: var(--text-muted);">Dato Planilla:</span>
+            <span style="color: #fff; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 180px;">${escapeHTML(m.sellerArtist)} - ${escapeHTML(m.sellerTitle)}</span>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: var(--text-muted);">Precio Local:</span>
+            <span style="color: #38bdf8; font-weight: 800; font-size: 14px;">${escapeHTML(m.sellerPrice || 'Consultar')}</span>
+          </div>
+          ${m.sellerFormat || m.sellerCondition ? `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: var(--text-dim);">
+              <span>${escapeHTML(m.sellerFormat || '')}</span>
+              <span>${escapeHTML(m.sellerCondition || '')}</span>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  });
+  
+  html += '</div>';
+  localView.innerHTML = html;
+  
+  const btnReopen = document.getElementById('btn-reopen-local-modal');
+  const btnCopyMatches = document.getElementById('btn-copy-local-matches');
+  if (btnReopen) btnReopen.addEventListener('click', openLocalSheetModal);
+  if (btnCopyMatches) btnCopyMatches.addEventListener('click', copyLocalMatchesToClipboard);
+}
+
+async function copyLocalMatchesToClipboard() {
+  const matches = state.localMatches || [];
+  if (matches.length === 0) return;
+  
+  const textLines = ['¡Hola! Me interesan los siguientes vinilos de su catálogo:', ''];
+  matches.forEach((m, idx) => {
+    const star = m.wantItem.isPriority ? ' (★ Favorito)' : '';
+    textLines.push(`${idx + 1}. ${m.sellerArtist || m.wantItem.artist} - ${m.sellerTitle || m.wantItem.title} ${m.sellerPrice ? `[${m.sellerPrice}]` : ''}${star}`);
+  });
+  textLines.push('', '¿Siguen disponibles? ¡Muchas gracias!');
+  
+  const success = await copyTextToClipboard(textLines.join('\n'));
+  if (success) {
+    alert('¡Copiada la lista de pedido al portapapeles! Pegala directamente en WhatsApp o Instagram para enviarla a la disquería.');
+  }
+}
+
 
