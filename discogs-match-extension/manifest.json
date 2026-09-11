@@ -12,7 +12,8 @@
     "cookies",
     "storage",
     "unlimitedStorage",
-    "tabs"
+    "tabs",
+    "scripting"
   ],
   "host_permissions": [
     "https://*.discogs.com/*",

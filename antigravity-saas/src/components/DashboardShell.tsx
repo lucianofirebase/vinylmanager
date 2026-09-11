@@ -45,6 +45,7 @@ export default function DashboardShell({ children }: DashboardShellProps) {
 
   const menuItems = [
     { name: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
+    { name: 'Discogs Matcher', path: '/dashboard/discogs-matcher', icon: Sparkles },
     ...(isSeller ? [
       { name: 'Historial de Ventas', path: '/dashboard/ventas', icon: TrendingUp },
       { name: 'WhatsApp Marketing', path: '/whatsapp', icon: MessageSquare },

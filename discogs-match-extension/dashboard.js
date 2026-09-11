@@ -222,6 +222,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
+  // Mobile Menu Toggle
+  const mobileMenuToggleBtn = document.getElementById('mobile-menu-toggle-btn');
+  const sidebarEl = document.getElementById('sidebar');
+  if (mobileMenuToggleBtn && sidebarEl) {
+    mobileMenuToggleBtn.addEventListener('click', () => {
+      sidebarEl.classList.toggle('hidden');
+      sidebarEl.classList.toggle('flex');
+    });
+  }
+
   // Tab Navigation switching
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
@@ -596,39 +606,45 @@ function renderWantsListInManager() {
   });
 
   if (filteredWants.length === 0) {
-    wantsListGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">No se encontraron vinilos en la búsqueda.</p>`;
+    wantsListGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--tertiary); padding: 30px;" class="text-body-md">No se encontraron vinilos en la búsqueda.</p>`;
     return;
   }
 
-  filteredWants.forEach(item => {
+  filteredWants.forEach((item, index) => {
     const card = document.createElement('div');
-    card.className = `want-manager-card ${item.isPriority ? 'priority' : ''}`;
-    card.style.cssText = 'display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); border-radius: 10px; margin-bottom: 8px;';
+    const isChecked = item.isPriority ? 'checked' : '';
+    const starId = `star-want-${item.id || index}`;
+    
+    card.className = `record-card bg-surface border border-surface-variant rounded-lg p-3 flex flex-col items-center relative transition-all duration-300 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary' : ''}`;
     
     card.innerHTML = `
-      <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-        <div style="width: 36px; height: 36px; border-radius: 6px; overflow: hidden; background: #1a2035; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-          ${item.image ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
-        </div>
-        <div style="min-width: 0;">
-          <p style="font-weight: 700; color: #fff; font-size: 13px; margin: 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(item.title)}</p>
-          <p style="font-size: 11px; color: var(--color-purple); margin: 2px 0 0 0; text-transform: uppercase; font-weight: 600;">${escapeHTML(item.artist)}</p>
-        </div>
+      <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
+      <label for="${starId}" class="absolute top-2 right-2 cursor-pointer z-10 bg-surface-container-lowest/80 backdrop-blur-sm rounded-full p-1 shadow-sm hover:scale-110 transition-transform">
+        <span class="material-symbols-outlined text-outline text-[20px]" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0}; color: ${item.isPriority ? '#f5a623' : '#857462'};">star</span>
+      </label>
+      <div class="w-full aspect-square bg-surface-container mb-3 rounded-md overflow-hidden border border-surface-variant/50 flex items-center justify-center">
+        ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover" alt="${escapeHTML(item.title)}">` : `<span class="material-symbols-outlined text-4xl text-surface-variant">album</span>`}
       </div>
-      <button class="btn-star ${item.isPriority ? 'active' : ''}" data-id="${item.id}" style="background: none; border: none; font-size: 20px; cursor: pointer; color: ${item.isPriority ? '#f5c518' : '#4b5563'}; transition: transform 0.2s;" title="Destacar como favorito">
-        ★
-      </button>
+      <p class="font-label-md text-label-md text-on-surface text-center truncate w-full" title="${escapeHTML(item.artist ? `${item.artist} - ` : '')}${escapeHTML(item.title)}">
+        ${escapeHTML(item.artist ? `${item.artist} - ` : '')}${escapeHTML(item.title)}
+      </p>
     `;
 
-    const starBtn = card.querySelector('.btn-star');
-    if (starBtn) {
-      starBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        item.isPriority = !item.isPriority;
-        starBtn.style.color = item.isPriority ? '#f5c518' : '#4b5563';
-        card.classList.toggle('priority', item.isPriority);
-      });
-    }
+    const starCheckbox = card.querySelector('.star-checkbox');
+    const starLabelSpan = card.querySelector('label span');
+
+    const toggleStar = (e) => {
+      e.stopPropagation();
+      item.isPriority = !item.isPriority;
+      starCheckbox.checked = item.isPriority;
+      starLabelSpan.style.fontVariationSettings = `'FILL' ${item.isPriority ? 1 : 0}`;
+      starLabelSpan.style.color = item.isPriority ? '#f5a623' : '#857462';
+      card.classList.toggle('ring-2', item.isPriority);
+      card.classList.toggle('ring-primary', item.isPriority);
+    };
+
+    starCheckbox.addEventListener('change', toggleStar);
+    card.addEventListener('click', toggleStar);
 
     wantsListGrid.appendChild(card);
   });
@@ -896,39 +912,56 @@ async function fetchThroughTab(url) {
       let timeoutId = setTimeout(() => {
         timeoutId = null;
         console.warn(`[ProxyFetch] TIMEOUT (10s) en pestaña proxy para ${url}. Intentando conexión directa...`);
+        doDirectFallback();
+      }, 10000);
+
+      const doDirectFallback = () => {
+        if (timeoutId) clearTimeout(timeoutId);
         fetchDirect(url)
           .then(resolve)
           .catch(err => {
-            console.error(`[ProxyFetch] Falló fallback directo tras timeout:`, err.message);
+            console.error(`[ProxyFetch] Falló fallback directo tras error de canal:`, err.message);
             reject(err);
           });
-      }, 10000);
+      };
 
-      console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${activeProxyTab.id} para URL: ${url}`);
-      chrome.tabs.sendMessage(activeProxyTab.id, { action: "fetchUrl", url }, (response) => {
-        if (!timeoutId) {
-          console.log(`[ProxyFetch] Respuesta tardía recibida de pestaña ${activeProxyTab.id} para ${url} (ya venció timeout)`);
-          return; 
-        }
-        clearTimeout(timeoutId);
-        
-        if (chrome.runtime.lastError) {
-          console.error(`[ProxyFetch] Error de comunicación con pestaña ${activeProxyTab.id}:`, chrome.runtime.lastError.message);
-          fetchDirect(url)
-            .then(resolve)
-            .catch(err => {
-              console.error(`[ProxyFetch] Falló fallback directo tras error de canal:`, err.message);
-              reject(err);
-            });
-        } else if (response && response.success) {
-          console.log(`[ProxyFetch] Respuesta exitosa recibida de pestaña proxy para URL: ${url} (${response.html ? response.html.length : 0} bytes)`);
-          resolve(response.html);
-        } else {
-          const errMsg = response ? response.error : "Unknown same-origin fetch error";
-          console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
-          reject(new Error(errMsg));
-        }
-      });
+      const sendMessageToTab = (tabId, isRetry = false) => {
+        console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${tabId} para URL: ${url}`);
+        chrome.tabs.sendMessage(tabId, { action: "fetchUrl", url }, (response) => {
+          if (chrome.runtime.lastError) {
+            console.warn(`[ProxyFetch] Error de comunicación con pestaña ${tabId}:`, chrome.runtime.lastError.message);
+            // If content script was not injected yet in an existing tab, inject dynamically
+            if (!isRetry && typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
+              console.log(`[ProxyFetch] Inyectando content.js dinámicamente en pestaña ${tabId}...`);
+              chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                files: ['content.js']
+              }, () => {
+                if (chrome.runtime.lastError) {
+                  console.warn(`[ProxyFetch] Falló inyección dinámica:`, chrome.runtime.lastError.message);
+                  doDirectFallback();
+                } else {
+                  console.log(`[ProxyFetch] Inyección exitosa. Reintentando mensaje...`);
+                  sendMessageToTab(tabId, true);
+                }
+              });
+            } else {
+              doDirectFallback();
+            }
+          } else if (response && response.success) {
+            if (timeoutId) clearTimeout(timeoutId);
+            console.log(`[ProxyFetch] Respuesta exitosa recibida de pestaña proxy para URL: ${url} (${response.html ? response.html.length : 0} bytes)`);
+            resolve(response.html);
+          } else {
+            if (timeoutId) clearTimeout(timeoutId);
+            const errMsg = response ? response.error : "Unknown same-origin fetch error";
+            console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
+            reject(new Error(errMsg));
+          }
+        });
+      };
+
+      sendMessageToTab(activeProxyTab.id);
     });
   });
 }
@@ -969,7 +1002,16 @@ async function loadWantlist() {
         
         const savedToken = localStorage.getItem('discogs_token') || (discogsTokenInput ? discogsTokenInput.value.trim() : '');
         const tokenParam = savedToken ? `&token=${encodeURIComponent(savedToken)}` : '';
-        const jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100${tokenParam}`);
+        
+        let jsonText = '';
+        try {
+          console.log(`[WantlistAPI] Solicitando API vía tab proxy...`);
+          jsonText = await fetchThroughTab(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100${tokenParam}`);
+        } catch (eProxy) {
+          console.log(`[WantlistAPI] Tab proxy devolvió error, intentando fetchDirect...`, eProxy.message);
+          jsonText = await fetchDirect(`https://api.discogs.com/users/${state.username}/wants?page=${page}&per_page=100${tokenParam}`);
+        }
+        
         console.log(`[WantlistAPI] Respuesta recibida para página ${page}. Parseando JSON...`);
         const data = JSON.parse(jsonText);
         
@@ -986,7 +1028,7 @@ async function loadWantlist() {
           }));
           
           loadedWants.push(...pageWants);
-          totalPages = data.pagination.pages;
+          totalPages = data.pagination ? data.pagination.pages : 1;
           page++;
           
           // Polite delay to avoid rate limits
@@ -1006,40 +1048,63 @@ async function loadWantlist() {
       let page = 1;
       let hasMore = true;
       loadedWants = []; // Reset to ensure no partial API items mixed
+      const seenIds = new Set();
       
       do {
-        log(`Cargando página ${page} del raspado HTML...`);
-        if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (Web)...`;
+        log(`Cargando página ${page} de tu Wishlist... (Total cargados hasta ahora: ${loadedWants.length})`);
+        if (wizardSyncText) wizardSyncText.textContent = `Cargando página ${page} (Web) - ${loadedWants.length} discos...`;
         
         let html = '';
+        const limitParam = 'limit=100';
         try {
-          html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?limit=250&page=${page}`);
-        } catch (tabErr) {
-          console.warn(`[WantlistHTML] Falló /user/${state.username}/wants, intentando /mywants...`, tabErr);
-          html = await fetchThroughTab(`https://www.discogs.com/mywants?limit=250&page=${page}`);
+          html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?${limitParam}&page=${page}`);
+        } catch (tabErr1) {
+          try {
+            html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wantlist?${limitParam}&page=${page}`);
+          } catch (tabErr2) {
+            try {
+              html = await fetchThroughTab(`https://www.discogs.com/wantlist?${limitParam}&page=${page}`);
+            } catch (tabErr3) {
+              try {
+                html = await fetchThroughTab(`https://www.discogs.com/mywantlist?${limitParam}&page=${page}`);
+              } catch (tabErr4) {
+                html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?page=${page}`);
+              }
+            }
+          }
         }
         
         const pageWants = parseWantlistHTML(html);
+        let newItemsAdded = 0;
         
         if (pageWants.length > 0) {
-          loadedWants.push(...pageWants);
-          // If fewer than 250 items, it means we reached the end
-          if (pageWants.length < 250) {
+          pageWants.forEach(item => {
+            if (!seenIds.has(item.id)) {
+              seenIds.add(item.id);
+              loadedWants.push(item);
+              newItemsAdded++;
+            }
+          });
+          
+          log(`Página ${page}: +${newItemsAdded} discos nuevos (Total: ${loadedWants.length}).`);
+          metricWantsCount.textContent = loadedWants.length;
+          
+          if (newItemsAdded === 0) {
             hasMore = false;
           } else {
             page++;
-            // Polite delay to avoid rate limits
-            await new Promise(r => setTimeout(r, 1200));
+            // Pequeña pausa cortés entre páginas
+            await new Promise(r => setTimeout(r, 600));
           }
         } else {
           hasMore = false;
         }
-      } while (hasMore);
+      } while (hasMore && page <= 100);
       
       if (loadedWants.length > 0) {
-        log(`Wantlist cargada con éxito a través de raspado HTML (${loadedWants.length} discos).`, 'success');
+        log(`¡Wishlist completa cargada con éxito! (${loadedWants.length} discos).`, 'success');
       } else {
-        throw new Error('No se encontraron discos en la Wantlist usando ninguno de los dos métodos.');
+        throw new Error('No se encontraron discos en la Wishlist usando ninguno de los dos métodos.');
       }
     }
     
@@ -1098,7 +1163,7 @@ function parseWantlistHTML(html) {
   }
   
   rows.forEach(row => {
-    const releaseLink = row.querySelector('a[href*="/release/"]');
+    const releaseLink = row.matches && row.matches('a[href*="/release/"]') ? row : row.querySelector('a[href*="/release/"]');
     if (!releaseLink) return;
     
     const href = releaseLink.getAttribute('href');
@@ -1665,30 +1730,12 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     parsedListings = result.listings;
     communityStats = result.communityStats;
 
-    // Fallback: If marketplace page HTML did not contain release stats, fetch release stats via API or HTML
-    if (!communityStats || communityStats.wantCount === null) {
-      try {
-        const jsonText = await fetchDirect(`https://api.discogs.com/releases/${item.id}`);
-        const relData = JSON.parse(jsonText);
-        if (relData && relData.community) {
-          communityStats = {
-            wantCount: typeof relData.community.want === 'number' ? relData.community.want : null,
-            haveCount: typeof relData.community.have === 'number' ? relData.community.have : null
-          };
-          console.log(`[StatsFetch 🎯] Release ${item.id} (${item.title}): Want real=${communityStats.wantCount}, Have real=${communityStats.haveCount}`);
-        }
-      } catch (apiErr) {
-        try {
-          const statsUrl = `https://www.discogs.com/release/stats/${item.id}`;
-          const statsHtml = await fetchThroughTab(statsUrl);
-          const statsResult = parseReleaseHTML(statsHtml, item.id);
-          if (statsResult.communityStats && statsResult.communityStats.wantCount !== null) {
-            communityStats = statsResult.communityStats;
-          }
-        } catch (statsErr) {
-          console.warn(`[StatsFetch] Error al obtener /release/stats/${item.id}:`, statsErr);
-        }
-      }
+    // Fallback: If marketplace page HTML did not contain release stats, use item want/have count from wantlist if available
+    if ((!communityStats || communityStats.wantCount === null) && (item.wantCount !== undefined && item.wantCount !== null)) {
+      communityStats = {
+        wantCount: item.wantCount,
+        haveCount: item.haveCount
+      };
     }
     
     // Save to cache with version 3 tag
@@ -2508,11 +2555,15 @@ function renderSmartPurchase(filteredSellers) {
     
     let albumsHtml = '';
     seller.listings.forEach(l => {
-      const wantInfo = state.wants.find(w => w.id === l.releaseId) || { title: 'Unknown', artist: 'Unknown' };
+      const wantInfo = state.wants.find(w => String(w.id) === String(l.releaseId)) || {};
+      const albumTitle = wantInfo.title || l.releaseTitle || l.title || 'Disco';
+      const albumArtist = wantInfo.artist || l.releaseArtist || l.artist || '';
+      const fullLabel = albumArtist ? `${albumArtist} - ${albumTitle}` : albumTitle;
+
       albumsHtml += `
-        <div class="smart-album-row">
-          <span class="smart-album-title" title="${escapeHTML(wantInfo.title)} - ${escapeHTML(wantInfo.artist)}">💿 ${escapeHTML(wantInfo.title)}</span>
-          <span class="smart-album-price">${formatPrice(l.priceVal, l.currency)}</span>
+        <div class="smart-album-row" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px;">
+          <span class="smart-album-title" style="color: #e5e7eb; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;" title="${escapeHTML(fullLabel)}">💿 ${escapeHTML(fullLabel)}</span>
+          <span class="smart-album-price" style="color: var(--text-muted); white-space: nowrap; font-weight: 600; font-size: 11px;">${formatPrice(l.priceVal, l.currency)}</span>
         </div>
       `;
     });
@@ -2545,7 +2596,7 @@ function renderSmartPurchase(filteredSellers) {
               ${albumsHtml}
             </div>
             
-            <div style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
+            <div style="border-top: 1px solid rgba(46, 46, 46, 0.10); padding-top: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
               <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
                 <span>Subtotal discos:</span>
                 <span>${formatPrice(subtotal, seller.currency)}</span>
@@ -2558,7 +2609,7 @@ function renderSmartPurchase(filteredSellers) {
                 <span style="color: var(--text-muted);">Promedio por disco:</span>
                 <span style="color: var(--color-amber);">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
               </div>
-              <a href="#" class="btn-scroll-to-seller" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 10px; display: block; text-align: center; text-decoration: none; padding: 8px 12px; font-size: 11px; font-weight: 700; color: #ffffff; background: linear-gradient(135deg, rgba(159, 122, 234, 0.3) 0%, rgba(128, 90, 213, 0.3) 100%); border: 1px solid rgba(159, 122, 234, 0.6); border-radius: 8px; transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;">
+              <a href="#" class="btn-scroll-to-seller" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 10px; display: block; text-align: center; text-decoration: none; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--color-purple); background: rgba(201, 111, 74, 0.08); border: 1px solid rgba(201, 111, 74, 0.30); border-radius: 8px; transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;">
                 Ver oferta y discos ↓
               </a>
             </div>
@@ -2581,10 +2632,10 @@ function renderSmartPurchase(filteredSellers) {
   let wishlistHtml = '';
   if (wishlistStats) {
     wishlistHtml = `
-      <div class="smart-option-card" style="grid-column: 1 / -1; background: rgba(159, 122, 234, 0.05); border-color: rgba(159, 122, 234, 0.25); margin-top: 16px; min-height: auto; padding: 18px;">
+      <div class="smart-option-card" style="grid-column: 1 / -1; border-color: rgba(201, 111, 74, 0.30); margin-top: 16px; min-height: auto; padding: 18px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%;">
           <div style="flex: 1; min-width: 250px;">
-            <h3 style="margin: 0; font-family: var(--font-title); font-size: 15px; color: #fff; display: flex; align-items: center; gap: 8px;">
+            <h3 style="margin: 0; font-family: var(--font-title); font-size: 15px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
               🌐 Cobertura Completa (Compra Multitienda)
             </h3>
             <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
@@ -2594,11 +2645,11 @@ function renderSmartPurchase(filteredSellers) {
           <div style="display: flex; align-items: center; gap: 24px; text-align: right; flex-wrap: wrap;">
             <div>
               <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Discos Cubiertos</div>
-              <div style="font-size: 16px; font-weight: 800; color: #fff; margin-top: 2px;">${wishlistStats.coveredCount} de ${wishlistStats.totalReleasesCount}</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--text-main); margin-top: 2px;">${wishlistStats.coveredCount} de ${wishlistStats.totalReleasesCount}</div>
             </div>
             <div>
               <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Vendedores</div>
-              <div style="font-size: 16px; font-weight: 800; color: #c084fc; margin-top: 2px;">${wishlistStats.sellersCount} tiendas</div>
+              <div style="font-size: 16px; font-weight: 800; color: var(--color-green); margin-top: 2px;">${wishlistStats.sellersCount} tiendas</div>
             </div>
             <div>
               <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Costo Total Estimado</div>
@@ -2642,7 +2693,7 @@ function renderSmartPurchase(filteredSellers) {
       <div class="smart-purchase-title-area" style="display: flex; align-items: center; gap: 12px;">
         <span class="smart-purchase-icon" style="font-size: 24px;">🏆</span>
         <div>
-          <h2 style="margin: 0; font-family: var(--font-title); font-size: 18px; color: #fff;">Compra Inteligente Consolidada</h2>
+          <h2 style="margin: 0; font-family: var(--font-title); font-size: 18px; color: var(--text-main);">Compra Inteligente Consolidada</h2>
           <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Las mejores opciones de vendedor único para consolidar tu compra sin multiplicar gastos de envío.</p>
         </div>
       </div>
@@ -2987,35 +3038,7 @@ function showWantlistManager() {
 }
 
 function renderWantsManagerList() {
-  wantsListGrid.innerHTML = '';
-  
-  state.wants.forEach(item => {
-    const card = document.createElement('div');
-    card.className = `want-card ${item.isPriority ? 'priority' : ''}`;
-    card.setAttribute('data-id', item.id);
-    
-    // Background style if image available
-    const imgStyle = item.image ? `style="background-image: url('${item.image}')"` : '';
-    
-    card.innerHTML = `
-      <span class="want-star ${item.isPriority ? 'active' : ''}">★</span>
-      <div class="want-card-image" ${imgStyle}></div>
-      <span class="want-card-title" title="${item.title}">${item.title}</span>
-      <span class="want-card-artist" title="${item.artist}">${item.artist}</span>
-    `;
-    
-    // Star toggle click handler
-    card.querySelector('.want-star').addEventListener('click', (e) => {
-      e.stopPropagation(); // Avoid double trigger
-      toggleWantPriority(item.id, card);
-    });
-    
-    card.addEventListener('click', () => {
-      toggleWantPriority(item.id, card);
-    });
-    
-    wantsListGrid.appendChild(card);
-  });
+  renderWantsListInManager();
 }
 
 function toggleWantPriority(id, cardEl) {
@@ -3249,39 +3272,18 @@ function switchTab(tabName) {
 // Background helper to enrich community stats (wantCount / haveCount) for all wants directly from Discogs API
 async function enrichWantlistStats() {
   if (!state.wants || state.wants.length === 0) return;
+  // Mark items that already have want/have count as enriched
+  state.wants.forEach(w => {
+    if (w.wantCount !== undefined && w.wantCount !== null) {
+      w._statsEnriched = true;
+    }
+  });
+  
   const itemsToFetch = state.wants.filter(w => !w._statsEnriched);
   if (itemsToFetch.length === 0) return;
 
-  console.log(`[StatsEnrich 🚀] Enriqueciendo estadísticas reales para ${itemsToFetch.length} vinilos...`);
-
-  const BATCH_SIZE = 4;
-  for (let i = 0; i < itemsToFetch.length; i += BATCH_SIZE) {
-    if (state.isScanning) {
-      await new Promise(r => setTimeout(r, 1000));
-    }
-    const chunk = itemsToFetch.slice(i, i + BATCH_SIZE);
-    let updated = false;
-
-    await Promise.all(chunk.map(async (item) => {
-      try {
-        const jsonText = await fetchDirect(`https://api.discogs.com/releases/${item.id}`);
-        const data = JSON.parse(jsonText);
-        if (data && data.community) {
-          if (typeof data.community.want === 'number') item.wantCount = data.community.want;
-          if (typeof data.community.have === 'number') item.haveCount = data.community.have;
-          item._statsEnriched = true;
-          updated = true;
-        }
-      } catch (err) {
-        item._statsEnriched = true;
-      }
-    }));
-
-    if (updated) {
-      calculateAndRenderStats();
-    }
-    await new Promise(r => setTimeout(r, 250));
-  }
+  console.log(`[StatsEnrich 🚀] Omite llamadas innecesarias a la API para prevenir límite 429... (${itemsToFetch.length} sin stats)`);
+  itemsToFetch.forEach(item => { item._statsEnriched = true; });
 }
 
 // Calculate and render all wantlist & marketplace statistics
@@ -3847,16 +3849,37 @@ function handleAnalyzeLocalSheet() {
   
   if (!rawText.trim() && fileInput && fileInput.files && fileInput.files[0]) {
     const file = fileInput.files[0];
+    const filename = file.name.toLowerCase();
+    const isExcelBinary = filename.endsWith('.xlsx') || filename.endsWith('.xls');
+    
     const reader = new FileReader();
-    reader.onload = (e) => {
-      processParsedLocalMatrix(parseSheetText(e.target.result));
-    };
-    reader.readAsText(file);
+    
+    if (isExcelBinary && typeof XLSX !== 'undefined') {
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          processParsedLocalMatrix(matrix);
+        } catch (err) {
+          console.error('Error al parsear Excel XLSX:', err);
+          alert('No se pudo leer el archivo Excel (.xlsx). Asegúrate de que no esté protegido con contraseña o corrupto.');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (e) => {
+        processParsedLocalMatrix(parseSheetText(e.target.result));
+      };
+      reader.readAsText(file);
+    }
     return;
   }
   
   if (!rawText.trim()) {
-    alert('Por favor pegá el contenido de las celdas de la planilla o seleccioná un archivo.');
+    alert('Por favor pegá el contenido de las celdas de la planilla o seleccioná un archivo Excel (.xlsx) o CSV.');
     return;
   }
   
