@@ -1,0 +1,648 @@
+/* ═══════════════════════════════════════════
+   DISCOGS MATCHER — MOTION SYSTEM v2
+   Ethereal / Light & Smoke aesthetic
+   Golden particles + vinyl groove geometry
+═══════════════════════════════════════════ */
+
+/* ── 1. Page / Wizard Step Transitions ── */
+.wizard-step-pane {
+  animation: stepEnter 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes stepEnter {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.wizard-step-pane.exit {
+  animation: stepExit 0.28s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+@keyframes stepExit {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.97);
+  }
+}
+
+/* Stepper dot transitions */
+#dot-1, #dot-2, #dot-3 {
+  transition: background-color 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              color 0.4s ease,
+              transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.4s ease;
+}
+
+#dot-1.active, #dot-2.active, #dot-3.active {
+  background-color: var(--primary);
+  color: var(--on-primary);
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px rgba(131, 85, 0, 0.18);
+}
+
+/* ── 2. Record Card Stagger + 3D Hover ── */
+.record-card-animated {
+  animation: cardReveal 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transform-style: preserve-3d;
+  will-change: transform, box-shadow;
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+@keyframes cardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.9) rotateX(8deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1) rotateX(0deg);
+  }
+}
+
+.record-card-animated:hover {
+  box-shadow: 
+    0 16px 40px rgba(131, 85, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Vinyl groove shimmer on hover (pure CSS) */
+.record-cover-wrapper::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+  background-size: 200% 200%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.record-card-animated:hover .record-cover-wrapper::after {
+  opacity: 1;
+  animation: vinylShimmer 1.5s ease infinite;
+}
+
+@keyframes vinylShimmer {
+  0% { background-position: 200% 200%; }
+  100% { background-position: -200% -200%; }
+}
+
+/* ── 3. Star Burst Microanimation ── */
+.star-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.star-burst span {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #f5a623;
+  transform-origin: center;
+  animation: burstParticle 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+@keyframes burstParticle {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 1;
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(
+      calc(-50% + var(--dx)),
+      calc(-50% + var(--dy))
+    ) scale(0.5);
+    opacity: 0;
+  }
+}
+
+/* Star label halo on priority */
+.record-card-animated .star-halo {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.record-card-animated.priority-active .star-halo {
+  opacity: 1;
+  background: radial-gradient(
+    circle at 85% 10%,
+    rgba(245, 166, 35, 0.1) 0%,
+    transparent 60%
+  );
+}
+
+/* Star icon transition */
+label .material-symbols-outlined {
+  transition: color 0.3s ease, transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+              font-variation-settings 0.3s ease;
+}
+
+label:active .material-symbols-outlined {
+  transform: scale(1.4);
+}
+
+/* ── 4. "Iniciar Análisis" Button State Transition ── */
+.scan-btn-idle {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.scan-btn-idle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.6s ease;
+}
+
+.scan-btn-idle:hover::before {
+  transform: translateX(100%);
+}
+
+.scan-btn-active {
+  animation: scanPulse 2s ease-in-out infinite;
+}
+
+@keyframes scanPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(131, 85, 0, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(131, 85, 0, 0); }
+}
+
+/* Spinning vinyl turntable */
+#loading-turntable-container {
+  transition: transform 0s linear;
+}
+
+#loading-turntable-container.spinning {
+  animation: vinylSpin 3s linear infinite;
+}
+
+@keyframes vinylSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Turntable groove rings */
+.vinyl-groove-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  animation: groovePulse 3s ease-in-out infinite;
+}
+
+@keyframes groovePulse {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+/* ── 5. Scan Progress State Machine ── */
+#status-card {
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+#status-card.entering {
+  animation: scanCardEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes scanCardEnter {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scaleY(0.85);
+    max-height: 0;
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 400px;
+  }
+}
+
+#progress-bar {
+  background: linear-gradient(90deg, var(--primary) 0%, #d4a017 50%, var(--primary) 100%);
+  background-size: 200% 100%;
+  animation: progressShimmer 2s linear infinite;
+}
+
+@keyframes progressShimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ── 6. Seller Cards Progressive Reveal ── */
+.seller-card-reveal {
+  animation: sellerCardIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  will-change: transform, opacity;
+}
+
+@keyframes sellerCardIn {
+  from {
+    opacity: 0;
+    transform: translateX(-24px) scaleX(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scaleX(1);
+  }
+}
+
+/* Ranking position badge pop */
+.rank-badge {
+  animation: rankPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes rankPop {
+  from { transform: scale(0) rotate(-30deg); }
+  to { transform: scale(1) rotate(0deg); }
+}
+
+/* ── 7. Savings Highlight Animation ── */
+.savings-highlight {
+  animation: savingsReveal 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes savingsReveal {
+  from {
+    transform: scale(0.7);
+    opacity: 0;
+    text-shadow: 0 0 20px rgba(245, 166, 35, 0);
+  }
+  60% {
+    transform: scale(1.08);
+    text-shadow: 0 0 20px rgba(245, 166, 35, 0.6);
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 8px rgba(245, 166, 35, 0.2);
+  }
+}
+
+.savings-amount {
+  background: linear-gradient(135deg, #f5a623, #d4a017, #f5a623);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: goldShimmer 3s linear infinite;
+}
+
+@keyframes goldShimmer {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+/* ── 8. Bento Card Morphing ── */
+.bento-card {
+  animation: bentoReveal 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  will-change: transform;
+}
+
+@keyframes bentoReveal {
+  from {
+    opacity: 0;
+    transform: scale(0.85) translateY(20px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+.bento-card:hover {
+  transform: translateY(-3px) scale(1.01);
+}
+
+/* ── 9. Organic Skeleton Loading ── */
+.skeleton-organic {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-container-high, #e8e6e1);
+  border-radius: 8px;
+}
+
+.skeleton-organic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 60%
+  );
+  background-size: 300% 100%;
+  animation: organicSkeleton 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes organicSkeleton {
+  0% {
+    background-position: 200% 0;
+    transform: skewX(-5deg);
+  }
+  50% {
+    transform: skewX(2deg);
+  }
+  100% {
+    background-position: -200% 0;
+    transform: skewX(-5deg);
+  }
+}
+
+/* Skeleton card layout */
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--surface-variant, #e0ddd6);
+  border-radius: 12px;
+}
+
+.skeleton-img {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+}
+
+.skeleton-line {
+  height: 10px;
+  border-radius: 4px;
+}
+
+.skeleton-line.short { width: 60%; }
+.skeleton-line.medium { width: 80%; }
+.skeleton-line.long { width: 100%; }
+
+/* ── 10. Modal / Drawer Spring Physics ── */
+.modal-overlay {
+  transition: opacity 0.3s ease, backdrop-filter 0.3s ease;
+  opacity: 0;
+  backdrop-filter: blur(0px);
+}
+
+.modal-overlay.open {
+  opacity: 1;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.35s ease;
+  transform: translateY(40px) scale(0.92);
+  opacity: 0;
+}
+
+.modal-overlay.open .modal-content {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+}
+
+.modal-overlay.closing {
+  animation: modalOverlayOut 0.28s ease both;
+}
+
+@keyframes modalOverlayOut {
+  to { opacity: 0; backdrop-filter: blur(0px); }
+}
+
+.modal-overlay.closing .modal-content {
+  animation: modalContentOut 0.28s cubic-bezier(0.55, 0, 1, 0.45) both;
+}
+
+@keyframes modalContentOut {
+  to { transform: translateY(32px) scale(0.94); opacity: 0; }
+}
+
+/* ── 11. Scroll Reveal ── */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.scroll-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 12. Connection Lines (Canvas Network Graph) ── */
+#connection-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* ── 13. Counter Animation ── */
+.counter-animating {
+  transition: transform 0.1s ease;
+  display: inline-block;
+}
+
+.counter-tick {
+  animation: counterTick 0.08s ease;
+}
+
+@keyframes counterTick {
+  0% { transform: translateY(6px); opacity: 0.6; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* ── 14. Status Card Canvas ── */
+#scan-radar-canvas {
+  transition: opacity 0.8s ease;
+}
+
+/* ── 15. Vinyl Turntable Arm ── */
+.turntable-arm {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 30px;
+  height: 2px;
+  background: linear-gradient(90deg, #b8a69b, #d4c4b7);
+  transform-origin: right center;
+  border-radius: 2px;
+  transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.spinning .turntable-arm {
+  transform: rotate(-20deg);
+}
+
+/* ── 16. Top Metric Cards Pop ── */
+.metric-card-pop {
+  animation: metricPop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes metricPop {
+  from {
+    transform: scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ── 17. Tab Navigation Active Indicator ── */
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary);
+  transition: left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── 18. Match Badge Pulse ── */
+.match-badge-pulse {
+  animation: matchBadge 1s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes matchBadge {
+  0% { transform: scale(0); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+/* ── 19. Wantlist Manager Sticky Bar Entrance ── */
+.sticky-action-bar {
+  animation: stickyBarIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation-delay: 0.3s;
+}
+
+@keyframes stickyBarIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* ── 20. Dark Mode Transition ── */
+*, *::before, *::after {
+  transition: background-color 0.4s ease,
+              border-color 0.4s ease,
+              color 0.3s ease !important;
+}
+
+/* Override for elements that must NOT transition */
+.no-transition,
+.no-transition * {
+  transition: none !important;
+}
+
+/* ── 21. Connection Node Pulse ── */
+@keyframes nodePulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(245, 166, 35, 0);
+  }
+}
+
+.node-pulse {
+  animation: nodePulse 2s ease-in-out infinite;
+}
+
+/* ── 22. Floating golden particles (CSS-only background) ── */
+@keyframes floatParticle {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% { opacity: var(--p-alpha, 0.4); }
+  90% { opacity: var(--p-alpha, 0.4); }
+  100% {
+    transform: translateY(var(--p-dy, -60px)) translateX(var(--p-dx, 20px)) rotate(var(--p-rot, 120deg));
+    opacity: 0;
+  }
+}
+
+.golden-particle {
+  position: absolute;
+  width: var(--p-size, 4px);
+  height: var(--p-size, 4px);
+  border-radius: 50%;
+  background: #f5a623;
+  animation: floatParticle var(--p-dur, 4s) ease-in-out infinite;
+  animation-delay: var(--p-delay, 0s);
+  pointer-events: none;
+}
+
+/* ── 23. Scan button shimmer (wave effect) ── */
+#start-scan-btn,
+#manager-start-scan-btn,
+#manager-start-scan-top-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+#start-scan-btn::after,
+#manager-start-scan-btn::after,
+#manager-start-scan-top-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  transition: left 0s;
+}
+
+#start-scan-btn:hover::after,
+#manager-start-scan-btn:hover::after,
+#manager-start-scan-top-btn:hover::after {
+  left: 100%;
+  transition: left 0.5s ease;
+}

@@ -624,6 +624,10 @@ video {
   border-width: 0;
 }
 
+.pointer-events-none {
+  pointer-events: none;
+}
+
 .visible {
   visibility: visible;
 }
@@ -658,6 +662,10 @@ video {
 
 .-top-2 {
   top: -0.5rem;
+}
+
+.bottom-4 {
+  bottom: 1rem;
 }
 
 .left-0 {
@@ -1292,6 +1300,10 @@ video {
   background-color: rgb(255 255 255 / 0.8);
 }
 
+.bg-surface-container-lowest\/90 {
+  background-color: rgb(255 255 255 / 0.9);
+}
+
 .bg-surface-container\/50 {
   background-color: rgb(240 238 233 / 0.5);
 }
@@ -1384,6 +1396,11 @@ video {
   padding-right: 0.75rem;
 }
 
+.px-3\.5 {
+  padding-left: 0.875rem;
+  padding-right: 0.875rem;
+}
+
 .px-4 {
   padding-left: 1rem;
   padding-right: 1rem;
@@ -1397,11 +1414,6 @@ video {
 .px-6 {
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-}
-
-.px-8 {
-  padding-left: 2rem;
-  padding-right: 2rem;
 }
 
 .px-margin-md {
@@ -1453,6 +1465,10 @@ video {
   padding-bottom: 0.5rem;
 }
 
+.pb-6 {
+  padding-bottom: 1.5rem;
+}
+
 .pl-10 {
   padding-left: 2.5rem;
 }
@@ -1467,10 +1483,6 @@ video {
 
 .pt-4 {
   padding-top: 1rem;
-}
-
-.pt-6 {
-  padding-top: 1.5rem;
 }
 
 .text-left {
@@ -1595,6 +1607,11 @@ video {
   line-height: 1;
   letter-spacing: 0.05em;
   font-weight: 600;
+}
+
+.text-lg {
+  font-size: 1.125rem;
+  line-height: 1.75rem;
 }
 
 .text-sm {
@@ -1729,6 +1746,10 @@ video {
   opacity: 0.3;
 }
 
+.opacity-40 {
+  opacity: 0.4;
+}
+
 .opacity-50 {
   opacity: 0.5;
 }
@@ -1791,6 +1812,11 @@ video {
   filter: var(--tw-blur) var(--tw-brightness) var(--tw-contrast) var(--tw-grayscale) var(--tw-hue-rotate) var(--tw-invert) var(--tw-saturate) var(--tw-sepia) var(--tw-drop-shadow);
 }
 
+.backdrop-blur-md {
+  --tw-backdrop-blur: blur(12px);
+  backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
+}
+
 .backdrop-blur-sm {
   --tw-backdrop-blur: blur(4px);
   backdrop-filter: var(--tw-backdrop-blur) var(--tw-backdrop-brightness) var(--tw-backdrop-contrast) var(--tw-backdrop-grayscale) var(--tw-backdrop-hue-rotate) var(--tw-backdrop-invert) var(--tw-backdrop-opacity) var(--tw-backdrop-saturate) var(--tw-backdrop-sepia);
@@ -1826,10 +1852,6 @@ video {
   transition-duration: 150ms;
 }
 
-.duration-200 {
-  transition-duration: 200ms;
-}
-
 .duration-300 {
   transition-duration: 300ms;
 }
@@ -1839,13 +1861,174 @@ video {
   color: #f5a623 !important;
 }
 
-.record-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
-}
-
 .custom-dashed-border {
   border: 2px dashed rgba(0,0,0,0.1);
+}
+
+/* ── MOTION SYSTEM FASE 1: HOVER 3D, STAR BURST & STAGGER ── */
+
+/* 3D Vinyl Card Tilt & Sheen Effect */
+
+.record-card {
+  perspective: 1000px;
+  transform-style: preserve-3d;
+  transition: transform 0.4s cubic-bezier(0.165, 0.84, 0.44, 1), box-shadow 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+  will-change: transform;
+}
+
+.record-card:hover {
+  transform: translateY(-6px) rotateX(4deg) rotateY(-3deg) scale(1.02);
+  box-shadow: 0 16px 32px -8px rgba(131, 85, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.record-card .record-cover-wrapper {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+/* Vinyl Sheen / Metal Reflection Effect on Hover */
+
+.record-card .record-cover-wrapper::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 255, 255, 0.3) 45%,
+    rgba(245, 166, 35, 0.25) 50%,
+    transparent 80%
+  );
+  transform: rotate(25deg) translateY(-100%);
+  transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1);
+  pointer-events: none;
+}
+
+.record-card:hover .record-cover-wrapper::after {
+  transform: rotate(25deg) translateY(100%);
+}
+
+/* Star (★) Burst & Halo Spring Physics Animation */
+
+@keyframes starBurst {
+  0% {
+    transform: scale(0.6) rotate(0deg);
+    opacity: 0;
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.8);
+  }
+
+  50% {
+    transform: scale(1.35) rotate(15deg);
+    opacity: 1;
+    box-shadow: 0 0 20px 8px rgba(245, 166, 35, 0.4);
+  }
+
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(245, 166, 35, 0);
+  }
+}
+
+.star-checkbox:checked + label {
+  animation: starBurst 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.star-checkbox:checked + label span {
+  font-variation-settings: 'FILL' 1 !important;
+  color: #f5a623 !important;
+  filter: drop-shadow(0 0 6px rgba(245, 166, 35, 0.6));
+}
+
+/* Staggered Entrance Keyframes */
+
+@keyframes cardStaggerIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.record-card-animated {
+  animation: cardStaggerIn 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+}
+
+/* ── MOTION SYSTEM FASE 2: SHADER CANVAS, BENTO MORPHING & SAVINGS PULSE ── */
+
+/* Bento Morphing Container */
+
+@keyframes bentoMorphIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.94) translateY(20px);
+    filter: blur(8px);
+  }
+
+  60% {
+    opacity: 0.9;
+    transform: scale(1.01) translateY(-2px);
+    filter: blur(0px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0px);
+  }
+}
+
+.bento-card-morph {
+  animation: bentoMorphIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Savings Glow Pulse Badge */
+
+@keyframes savingsPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.5);
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 16px 6px rgba(16, 185, 129, 0.3);
+    transform: scale(1.05);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: scale(1);
+  }
+}
+
+.savings-badge-glow {
+  animation: savingsPulse 2s infinite ease-in-out;
+}
+
+/* Seller Progressive Ranking Entrance */
+
+@keyframes sellerRankEnter {
+  from {
+    opacity: 0;
+    transform: translateX(-30px) scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.seller-card-enter {
+  animation: sellerRankEnter 0.45s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
 }
 
 /* ── DYNAMIC DOM CLASSES GENERATED BY DASHBOARD.JS ── */
@@ -1921,10 +2104,6 @@ video {
   border-top: 1px solid var(--surface-variant, #e4e2dd);
   padding-top: 12px;
   margin-top: 8px;
-  display: none;
-}
-
-.smart-candidate-card.active .smart-candidate-body {
   display: block;
 }
 
@@ -1969,12 +2148,12 @@ video {
   padding: 20px;
   margin-bottom: 16px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
 }
 
 .seller-card:hover {
-  box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-  transform: translateY(-1px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.07);
+  transform: translateY(-2px);
 }
 
 .seller-info-row {
@@ -2464,20 +2643,12 @@ video {
     display: none;
   }
 
-  .md\:w-64 {
-    width: 16rem;
-  }
-
   .md\:grid-cols-4 {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .md\:flex-row {
     flex-direction: row;
-  }
-
-  .md\:items-center {
-    align-items: center;
   }
 
   .md\:p-12 {
@@ -2506,7 +2677,23 @@ video {
 }
 
 @media (min-width: 1024px) {
+  .lg\:w-64 {
+    width: 16rem;
+  }
+
+  .lg\:w-auto {
+    width: auto;
+  }
+
   .lg\:grid-cols-6 {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+  }
+
+  .lg\:flex-row {
+    flex-direction: row;
+  }
+
+  .lg\:items-center {
+    align-items: center;
   }
 }

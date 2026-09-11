@@ -317,8 +317,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   
   // Wantlist Manager controls
+  const managerStartScanTopBtn = document.getElementById('manager-start-scan-top-btn');
   wantsSearchInput.addEventListener('input', filterWantsInManager);
-  managerStartScanBtn.addEventListener('click', startMarketplaceScan);
+  if (managerStartScanBtn) managerStartScanBtn.addEventListener('click', startMarketplaceScan);
+  if (managerStartScanTopBtn) managerStartScanTopBtn.addEventListener('click', startMarketplaceScan);
   
   // Filters
   const displayCurrencySelect = document.getElementById('display-currency');
@@ -562,22 +564,103 @@ function restoreSessionAndResume(session) {
   startMarketplaceScan(session.currentIndex + 1);
 }
 
-// Onboarding Wizard navigation helper
-function goToWizardStep(stepNum) {
-  const stepPane1 = document.getElementById('step-pane-1');
-  const stepPane2 = document.getElementById('step-pane-2');
-  const stepPane3 = document.getElementById('step-pane-3');
-  const dot1 = document.getElementById('dot-1');
-  const dot2 = document.getElementById('dot-2');
-  const dot3 = document.getElementById('dot-3');
 
-  if (stepPane1) stepPane1.style.display = stepNum === 1 ? 'block' : 'none';
-  if (stepPane2) stepPane2.style.display = stepNum === 2 ? 'block' : 'none';
-  if (stepPane3) stepPane3.style.display = stepNum === 3 ? 'block' : 'none';
 
-  if (dot1) dot1.classList.toggle('active', stepNum >= 1);
-  if (dot2) dot2.classList.toggle('active', stepNum >= 2);
-  if (dot3) dot3.classList.toggle('active', stepNum >= 3);
+
+// Utility to animate count-up numbers (0 -> 17 -> 839)
+function animateCounter(elementId, startVal, endVal, duration = 800) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  
+  const startTime = performance.now();
+  const step = (now) => {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const easeProgress = 1 - (1 - progress) * (1 - progress);
+    const currentVal = Math.floor(startVal + (endVal - startVal) * easeProgress);
+    el.textContent = currentVal.toLocaleString();
+    
+    if (progress < 1) {
+      requestAnimationFrame(step);
+    }
+  };
+  requestAnimationFrame(step);
+}
+
+// Motion Shader: Radar Canvas Animation for Active Scanning Status
+let radarAnimFrameId = null;
+function startRadarShaderCanvas() {
+  const canvas = document.getElementById('scan-radar-canvas');
+  if (!canvas) return;
+  
+  const ctx = canvas.getContext('2d');
+  let width = (canvas.width = canvas.offsetWidth || 600);
+  let height = (canvas.height = canvas.offsetHeight || 160);
+  
+  let angle = 0;
+  let particles = Array.from({ length: 24 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    radius: Math.random() * 2 + 1,
+    speed: Math.random() * 1.5 + 0.5,
+    alpha: Math.random() * 0.6 + 0.2
+  }));
+
+  function draw() {
+    ctx.clearRect(0, 0, width, height);
+    
+    // Draw glowing center radar pulses
+    const centerX = width * 0.15;
+    const centerY = height * 0.5;
+    
+    angle += 0.03;
+    
+    // Concentric glowing vinyl grooves
+    for (let r = 20; r <= 120; r += 20) {
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r + Math.sin(angle + r) * 2, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(245, 166, 35, ${0.15 - r * 0.001})`;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+
+    // Scanning radar line pulse
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(angle);
+    const grad = ctx.createLinearGradient(0, 0, 150, 0);
+    grad.addColorStop(0, 'rgba(245, 166, 35, 0.4)');
+    grad.addColorStop(1, 'rgba(245, 166, 35, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 130, 0, Math.PI / 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Floating golden particles
+    particles.forEach(p => {
+      p.x += p.speed;
+      if (p.x > width) p.x = 0;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(245, 166, 35, ${p.alpha})`;
+      ctx.fill();
+    });
+
+    radarAnimFrameId = requestAnimationFrame(draw);
+  }
+  
+  if (radarAnimFrameId) cancelAnimationFrame(radarAnimFrameId);
+  draw();
+}
+
+function stopRadarShaderCanvas() {
+  if (radarAnimFrameId) {
+    cancelAnimationFrame(radarAnimFrameId);
+    radarAnimFrameId = null;
+  }
 }
 
 // Show Wantlist Manager section when wants are loaded
@@ -615,14 +698,15 @@ function renderWantsListInManager() {
     const isChecked = item.isPriority ? 'checked' : '';
     const starId = `star-want-${item.id || index}`;
     
-    card.className = `record-card bg-surface border border-surface-variant rounded-lg p-3 flex flex-col items-center relative transition-all duration-300 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary' : ''}`;
+    card.className = `record-card record-card-animated bg-surface border border-surface-variant rounded-lg p-3 flex flex-col items-center relative transition-all duration-300 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary' : ''}`;
+    card.style.animationDelay = `${Math.min(index * 0.03, 1.2)}s`;
     
     card.innerHTML = `
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
       <label for="${starId}" class="absolute top-2 right-2 cursor-pointer z-10 bg-surface-container-lowest/80 backdrop-blur-sm rounded-full p-1 shadow-sm hover:scale-110 transition-transform">
         <span class="material-symbols-outlined text-outline text-[20px]" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0}; color: ${item.isPriority ? '#f5a623' : '#857462'};">star</span>
       </label>
-      <div class="w-full aspect-square bg-surface-container mb-3 rounded-md overflow-hidden border border-surface-variant/50 flex items-center justify-center">
+      <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-3 rounded-md overflow-hidden border border-surface-variant/50 flex items-center justify-center">
         ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover" alt="${escapeHTML(item.title)}">` : `<span class="material-symbols-outlined text-4xl text-surface-variant">album</span>`}
       </div>
       <p class="font-label-md text-label-md text-on-surface text-center truncate w-full" title="${escapeHTML(item.artist ? `${item.artist} - ` : '')}${escapeHTML(item.title)}">
@@ -648,6 +732,11 @@ function renderWantsListInManager() {
 
     wantsListGrid.appendChild(card);
   });
+
+  // Patch star burst microanimations after render
+  if (window.Motion) {
+    requestAnimationFrame(() => window.Motion.patchStarCards());
+  }
 }
 
 function filterWantsInManager() {
@@ -1235,16 +1324,20 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
   progressPercent.textContent = `${progress}%`;
 
-  // Update Cover Art Preview for currently scanned item
-  const scanningCoverArt = document.getElementById('scanning-cover-art');
-  const coverPlaceholder = document.getElementById('cover-placeholder');
-  if (scanningCoverArt) {
-    if (item.image) {
-      scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
-      if (coverPlaceholder) coverPlaceholder.style.display = 'none';
-    } else {
-      scanningCoverArt.style.backgroundImage = '';
-      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+  // Update Cover Art Preview with animated fade via Motion system
+  if (window.Motion) {
+    window.Motion.updateCoverArt(item.image || '', item.title || '');
+  } else {
+    const scanningCoverArt = document.getElementById('scanning-cover-art');
+    const coverPlaceholder = document.getElementById('cover-placeholder');
+    if (scanningCoverArt) {
+      if (item.image) {
+        scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
+        if (coverPlaceholder) coverPlaceholder.style.display = 'none';
+      } else {
+        scanningCoverArt.style.backgroundImage = '';
+        if (coverPlaceholder) coverPlaceholder.style.display = 'block';
+      }
     }
   }
   
@@ -1345,10 +1438,14 @@ async function startMarketplaceScan(startIndex = 0) {
   if (refreshWantsBtn) refreshWantsBtn.disabled = true;
   logoVinyl.classList.add('spinning');
   
-  // Show progress panel and trigger turntable spinning
-  statusCard.style.display = 'block';
-  const turntableVinyl = document.getElementById('turntable-vinyl');
-  if (turntableVinyl) turntableVinyl.classList.add('spinning');
+  // Show progress panel with animation and trigger turntable spinning
+  if (window.Motion) {
+    window.Motion.showScanCard();
+  } else {
+    statusCard.style.display = 'block';
+    const turntableVinyl = document.getElementById('turntable-vinyl');
+    if (turntableVinyl) turntableVinyl.classList.add('spinning');
+  }
   
   // Reset cover art preview
   const scanningCoverArt = document.getElementById('scanning-cover-art');
@@ -1580,6 +1677,7 @@ async function refreshWantlistIncremental() {
       metricWantsCount.textContent = state.wants.length;
       
       statusCard.style.display = 'block';
+      startRadarShaderCanvas();
       const turntableVinyl = document.getElementById('turntable-vinyl');
       if (turntableVinyl) turntableVinyl.classList.add('spinning');
       logoVinyl.classList.add('spinning');
@@ -1643,6 +1741,7 @@ async function refreshWantlistIncremental() {
     state.isScanning = false;
     logoVinyl.classList.remove('spinning');
     statusCard.style.display = 'none';
+    stopRadarShaderCanvas();
     const turntableVinyl = document.getElementById('turntable-vinyl');
     if (turntableVinyl) turntableVinyl.classList.remove('spinning');
     
@@ -1655,106 +1754,6 @@ async function refreshWantlistIncremental() {
     
     refreshWantsBtn.disabled = false;
     refreshWantsBtn.classList.remove('spinning-btn');
-  }
-}
-
-// Step 2: Scan Single Release (Utility)
-async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
-  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
-  const progress = Math.round(((index + 1) / totalWants) * 100);
-  
-  // Update UI Progress
-  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}${timeEstText}`;
-  progressBar.style.width = `${progress}%`;
-  progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
-  progressPercent.textContent = `${progress}%`;
-
-  // Update Cover Art Preview for currently scanned item
-  const scanningCoverArt = document.getElementById('scanning-cover-art');
-  const coverPlaceholder = document.getElementById('cover-placeholder');
-  if (scanningCoverArt) {
-    if (item.image) {
-      scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
-      if (coverPlaceholder) coverPlaceholder.style.display = 'none';
-    } else {
-      scanningCoverArt.style.backgroundImage = '';
-      if (coverPlaceholder) coverPlaceholder.style.display = 'block';
-    }
-  }
-  
-  let parsedListings = null;
-  let isFromCache = false;
-  let cacheAgeHours = 0;
-  let communityStats = null;
-  
-  // Try fetching from chrome.storage.local cache first
-  if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-    try {
-      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-      const cacheData = await new Promise(resolve => {
-        chrome.storage.local.get([cacheKey], (result) => {
-          resolve(result[cacheKey] || null);
-        });
-      });
-      
-      if (cacheData && cacheData.version === 3) {
-        const now = Date.now();
-        cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
-        
-        // Priority items get live updates if cache is older than 2h; standard items if older than 6h
-        const maxAgeAllowed = item.isPriority ? 2.0 : 6.0;
-        
-        if (cacheAgeHours < maxAgeAllowed) {
-          parsedListings = cacheData.listings;
-          communityStats = cacheData.communityStats || null;
-          isFromCache = true;
-        }
-      }
-    } catch (cacheErr) {
-      console.warn('Error reading from cache:', cacheErr);
-    }
-  }
-  
-  if (isFromCache && parsedListings) {
-    const priorityTag = item.isPriority ? ' ★ Prioritario' : '';
-    log(`[Caché${priorityTag}] Cargadas ${parsedListings.length} copias en venta para este disco (hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
-    return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
-  }
-  
-  log(`Escaneando en vivo (${index + 1}/${totalWants}${timeEstText}): ${item.artist} - ${item.title}...`);
-  
-  try {
-    const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
-    const html = await fetchThroughTab(url);
-    const result = parseReleaseHTML(html, item.id);
-    parsedListings = result.listings;
-    communityStats = result.communityStats;
-
-    // Fallback: If marketplace page HTML did not contain release stats, use item want/have count from wantlist if available
-    if ((!communityStats || communityStats.wantCount === null) && (item.wantCount !== undefined && item.wantCount !== null)) {
-      communityStats = {
-        wantCount: item.wantCount,
-        haveCount: item.haveCount
-      };
-    }
-    
-    // Save to cache with version 3 tag
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-      chrome.storage.local.set({
-        [cacheKey]: {
-          timestamp: Date.now(),
-          version: 3,
-          listings: parsedListings,
-          communityStats: communityStats
-        }
-      });
-    }
-    
-    return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
-  } catch (e) {
-    log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
-    return { listings: [], communityStats: null, isFromCache: false };
   }
 }
 
@@ -2688,6 +2687,7 @@ function renderSmartPurchase(filteredSellers) {
     </div>
   `;
 
+  smartPurchaseCard.className = 'smart-purchase-card bento-card-morph mb-8';
   smartPurchaseCard.innerHTML = `
     <div class="smart-purchase-header" style="margin-bottom: 16px;">
       <div class="smart-purchase-title-area" style="display: flex; align-items: center; gap: 12px;">
@@ -2704,6 +2704,22 @@ function renderSmartPurchase(filteredSellers) {
   `;
 
   smartPurchaseCard.style.display = 'block';
+
+  // Animate bento cards and savings counter
+  if (window.Motion) {
+    requestAnimationFrame(() => {
+      window.Motion.revealBento('#smart-purchase-card');
+      // Animate savings elements
+      smartPurchaseCard.querySelectorAll('.savings-amount, [data-savings]').forEach(el => {
+        window.Motion.revealSavings(el.id || null);
+        if (!el.id) el.classList.add('savings-highlight', 'savings-amount');
+      });
+      // Animate bento inner cards
+      smartPurchaseCard.querySelectorAll('.bento-cell, .bento-card, .smart-purchase-option').forEach(card => {
+        card.classList.add('bento-card');
+      });
+    });
+  }
 
   // Attach event listeners for scrolling to seller cards
   smartPurchaseCard.querySelectorAll('[data-scroll-to]').forEach(link => {
@@ -2863,6 +2879,15 @@ function renderResults() {
   
   // Render Smart Purchase recommendation card
   renderSmartPurchase(filtered);
+
+  // Animate Header Metric Counters (0 -> 17 -> count)
+  const currentWantsVal = parseInt(document.getElementById('metric-wants-count')?.textContent.replace(/,/g, '') || '0', 10) || 0;
+  const currentSellersVal = parseInt(document.getElementById('metric-sellers-count')?.textContent.replace(/,/g, '') || '0', 10) || 0;
+  const currentMatchesVal = parseInt(document.getElementById('metric-matches-count')?.textContent.replace(/,/g, '') || '0', 10) || 0;
+
+  animateCounter('metric-wants-count', currentWantsVal, state.wants.length);
+  animateCounter('metric-sellers-count', currentSellersVal, state.groupedSellers.length);
+  animateCounter('metric-matches-count', currentMatchesVal, state.allListings.length);
   
   emptyState.style.display = 'none';
   noResultsState.style.display = 'none';
@@ -2877,9 +2902,10 @@ function renderResults() {
   resultsGrid.innerHTML = '';
   
   // Render cards
-  filtered.forEach(seller => {
+  filtered.forEach((seller, idx) => {
     const card = document.createElement('div');
-    card.className = 'seller-card';
+    card.className = 'seller-card seller-card-enter seller-card-reveal';
+    card.style.animationDelay = `${Math.min(idx * 0.06, 1.5)}s`;
     card.id = 'seller-card-' + seller.name;
     
     // Generate shipping type badge
@@ -3002,7 +3028,21 @@ function renderResults() {
     
     resultsGrid.appendChild(card);
   });
-  
+
+  // Animate metric counters
+  if (window.Motion) {
+    const wantsCount   = parseInt(document.getElementById('metric-wants-count')?.textContent || '0');
+    const sellersCount = filtered.length;
+    const matchesCount = filtered.reduce((s, sel) => s + (sel.listings?.length || 0), 0);
+    window.Motion.animateMetrics(wantsCount, sellersCount, matchesCount);
+
+    // Scroll reveal re-init for new elements
+    requestAnimationFrame(() => {
+      const resultsEl = document.getElementById('results-grid');
+      if (resultsEl) resultsEl.classList.add('visible');
+    });
+  }
+
   // Attach expand / collapse event listeners to cards
   document.querySelectorAll('.btn-collapse').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -3080,26 +3120,38 @@ function filterWantsInManager() {
 
 // Onboarding Wizard step navigation
 function goToWizardStep(stepNum) {
-  // Hide all panes
-  document.querySelectorAll('.wizard-step-pane').forEach(pane => {
-    pane.classList.remove('active');
-    pane.style.display = 'none';
-  });
-  
-  // Show target pane
-  const targetPane = document.getElementById(`step-pane-${stepNum}`);
-  if (targetPane) {
-    targetPane.classList.add('active');
-    targetPane.style.display = 'flex';
+  // Find current visible pane
+  let currentStep = 1;
+  for (let i = 1; i <= 3; i++) {
+    const pane = document.getElementById(`step-pane-${i}`);
+    if (pane && pane.style.display !== 'none' && pane.offsetParent !== null) {
+      currentStep = i;
+      break;
+    }
   }
-  
-  // Update indicator dots styling
+
+  // Use Motion system for animated transition
+  if (window.Motion && currentStep !== stepNum) {
+    window.Motion.goToStep(currentStep, stepNum);
+  } else {
+    // Fallback: hide all, show target
+    document.querySelectorAll('.wizard-step-pane').forEach(pane => {
+      pane.classList.remove('active');
+      pane.style.display = 'none';
+    });
+    const targetPane = document.getElementById(`step-pane-${stepNum}`);
+    if (targetPane) {
+      targetPane.classList.add('active');
+      targetPane.style.display = 'flex';
+    }
+  }
+
+  // Update indicator dots with animated transitions
   for (let i = 1; i <= 3; i++) {
     const dot = document.getElementById(`dot-${i}`);
     if (dot) {
       if (i < stepNum) {
-        dot.classList.add('completed');
-        dot.classList.remove('active');
+        dot.classList.add('completed', 'active');
       } else if (i === stepNum) {
         dot.classList.add('active');
         dot.classList.remove('completed');

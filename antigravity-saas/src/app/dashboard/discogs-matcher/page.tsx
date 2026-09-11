@@ -164,47 +164,60 @@ export default function DiscogsMatcherPage() {
                       className="w-full bg-slate-800/80 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
                     />
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 rounded-xl text-xs font-semibold hover:bg-emerald-500/20 transition-all cursor-pointer">
-                    <FileSpreadsheet className="w-4 h-4" /> Exportar a Sheets
-                  </button>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-sky-500/10 border border-sky-500/30 text-sky-400 rounded-xl text-xs font-semibold hover:bg-sky-500/20 transition-all cursor-pointer">
-                    <CloudDownload className="w-4 h-4" /> Cruzar con Planilla Local
+                  <button 
+                    onClick={() => setActiveTab('marketplace')}
+                    className="flex items-center gap-2 px-5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white rounded-xl text-xs font-bold shadow-lg shadow-amber-500/20 hover:opacity-90 transition-all cursor-pointer shrink-0"
+                  >
+                    <Sparkles className="w-4 h-4" /> Iniciar Análisis
                   </button>
                 </div>
               </div>
 
               {/* 6 Column Grid matching layout design */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 pt-4">
-                {filteredWants.map((item) => (
-                  <div
+                {filteredWants.map((item, index) => (
+                  <motion.div
                     key={item.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03, duration: 0.35, ease: 'easeOut' }}
+                    whileHover={{ y: -6, scale: 1.03 }}
                     onClick={() => toggleStar(item.id)}
-                    className={`group bg-slate-900 border rounded-xl p-3 flex flex-col items-center relative transition-all duration-300 hover:-translate-y-1 cursor-pointer select-none ${
-                      item.isStarred ? 'border-amber-500/50 bg-amber-500/5 shadow-lg shadow-amber-500/10' : 'border-white/10 hover:border-white/20'
+                    className={`group bg-slate-900 border rounded-xl p-3 flex flex-col items-center relative transition-shadow duration-300 cursor-pointer select-none ${
+                      item.isStarred ? 'border-amber-500/60 bg-amber-500/10 shadow-lg shadow-amber-500/20' : 'border-white/10 hover:border-white/20'
                     }`}
                   >
-                    <button
+                    <motion.button
+                      whileTap={{ scale: 0.75, rotate: 15 }}
                       onClick={(e) => { e.stopPropagation(); toggleStar(item.id); }}
                       className="absolute top-2 right-2 z-10 p-1.5 rounded-full bg-slate-900/80 backdrop-blur-sm border border-white/10 hover:scale-110 transition-transform"
                     >
-                      <Star className={`w-4 h-4 ${item.isStarred ? 'text-amber-400 fill-amber-400' : 'text-gray-500'}`} />
-                    </button>
+                      <Star className={`w-4 h-4 transition-colors ${item.isStarred ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(245,166,35,0.6)]' : 'text-gray-500'}`} />
+                    </motion.button>
                     <div className="w-full aspect-square bg-slate-800 mb-3 rounded-lg overflow-hidden border border-white/5 relative">
                       <img src={item.cover} alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
                     </div>
                     <p className="text-xs font-semibold text-white text-center truncate w-full" title={`${item.artist} - ${item.title}`}>
                       {item.artist} - {item.title}
                     </p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
-              <div className="flex justify-end border-t border-white/10 pt-6">
+              {/* Sticky Floating Bottom Bar */}
+              <div className="sticky bottom-6 z-30 bg-slate-900/90 backdrop-blur-md border border-amber-500/30 rounded-2xl p-4 shadow-2xl flex flex-col sm:flex-row justify-between items-center gap-4 mt-8">
+                <div className="flex items-center gap-2 text-xs font-semibold text-gray-300">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  <span>
+                    <strong className="text-amber-400 font-bold">{wants.filter(w => w.isStarred).length}</strong> vinilos marcados como favoritos (★) para priorizar
+                  </span>
+                </div>
                 <button
                   onClick={() => setActiveTab('marketplace')}
-                  className="bg-gradient-to-r from-amber-500 to-amber-600 text-white py-3 px-8 rounded-xl font-bold text-sm shadow-lg shadow-amber-500/20 hover:opacity-90 transition-all cursor-pointer"
+                  className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-amber-600 text-white py-3 px-8 rounded-xl font-bold text-sm shadow-lg shadow-amber-500/20 hover:opacity-90 transition-all cursor-pointer flex items-center justify-center gap-2"
                 >
-                  Iniciar Análisis de Vendedores
+                  <Sparkles className="w-4 h-4" /> Iniciar Análisis de Vendedores
                 </button>
               </div>
             </div>
@@ -225,7 +238,12 @@ export default function DiscogsMatcherPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Option A */}
-                <div className="bg-slate-950/80 border border-white/10 rounded-xl p-5 space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.4, ease: [0.175, 0.885, 0.32, 1.275] }}
+                  className="bg-slate-950/80 border border-white/10 rounded-xl p-5 space-y-4 hover:border-amber-500/40 transition-colors"
+                >
                   <h3 className="font-bold text-lg text-white flex items-center gap-2">
                     <ShoppingCart className="w-5 h-5 text-amber-500" /> Opción A: Compra Máxima
                   </h3>
@@ -235,7 +253,7 @@ export default function DiscogsMatcherPage() {
                     <div className="flex justify-between items-center">
                       <div>
                         <span className="font-bold text-white text-base">www.hhv.de</span>
-                        <span className="ml-2 text-xs bg-amber-500/20 text-amber-300 font-semibold px-2.5 py-0.5 rounded-full">51 discos</span>
+                        <span className="ml-2 text-xs bg-amber-500/20 text-amber-300 font-semibold px-2.5 py-0.5 rounded-full animate-pulse">51 discos</span>
                       </div>
                       <span className="font-bold text-amber-400 text-lg">USD $1,187.54</span>
                     </div>
@@ -250,10 +268,15 @@ export default function DiscogsMatcherPage() {
                       Ver oferta y discos ↓
                     </button>
                   </div>
-                </div>
+                </motion.div>
 
                 {/* Option B */}
-                <div className="bg-slate-950/80 border border-white/10 rounded-xl p-5 space-y-4">
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  transition={{ duration: 0.4, delay: 0.1, ease: [0.175, 0.885, 0.32, 1.275] }}
+                  className="bg-slate-950/80 border border-white/10 rounded-xl p-5 space-y-4 hover:border-sky-500/40 transition-colors"
+                >
                   <h3 className="font-bold text-lg text-white flex items-center gap-2">
                     <PiggyBank className="w-5 h-5 text-sky-400" /> Opción B: Compra Eficiente
                   </h3>
@@ -278,7 +301,7 @@ export default function DiscogsMatcherPage() {
                       Ver oferta y discos ↓
                     </button>
                   </div>
-                </div>
+                </motion.div>
               </div>
             </div>
 
