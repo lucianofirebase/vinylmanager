@@ -1908,6 +1908,23 @@ video {
 
 /* ── MOTION SYSTEM FASE 1: HOVER 3D, STAR BURST & STAGGER ── */
 
+/* Wantlist Grid Dynamic Density */
+.wants-list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 14px;
+}
+
+.wants-list-grid.density-compact {
+  grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
+  gap: 10px;
+}
+
+.wants-list-grid.density-standard {
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
+  gap: 16px;
+}
+
 /* 3D Vinyl Card Tilt & Sheen Effect */
 
 .record-card {
@@ -1918,14 +1935,23 @@ video {
 }
 
 .record-card:hover {
-  transform: translateY(-6px) rotateX(4deg) rotateY(-3deg) scale(1.02);
-  box-shadow: 0 16px 32px -8px rgba(131, 85, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.04);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 12px 24px -6px rgba(131, 85, 0, 0.14), 0 4px 10px rgba(0, 0, 0, 0.04);
 }
 
 .record-card .record-cover-wrapper {
   position: relative;
   overflow: hidden;
   border-radius: 8px;
+}
+
+.record-card .record-cover-wrapper img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  display: block;
 }
 
 /* Vinyl Sheen / Metal Reflection Effect on Hover */

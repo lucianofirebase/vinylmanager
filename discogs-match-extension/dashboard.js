@@ -385,6 +385,61 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Wantlist Manager controls
   const managerStartScanTopBtn = document.getElementById('manager-start-scan-top-btn');
+  const managerUseCacheCheckbox = document.getElementById('manager-use-cache-checkbox');
+  const bottomUseCacheCheckbox = document.getElementById('bottom-use-cache-checkbox');
+  const btnDensityCompact = document.getElementById('btn-density-compact');
+  const btnDensityStandard = document.getElementById('btn-density-standard');
+  const wantsGrid = document.getElementById('wants-list-grid');
+
+  // Synchronize all Cache Checkboxes and remember user's choice in localStorage
+  const syncCacheState = (enabled) => {
+    if (useCacheCheckbox) useCacheCheckbox.checked = enabled;
+    if (managerUseCacheCheckbox) managerUseCacheCheckbox.checked = enabled;
+    if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.checked = enabled;
+    localStorage.setItem('use_scan_cache', String(enabled));
+  };
+
+  const savedCachePref = localStorage.getItem('use_scan_cache');
+  const initialCacheVal = savedCachePref === null ? true : savedCachePref === 'true';
+  syncCacheState(initialCacheVal);
+
+  if (useCacheCheckbox) useCacheCheckbox.addEventListener('change', () => syncCacheState(useCacheCheckbox.checked));
+  if (managerUseCacheCheckbox) managerUseCacheCheckbox.addEventListener('change', () => syncCacheState(managerUseCacheCheckbox.checked));
+  if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.addEventListener('change', () => syncCacheState(bottomUseCacheCheckbox.checked));
+
+  // Grid Density Switcher (Compact vs Standard)
+  const setGridDensity = (density) => {
+    if (!wantsGrid) return;
+    localStorage.setItem('wants_grid_density', density);
+    if (density === 'standard') {
+      wantsGrid.classList.remove('density-compact');
+      wantsGrid.classList.add('density-standard');
+      if (btnDensityStandard) {
+        btnDensityStandard.classList.add('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
+        btnDensityStandard.classList.remove('text-tertiary');
+      }
+      if (btnDensityCompact) {
+        btnDensityCompact.classList.remove('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
+        btnDensityCompact.classList.add('text-tertiary');
+      }
+    } else {
+      wantsGrid.classList.remove('density-standard');
+      wantsGrid.classList.add('density-compact');
+      if (btnDensityCompact) {
+        btnDensityCompact.classList.add('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
+        btnDensityCompact.classList.remove('text-tertiary');
+      }
+      if (btnDensityStandard) {
+        btnDensityStandard.classList.remove('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
+        btnDensityStandard.classList.add('text-tertiary');
+      }
+    }
+  };
+
+  if (btnDensityCompact) btnDensityCompact.addEventListener('click', () => setGridDensity('compact'));
+  if (btnDensityStandard) btnDensityStandard.addEventListener('click', () => setGridDensity('standard'));
+  setGridDensity(localStorage.getItem('wants_grid_density') || 'compact');
+
   wantsSearchInput.addEventListener('input', filterWantsInManager);
   if (managerStartScanBtn) managerStartScanBtn.addEventListener('click', startMarketplaceScan);
   if (managerStartScanTopBtn) managerStartScanTopBtn.addEventListener('click', startMarketplaceScan);
@@ -771,20 +826,25 @@ function renderWantsListInManager() {
     const isChecked = item.isPriority ? 'checked' : '';
     const starId = `star-want-${item.id || index}`;
     
-    card.className = `record-card record-card-animated bg-surface border border-surface-variant rounded-lg p-3 flex flex-col items-center relative transition-all duration-300 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary' : ''}`;
-    card.style.animationDelay = `${Math.min(index * 0.03, 1.2)}s`;
+    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary border-primary bg-primary/5' : ''}`;
+    card.style.animationDelay = `${Math.min(index * 0.02, 0.8)}s`;
     
     card.innerHTML = `
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
-      <label for="${starId}" class="absolute top-2 right-2 cursor-pointer z-10 bg-surface-container-lowest/80 backdrop-blur-sm rounded-full p-1 shadow-sm hover:scale-110 transition-transform">
-        <span class="material-symbols-outlined text-outline text-[20px]" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0}; color: ${item.isPriority ? '#f5a623' : '#857462'};">star</span>
+      <label for="${starId}" class="absolute top-1.5 right-1.5 cursor-pointer z-10 bg-surface-container-lowest/90 backdrop-blur-sm rounded-full p-1 shadow-xs hover:scale-110 transition-transform">
+        <span class="material-symbols-outlined text-outline text-[18px]" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0}; color: ${item.isPriority ? '#f5a623' : '#857462'};">star</span>
       </label>
-      <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-3 rounded-md overflow-hidden border border-surface-variant/50 flex items-center justify-center">
-        ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover" alt="${escapeHTML(item.title)}">` : `<span class="material-symbols-outlined text-4xl text-surface-variant">album</span>`}
+      <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-2 rounded-lg overflow-hidden border border-outline-variant/30 flex items-center justify-center relative shadow-xs">
+        ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(item.title)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
       </div>
-      <p class="font-label-md text-label-md text-on-surface text-center truncate w-full" title="${escapeHTML(item.artist ? `${item.artist} - ` : '')}${escapeHTML(item.title)}">
-        ${escapeHTML(item.artist ? `${item.artist} - ` : '')}${escapeHTML(item.title)}
-      </p>
+      <div class="w-full text-center px-0.5">
+        <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5" title="${escapeHTML(item.title)}">
+          ${escapeHTML(item.title)}
+        </p>
+        <p class="text-[11px] text-tertiary truncate w-full leading-tight" title="${escapeHTML(item.artist || '')}">
+          ${escapeHTML(item.artist || 'Desconocido')}
+        </p>
+      </div>
     `;
 
     const starCheckbox = card.querySelector('.star-checkbox');
@@ -1458,8 +1518,9 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   let cacheAgeHours = 0;
   let communityStats = null;
   
-  // Try fetching from chrome.storage.local cache first
-  if (useCacheCheckbox && useCacheCheckbox.checked && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+  // Try fetching from chrome.storage.local cache first (if user enabled cache)
+  const isCacheEnabled = localStorage.getItem('use_scan_cache') !== 'false' && (!useCacheCheckbox || useCacheCheckbox.checked);
+  if (isCacheEnabled && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     try {
       const cacheKey = `release_${item.id}_${buyerCountryVal}`;
       const cacheData = await new Promise(resolve => {
