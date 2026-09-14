@@ -20,12 +20,15 @@
       
       <!-- Brand Logo -->
       <div class="flex items-center gap-3 shrink-0">
-        <div class="w-9 h-9 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary shadow-xs">
-          <span class="material-symbols-outlined text-2xl" id="logo-vinyl" style="font-variation-settings: 'FILL' 1;">album</span>
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-primary text-neutral-950 flex items-center justify-center shadow-md border border-amber-400/40 shrink-0">
+          <span class="material-symbols-outlined text-2xl text-neutral-950" id="logo-vinyl" style="font-variation-settings: 'FILL' 1;">album</span>
         </div>
-        <div class="flex items-center gap-2">
-          <span class="font-headline-sm font-bold text-on-background tracking-tight text-base md:text-lg">Discogs Matcher</span>
-          <span class="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/20">Pro</span>
+        <div class="flex flex-col">
+          <div class="flex items-center gap-1.5">
+            <span class="font-bold text-on-background tracking-tight text-base sm:text-lg leading-tight">Discogs Matcher</span>
+            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/25">PRO</span>
+          </div>
+          <span class="text-[11px] text-tertiary hidden sm:inline-block leading-none mt-0.5">Vinyl Smart Bundler</span>
         </div>
       </div>
 
@@ -73,7 +76,7 @@
         <!-- Country Selector -->
         <div class="relative flex items-center">
           <span class="material-symbols-outlined absolute left-2 text-[15px] text-tertiary pointer-events-none">location_on</span>
-          <select id="buyer-country" class="pl-6 pr-2 py-1 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
+          <select id="buyer-country" class="pl-6 pr-2 py-1.5 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
             <option value="Uruguay" selected>Uruguay (UY)</option>
             <option value="Spain">España (ES)</option>
             <option value="United States">EE.UU. (US)</option>
@@ -87,7 +90,7 @@
         <!-- Currency Selector -->
         <div class="relative flex items-center">
           <span class="material-symbols-outlined absolute left-2 text-[15px] text-tertiary pointer-events-none">payments</span>
-          <select id="display-currency" class="pl-6 pr-2 py-1 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
+          <select id="display-currency" class="pl-6 pr-2 py-1.5 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
             <option value="UYU" selected>UYU ($U)</option>
             <option value="USD">USD ($)</option>
             <option value="EUR">EUR (€)</option>
@@ -100,13 +103,13 @@
 
         <!-- User Account Chip -->
         <div class="relative">
-          <div class="user-card bg-surface-container hover:bg-surface-container-high rounded-full pl-1 pr-3 py-1 flex items-center gap-2 border border-outline-variant/40 cursor-pointer transition-colors" id="user-card" title="Cuenta de Discogs">
+          <div class="user-card bg-surface-container hover:bg-surface-container-high rounded-full pl-1.5 pr-3 py-1 flex items-center gap-2 border border-outline-variant/40 cursor-pointer transition-colors" id="user-card" title="Cuenta de Discogs">
             <div class="avatar w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary text-[11px] font-bold shadow-xs shrink-0" id="user-avatar">
               ?
             </div>
             <div class="flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-green-500 inline-block shrink-0" id="connection-status-dot"></span>
-              <p class="text-xs font-semibold text-on-surface truncate max-w-[90px] sm:max-w-[120px]" id="username-display">Buscando...</p>
+              <p class="text-xs font-semibold text-on-surface truncate max-w-[100px]" id="username-display">Buscando...</p>
               <p class="hidden" id="connection-status">Detectando sesión...</p>
             </div>
           </div>
@@ -124,15 +127,15 @@
           </div>
         </div>
 
-        <!-- Mobile Menu Toggle Button -->
-        <button id="mobile-menu-toggle-btn" class="lg:hidden p-1.5 text-primary cursor-pointer hover:bg-surface-container rounded-lg">
+        <!-- Mobile Menu Toggle Button (only on very small mobile) -->
+        <button id="mobile-menu-toggle-btn" class="hidden p-1.5 text-primary cursor-pointer hover:bg-surface-container rounded-lg">
           <span class="material-symbols-outlined">menu</span>
         </button>
       </div>
     </div>
 
     <!-- Mobile Drawer for Action Buttons -->
-    <div id="sidebar" class="sidebar hidden lg:hidden border-t border-outline-variant/30 px-4 py-3 bg-surface-container-low flex flex-wrap gap-2 items-center justify-between">
+    <div id="sidebar" class="sidebar hidden border-t border-outline-variant/30 px-4 py-3 bg-surface-container-low flex flex-wrap gap-2 items-center justify-between">
       <div class="flex flex-wrap gap-2 w-full">
         <button id="mobile-load-wants-btn" onclick="document.getElementById('load-wants-btn').click()" class="flex-1 bg-primary text-on-primary rounded py-2 px-3 text-xs font-semibold">
           1. Cargar Deseos
@@ -144,8 +147,8 @@
     </div>
   </header>
 
-  <!-- HORIZONTAL FILTERS & SEARCH TOOLBAR -->
-  <section id="filter-toolbar" class="w-full bg-surface-container-lowest/80 border-b border-outline-variant/20 px-4 md:px-6 py-2.5">
+  <!-- HORIZONTAL FILTERS & SEARCH TOOLBAR (Hidden until marketplace analysis produces results) -->
+  <section id="filter-toolbar" class="w-full bg-surface-container-lowest/80 border-b border-outline-variant/20 px-4 md:px-6 py-2.5" style="display: none;">
     <div class="max-w-[1560px] mx-auto flex flex-wrap items-center justify-between gap-3">
       
       <!-- Search Input -->
@@ -414,12 +417,17 @@
 
           <!-- STEP 1: ACCOUNT DETECTION -->
           <div class="wizard-step-pane active w-full flex flex-col items-center" id="step-pane-1">
-            <div class="relative w-36 h-36 mb-6">
-              <div class="absolute inset-0 bg-gradient-to-br from-surface-container to-surface-container-high rounded-full shadow-inner border border-black/5 flex items-center justify-center">
-                <span class="material-symbols-outlined text-[64px] text-primary opacity-30">album</span>
+            <div class="relative w-32 h-32 mb-6 flex items-center justify-center">
+              <div class="w-28 h-28 rounded-full bg-neutral-900 border-4 border-neutral-800 shadow-xl flex items-center justify-center relative">
+                <div class="absolute inset-2 rounded-full border border-neutral-700/50 pointer-events-none"></div>
+                <div class="absolute inset-4 rounded-full border border-neutral-800/70 pointer-events-none"></div>
+                <div class="absolute inset-7 rounded-full border border-neutral-700/40 pointer-events-none"></div>
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 via-amber-500 to-primary flex items-center justify-center text-neutral-950 font-bold shadow-inner">
+                  <div class="w-2.5 h-2.5 rounded-full bg-neutral-950"></div>
+                </div>
               </div>
-              <div class="absolute -right-2 -top-2 w-12 h-12 bg-surface-container-lowest rounded-full shadow-md flex items-center justify-center border border-black/5 rotate-12">
-                <span class="material-symbols-outlined text-[24px] text-tertiary">search</span>
+              <div class="absolute -bottom-1 -right-1 w-9 h-9 bg-surface-container-lowest rounded-full shadow-md flex items-center justify-center border border-outline-variant/50 text-primary">
+                <span class="material-symbols-outlined text-[18px]">search</span>
               </div>
             </div>
             <h2 class="font-headline-md text-headline-md text-on-background mb-3">Paso 1: Detectar tu cuenta de Discogs</h2>

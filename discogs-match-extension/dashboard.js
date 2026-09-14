@@ -132,6 +132,8 @@ const logoVinyl = document.getElementById('logo-vinyl');
 const connectionStatus = document.getElementById('connection-status');
 const usernameDisplay = document.getElementById('username-display');
 const userAvatar = document.getElementById('user-avatar');
+const userCard = document.getElementById('user-card');
+const filterToolbar = document.getElementById('filter-toolbar');
 const inputFallback = document.getElementById('input-fallback');
 const manualUsername = document.getElementById('manual-username');
 const saveUsernameBtn = document.getElementById('save-username-btn');
@@ -531,6 +533,12 @@ function toggleFiltersState(enabled) {
       filterSection.style.opacity = '0.4';
       filterSection.style.pointerEvents = 'none';
     }
+  }
+
+  // Only show horizontal filter toolbar when results exist and are active
+  const filterToolbarEl = document.getElementById('filter-toolbar');
+  if (filterToolbarEl) {
+    filterToolbarEl.style.display = enabled ? 'block' : 'none';
   }
 }
 
