@@ -2764,3 +2764,269 @@ video {
     align-items: center;
   }
 }
+
+/* ==========================================================================
+   SCANNING DIGGING STATION & DOCKED LOGGER - SPACIOUS VERTICAL REDESIGN
+   ========================================================================== */
+
+@keyframes vinylSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Main Scanning Card */
+.scan-station-card {
+  max-width: 860px !important;
+  width: 100% !important;
+  margin: 20px auto 36px auto !important;
+  border-radius: 28px !important;
+  padding: 32px 40px 28px 40px !important;
+  background: var(--surface-container-lowest, #ffffff) !important;
+  border: 1px solid rgba(229, 149, 0, 0.28) !important;
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(229, 149, 0, 0.1) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  transition: all 0.3s ease !important;
+}
+
+.dark .scan-station-card {
+  background: #141312 !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+  box-shadow: 0 24px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Centerpiece Container */
+.scan-centerpiece {
+  position: relative !important;
+  width: 320px !important;
+  height: 250px !important;
+  margin: 18px auto 16px auto !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Vinyl Sleeve (Cover Art: 240px x 240px) */
+.scan-sleeve {
+  position: relative !important;
+  width: 240px !important;
+  height: 240px !important;
+  min-width: 240px !important;
+  min-height: 240px !important;
+  border-radius: 18px !important;
+  overflow: hidden !important;
+  z-index: 10 !important;
+  background: #18181b !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
+}
+
+.scan-sleeve:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 24px 50px -8px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+}
+
+.scan-cover-image {
+  width: 100% !important;
+  height: 100% !important;
+  background-position: center !important;
+  background-size: cover !important;
+  background-repeat: no-repeat !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.scan-sleeve-sheen {
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0.03) 40%, transparent 70%) !important;
+  pointer-events: none !important;
+}
+
+/* Spinning Vinyl Disc behind sleeve (220px x 220px) */
+.scan-vinyl-disc {
+  position: absolute !important;
+  right: -32px !important;
+  top: 10px !important;
+  width: 220px !important;
+  height: 220px !important;
+  min-width: 220px !important;
+  min-height: 220px !important;
+  border-radius: 50% !important;
+  background: radial-gradient(circle at 35% 35%, #2a2a2a 0%, #151515 45%, #0d0d0d 100%) !important;
+  border: 3px solid #333333 !important;
+  box-shadow: 0 14px 34px -4px rgba(0, 0, 0, 0.65) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 5 !important;
+  pointer-events: none !important;
+  animation: vinylSpin 3.5s linear infinite !important;
+}
+
+/* Concentric vinyl grooves */
+.scan-vinyl-groove {
+  position: absolute !important;
+  border-radius: 50% !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  pointer-events: none !important;
+}
+.scan-vinyl-groove-1 { inset: 12px !important; border-color: rgba(255, 255, 255, 0.08) !important; }
+.scan-vinyl-groove-2 { inset: 26px !important; border-color: rgba(255, 255, 255, 0.05) !important; }
+.scan-vinyl-groove-3 { inset: 42px !important; border-color: rgba(255, 255, 255, 0.07) !important; }
+.scan-vinyl-groove-4 { inset: 58px !important; border-color: rgba(255, 255, 255, 0.04) !important; }
+
+/* Center Label on Vinyl */
+.scan-vinyl-label {
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 50% !important;
+  background: linear-gradient(135deg, #d97706 0%, #b45309 60%, #92400e 100%) !important;
+  border: 2px solid #222222 !important;
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.45) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.scan-vinyl-spindle {
+  width: 14px !important;
+  height: 14px !important;
+  border-radius: 50% !important;
+  background: #0d0d0d !important;
+  border: 1.5px solid #444444 !important;
+}
+
+/* Release Metadata Block */
+.scan-info-block {
+  width: 100% !important;
+  max-width: 680px !important;
+  margin: 16px auto 0 auto !important;
+  text-align: center !important;
+}
+
+.scan-artist-text {
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+  color: var(--primary, #d97706) !important;
+  margin-bottom: 5px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.scan-title-text {
+  font-size: 20px !important;
+  line-height: 1.35 !important;
+  font-weight: 800 !important;
+  color: var(--on-surface, #1c1b1f) !important;
+  max-width: 640px !important;
+  margin: 0 auto !important;
+  word-break: break-word !important;
+}
+
+.dark .scan-title-text {
+  color: #f3f4f6 !important;
+}
+
+/* Progress bar container */
+.scan-progress-box {
+  width: 100% !important;
+  max-width: 680px !important;
+  margin: 22px auto 0 auto !important;
+}
+
+.scan-progress-track {
+  width: 100% !important;
+  height: 10px !important;
+  background: var(--surface-container-high, #e5e7eb) !important;
+  border-radius: 9999px !important;
+  overflow: hidden !important;
+  padding: 1px !important;
+  border: 1px solid rgba(120, 120, 120, 0.15) !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dark .scan-progress-track {
+  background: #232220 !important;
+}
+
+.scan-progress-fill {
+  height: 100% !important;
+  background: linear-gradient(90deg, #f59e0b, #d97706) !important;
+  border-radius: 9999px !important;
+  transition: width 0.3s ease !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Docked Bottom Footer Logger / Console */
+.scan-bottom-dock {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 60 !important;
+  background: rgba(18, 17, 16, 0.95) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-top: 1px solid rgba(245, 158, 11, 0.3) !important;
+  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6) !important;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.scan-logger-toggle {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 14px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  transition: all 0.2s ease !important;
+  cursor: pointer !important;
+  text-align: left !important;
+}
+
+.scan-logger-toggle:hover {
+  background: rgba(255, 255, 255, 0.09) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+.scan-logs-console {
+  background: #09090b !important;
+  color: #34d399 !important;
+  border-radius: 10px !important;
+  padding: 12px 14px !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-size: 11px !important;
+  line-height: 1.6 !important;
+  max-height: 180px !important; /* Strictly bounded: will never take over the screen */
+  overflow-y: auto !important; /* Clean internal scrollbar */
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(245, 158, 11, 0.45) rgba(20, 20, 20, 0.8) !important;
+}
+
+.scan-logs-console::-webkit-scrollbar {
+  width: 7px;
+}
+
+.scan-logs-console::-webkit-scrollbar-track {
+  background: rgba(20, 20, 20, 0.8);
+  border-radius: 4px;
+}
+
+.scan-logs-console::-webkit-scrollbar-thumb {
+  background: rgba(245, 158, 11, 0.4);
+  border-radius: 4px;
+}
+
+.scan-logs-console::-webkit-scrollbar-thumb:hover {
+  background: rgba(245, 158, 11, 0.7);
+}

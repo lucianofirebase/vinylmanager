@@ -254,60 +254,60 @@
     <!-- Canvas Wrapper -->
     <div class="flex-1 p-margin-md md:p-margin-lg max-w-[1560px] mx-auto w-full flex flex-col gap-6">
 
-      <!-- PROGRESS / STATUS CARD: Centered Vinyl Digging Station -->
-      <div class="status-card bg-surface-container-lowest border border-primary/25 rounded-2xl p-6 md:p-8 shadow-xl relative overflow-hidden max-w-2xl mx-auto w-full transition-all" id="status-card" style="display: none;">
+      <!-- PROGRESS / STATUS CARD: Spacious Centered Vinyl Digging Station -->
+      <div class="scan-station-card" id="status-card" style="display: none;">
         <!-- Canvas radar in background with subtle golden particle glow -->
-        <canvas id="scan-radar-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-30 z-0"></canvas>
+        <canvas id="scan-radar-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-25 z-0"></canvas>
 
         <div class="relative z-10 flex flex-col items-center text-center">
           
           <!-- Top Header of Card: Live Step & ETA & Cancel Button -->
-          <div class="w-full flex items-center justify-between pb-3.5 mb-4 border-b border-outline-variant/20">
-            <div class="flex items-center gap-2">
+          <div class="w-full flex items-center justify-between pb-4 mb-2 border-b border-outline-variant/20">
+            <div class="flex items-center gap-2.5">
               <span class="relative flex h-2.5 w-2.5">
                 <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                 <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
               </span>
-              <h3 class="font-headline-sm font-semibold text-on-surface text-sm md:text-base flex items-center gap-1.5" id="status-title">
+              <h3 class="font-headline-sm font-bold text-on-surface text-sm md:text-base flex items-center gap-2" id="status-title">
                 Escaneando Marketplace...
               </h3>
             </div>
             <div class="flex items-center gap-2.5">
-              <span id="scanning-eta-badge" class="text-xs text-tertiary font-medium bg-surface-container px-2.5 py-1 rounded-full border border-outline-variant/30">
-                Calculando tiempo...
+              <span id="scanning-eta-badge" class="text-xs text-tertiary font-medium bg-surface-container px-3 py-1 rounded-full border border-outline-variant/30 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[14px]">schedule</span> Calculando tiempo...
               </span>
-              <button id="cancel-scan-btn" class="text-xs font-semibold text-error border border-error/30 px-3 py-1 rounded-lg hover:bg-error/10 transition-colors cursor-pointer">
-                Cancelar
+              <button id="cancel-scan-btn" class="text-xs font-semibold text-error border border-error/30 px-3 py-1 rounded-lg hover:bg-error/10 transition-colors cursor-pointer flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">cancel</span> Cancelar
               </button>
             </div>
           </div>
 
-          <!-- CENTERPIECE: Large Album Sleeve + Spinning Peeking Vinyl Disc -->
-          <div class="relative my-4 flex items-center justify-center">
+          <!-- CENTERPIECE: Large 240px Album Sleeve + 220px Spinning Peeking Vinyl Disc -->
+          <div class="scan-centerpiece">
             
-            <!-- Vinyl Disc peeking & spinning behind sleeve -->
-            <div id="loading-turntable-container" class="absolute -right-6 sm:-right-10 w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-neutral-950 border-4 border-neutral-800 shadow-2xl flex items-center justify-center z-0 transition-transform duration-500">
+            <!-- Vinyl Disc peeking & spinning behind sleeve (220px) -->
+            <div id="loading-turntable-container" class="scan-vinyl-disc">
               <!-- Vinyl concentric micro-grooves -->
-              <div class="absolute inset-2 rounded-full border border-neutral-800/80 pointer-events-none"></div>
-              <div class="absolute inset-5 rounded-full border border-neutral-700/40 pointer-events-none"></div>
-              <div class="absolute inset-8 rounded-full border border-neutral-800/70 pointer-events-none"></div>
-              <div class="absolute inset-11 rounded-full border border-neutral-700/30 pointer-events-none"></div>
+              <div class="scan-vinyl-groove scan-vinyl-groove-1"></div>
+              <div class="scan-vinyl-groove scan-vinyl-groove-2"></div>
+              <div class="scan-vinyl-groove scan-vinyl-groove-3"></div>
+              <div class="scan-vinyl-groove scan-vinyl-groove-4"></div>
               <!-- Vinyl Center label -->
-              <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-amber-600 to-primary flex items-center justify-center border-2 border-neutral-900 shadow-inner">
-                <div class="w-3.5 h-3.5 rounded-full bg-neutral-950 border border-neutral-700"></div>
+              <div class="scan-vinyl-label">
+                <div class="scan-vinyl-spindle"></div>
               </div>
             </div>
 
-            <!-- Front Album Sleeve (Large Cover Art: 200px x 200px) -->
-            <div class="relative w-48 h-48 sm:w-56 sm:h-56 rounded-xl bg-surface-container-high border border-white/20 shadow-2xl overflow-hidden z-10 group transition-transform duration-300">
+            <!-- Front Album Sleeve (Large Cover Art: 240px x 240px) -->
+            <div class="scan-sleeve">
               <!-- Cover image element -->
-              <div id="scanning-cover-art" class="w-full h-full bg-center bg-cover bg-no-repeat transition-all duration-300 flex items-center justify-center bg-neutral-900">
-                <span id="cover-placeholder" class="material-symbols-outlined text-5xl text-tertiary/40">album</span>
+              <div id="scanning-cover-art" class="scan-cover-image">
+                <span id="cover-placeholder" class="material-symbols-outlined text-6xl text-white/30">album</span>
               </div>
               <!-- Glossy Sleeve Sheen Effect -->
-              <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/10 to-white/20 pointer-events-none"></div>
+              <div class="scan-sleeve-sheen"></div>
               <!-- Priority Bookmark Tag (if priority) -->
-              <div id="scanning-priority-tag" class="absolute top-2 right-2 bg-amber-500 text-neutral-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-1" style="display: none;">
+              <div id="scanning-priority-tag" class="absolute top-2.5 right-2.5 bg-amber-500 text-neutral-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-1 z-20" style="display: none;">
                 <span>★</span> FAVORITO
               </div>
             </div>
@@ -315,78 +315,39 @@
           </div>
 
           <!-- Centered Release Information Block -->
-          <div class="w-full mt-3 space-y-1.5 max-w-lg mx-auto">
-            <p id="scanning-artist" class="text-xs uppercase tracking-widest font-bold text-primary truncate">
+          <div class="scan-info-block">
+            <p id="scanning-artist" class="scan-artist-text">
               Artista
             </p>
-            <h4 id="scanning-title" class="text-base sm:text-lg font-bold text-on-surface tracking-tight truncate">
+            <h4 id="scanning-title" class="scan-title-text">
               Título del Disco
             </h4>
             
             <!-- Metadata & Offers Badges -->
-            <div class="flex flex-wrap items-center justify-center gap-2 pt-1">
-              <span id="scanning-badge-step" class="text-[11px] font-semibold bg-surface-container px-2.5 py-0.5 rounded-full text-on-surface-variant border border-outline-variant/30">
+            <div class="flex flex-wrap items-center justify-center gap-2.5 pt-3">
+              <span id="scanning-badge-step" class="text-xs font-semibold bg-surface-container px-3 py-1 rounded-full text-on-surface-variant border border-outline-variant/30">
                 Disco -- de --
               </span>
-              <span id="scanning-offers-badge" class="text-[11px] font-semibold bg-primary/10 text-primary border border-primary/25 px-2.5 py-0.5 rounded-full">
+              <span id="scanning-offers-badge" class="text-xs font-semibold bg-primary/10 text-primary border border-primary/25 px-3 py-1 rounded-full">
                 Buscando ofertas...
               </span>
-              <span id="scanning-format-badge" class="text-[11px] text-tertiary bg-surface-container px-2.5 py-0.5 rounded-full border border-outline-variant/30" style="display: none;">
+              <span id="scanning-format-badge" class="text-xs text-tertiary bg-surface-container px-3 py-1 rounded-full border border-outline-variant/30" style="display: none;">
                 LP
               </span>
             </div>
           </div>
 
           <!-- Progress Bar & Percentage -->
-          <div class="w-full max-w-lg mx-auto mt-4 space-y-1.5">
-            <div class="w-full bg-surface-container-high rounded-full h-2.5 overflow-hidden p-0.5 border border-outline-variant/20 shadow-inner">
-              <div id="progress-bar" class="bg-gradient-to-r from-amber-500 to-primary h-full rounded-full transition-all duration-300 shadow-sm" style="width: 0%;"></div>
+          <div class="scan-progress-box">
+            <div class="scan-progress-track">
+              <div id="progress-bar" class="scan-progress-fill" style="width: 0%;"></div>
             </div>
-            <div class="flex justify-between items-center text-xs text-tertiary px-1">
-              <span id="progress-text" class="truncate max-w-[340px] text-left">Iniciando análisis...</span>
-              <span id="progress-percent" class="font-bold text-primary text-sm">0%</span>
+            <div class="flex justify-between items-center text-xs text-tertiary px-1 mt-2">
+              <span id="progress-text" class="truncate max-w-[460px] text-left font-medium">Iniciando análisis...</span>
+              <span id="progress-percent" class="font-bold text-primary text-base">0%</span>
             </div>
           </div>
 
-        </div>
-
-        <!-- EXPANDABLE TERMINAL / LOGGER ACCORDION -->
-        <div class="mt-5 border-t border-outline-variant/30 pt-3.5 relative z-10">
-          <!-- Accordion Toggle Header -->
-          <button id="log-accordion-toggle" class="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-surface-container/60 hover:bg-surface-container transition-colors border border-outline-variant/30 cursor-pointer group text-left">
-            <div class="flex items-center gap-2 overflow-hidden flex-1 mr-2">
-              <span class="material-symbols-outlined text-primary text-base shrink-0">terminal</span>
-              <span class="text-xs font-semibold text-on-surface shrink-0">Registro de escaneo</span>
-              <!-- Single-line live ticker showing latest activity -->
-              <span id="log-latest-ticker" class="text-xs text-tertiary font-mono truncate hidden sm:inline-block max-w-[300px] md:max-w-[380px]">
-                Esperando eventos...
-              </span>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <span id="log-count-badge" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-surface-container-high text-tertiary border border-outline-variant/40">
-                0 eventos
-              </span>
-              <span id="log-chevron" class="material-symbols-outlined text-tertiary group-hover:text-primary transition-transform duration-300 text-sm">
-                expand_more
-              </span>
-            </div>
-          </button>
-
-          <!-- Collapsible Terminal Body -->
-          <div id="status-logs-wrapper" class="hidden mt-2 transition-all duration-300">
-            <div class="flex items-center justify-between pb-1.5 px-1 text-[11px] text-tertiary">
-              <span class="font-mono text-[10px] text-tertiary/70">Consola de escaneo en vivo</span>
-              <div class="flex gap-2">
-                <button id="copy-logs-btn" class="hover:text-primary transition-colors flex items-center gap-1 cursor-pointer">
-                  <span class="material-symbols-outlined text-[13px]">content_copy</span> Copiar
-                </button>
-                <button id="clear-logs-btn" class="hover:text-error transition-colors flex items-center gap-1 cursor-pointer">
-                  <span class="material-symbols-outlined text-[13px]">delete_sweep</span> Limpiar
-                </button>
-              </div>
-            </div>
-            <div id="status-logs" class="bg-neutral-950/95 text-emerald-400 rounded-xl p-3 text-xs font-mono max-h-44 overflow-y-auto space-y-1 border border-outline-variant/30 shadow-inner select-text"></div>
-          </div>
         </div>
       </div>
 
@@ -759,6 +720,53 @@
 
       <div class="flex justify-end">
         <button id="btn-close-local-modal" class="px-5 py-2 border border-outline-variant rounded-lg text-xs font-semibold">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOCKED BOTTOM FOOTER LOGGER / CONSOLE (Fixed to bottom of window, bounded to 180px with internal scrollbar) -->
+  <div id="scan-logger-dock" class="scan-bottom-dock" style="display: none;">
+    <div class="max-w-[1400px] mx-auto px-4 py-2">
+      <!-- Toggle Header Bar -->
+      <div class="flex items-center justify-between gap-3">
+        <button id="log-accordion-toggle" class="scan-logger-toggle flex items-center justify-between flex-1 cursor-pointer">
+          <div class="flex items-center gap-2.5 overflow-hidden flex-1 mr-3">
+            <span class="relative flex h-2 w-2 shrink-0">
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span class="material-symbols-outlined text-primary text-base shrink-0">terminal</span>
+            <span class="text-xs font-bold text-white shrink-0">Registro de escaneo</span>
+            <span id="log-latest-ticker" class="text-xs text-neutral-400 font-mono truncate hidden sm:inline-block max-w-[650px]">
+              Esperando eventos...
+            </span>
+          </div>
+          <div class="flex items-center gap-2.5 shrink-0">
+            <span id="log-count-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-800 text-neutral-300 border border-neutral-700">
+              0 eventos
+            </span>
+            <span id="log-chevron" class="material-symbols-outlined text-neutral-400 hover:text-primary transition-transform duration-300 text-sm">
+              expand_less
+            </span>
+          </div>
+        </button>
+
+        <!-- Quick actions right next to toggle -->
+        <div class="flex items-center gap-1.5 shrink-0">
+          <button id="copy-logs-btn" class="text-xs text-neutral-300 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 hover:bg-neutral-800 transition-colors flex items-center gap-1 cursor-pointer" title="Copiar logs al portapapeles">
+            <span class="material-symbols-outlined text-[14px]">content_copy</span>
+            <span class="hidden md:inline">Copiar</span>
+          </button>
+          <button id="clear-logs-btn" class="text-xs text-neutral-300 hover:text-rose-400 px-3 py-1.5 rounded-lg border border-neutral-700 hover:bg-neutral-800 transition-colors flex items-center gap-1 cursor-pointer" title="Limpiar registro">
+            <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
+            <span class="hidden md:inline">Limpiar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Collapsible Body (Bounded to 180px with internal scrollbar) -->
+      <div id="status-logs-wrapper" class="hidden mt-2 pt-2 border-t border-neutral-800 transition-all duration-300">
+        <div id="status-logs" class="scan-logs-console"></div>
       </div>
     </div>
   </div>

@@ -157,6 +157,7 @@ const scanningOffersBadge = document.getElementById('scanning-offers-badge');
 const scanningEtaBadge = document.getElementById('scanning-eta-badge');
 const scanningPriorityTag = document.getElementById('scanning-priority-tag');
 const scanningFormatBadge = document.getElementById('scanning-format-badge');
+const scanLoggerDock = document.getElementById('scan-logger-dock');
 const logAccordionToggle = document.getElementById('log-accordion-toggle');
 const statusLogsWrapper = document.getElementById('status-logs-wrapper');
 const logChevron = document.getElementById('log-chevron');
@@ -1624,6 +1625,7 @@ async function startMarketplaceScan(startIndex = 0) {
   } else {
     statusCard.style.display = 'block';
   }
+  if (scanLoggerDock) scanLoggerDock.style.display = 'block';
   
   // Reset cover art preview & hero text
   if (scanningArtist) scanningArtist.textContent = 'Iniciando análisis...';
@@ -1752,6 +1754,7 @@ async function startMarketplaceScan(startIndex = 0) {
     } else {
       statusCard.style.display = 'none';
     }
+    if (scanLoggerDock) scanLoggerDock.style.display = 'none';
     
     // Reset cover art preview
     const scanningCoverArt = document.getElementById('scanning-cover-art');
@@ -1863,6 +1866,7 @@ async function refreshWantlistIncremental() {
       metricWantsCount.textContent = state.wants.length;
       
       statusCard.style.display = 'block';
+      if (scanLoggerDock) scanLoggerDock.style.display = 'block';
       startRadarShaderCanvas();
       const turntableVinyl = document.getElementById('turntable-vinyl');
       if (turntableVinyl) turntableVinyl.classList.add('spinning');
@@ -1927,6 +1931,7 @@ async function refreshWantlistIncremental() {
     state.isScanning = false;
     logoVinyl.classList.remove('spinning');
     statusCard.style.display = 'none';
+    if (scanLoggerDock) scanLoggerDock.style.display = 'none';
     stopRadarShaderCanvas();
     const turntableVinyl = document.getElementById('turntable-vinyl');
     if (turntableVinyl) turntableVinyl.classList.remove('spinning');

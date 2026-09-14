@@ -443,6 +443,8 @@ function motionUpdateCoverArt(imageUrl, title = '') {
 
 function motionShowScanCard() {
   const card = document.getElementById('status-card');
+  const dock = document.getElementById('scan-logger-dock');
+  if (dock) dock.style.display = 'block';
   if (!card) return;
 
   card.style.display = 'block';
@@ -455,6 +457,8 @@ function motionShowScanCard() {
 
 function motionHideScanCard() {
   const card = document.getElementById('status-card');
+  const dock = document.getElementById('scan-logger-dock');
+  if (dock) dock.style.display = 'none';
   if (!card) return;
 
   card.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
