@@ -228,23 +228,23 @@ label:active .material-symbols-outlined {
 
 /* ── 5. Scan Progress State Machine ── */
 #status-card {
-  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 #status-card.entering {
-  animation: scanCardEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: scanCardEnter 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 @keyframes scanCardEnter {
   from {
     opacity: 0;
-    transform: translateY(-20px) scaleY(0.85);
+    transform: translateY(-15px) scale(0.98);
     max-height: 0;
   }
   to {
     opacity: 1;
-    transform: translateY(0) scaleY(1);
-    max-height: 400px;
+    transform: translateY(0) scale(1);
+    max-height: 950px;
   }
 }
 
@@ -645,4 +645,50 @@ label:active .material-symbols-outlined {
 #manager-start-scan-top-btn:hover::after {
   left: 100%;
   transition: left 0.5s ease;
+}
+
+/* ── 24. Centered Vinyl Digging Station (Active Scan Hero) ── */
+#loading-turntable-container.spinning {
+  animation: vinylSpin 3.2s linear infinite;
+}
+
+#scanning-cover-art {
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+}
+
+/* Vinyl Sleeve Perspective Sheen */
+.scan-sleeve-sheen {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.15) 0%,
+    transparent 50%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+}
+
+/* Accordion Smooth Fade In */
+#status-logs-wrapper:not(.hidden) {
+  animation: logAccordionSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes logAccordionSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Sticky Top Navbar Glassmorphism */
+#top-navbar {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+#filter-toolbar {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
 }

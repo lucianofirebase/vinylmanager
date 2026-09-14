@@ -147,6 +147,20 @@ const progressText = document.getElementById('progress-text');
 const progressPercent = document.getElementById('progress-percent');
 const statusLogs = document.getElementById('status-logs');
 const cancelScanBtn = document.getElementById('cancel-scan-btn');
+const scanningArtist = document.getElementById('scanning-artist');
+const scanningTitle = document.getElementById('scanning-title');
+const scanningBadgeStep = document.getElementById('scanning-badge-step');
+const scanningOffersBadge = document.getElementById('scanning-offers-badge');
+const scanningEtaBadge = document.getElementById('scanning-eta-badge');
+const scanningPriorityTag = document.getElementById('scanning-priority-tag');
+const scanningFormatBadge = document.getElementById('scanning-format-badge');
+const logAccordionToggle = document.getElementById('log-accordion-toggle');
+const statusLogsWrapper = document.getElementById('status-logs-wrapper');
+const logChevron = document.getElementById('log-chevron');
+const logLatestTicker = document.getElementById('log-latest-ticker');
+const logCountBadge = document.getElementById('log-count-badge');
+const copyLogsBtn = document.getElementById('copy-logs-btn');
+const clearLogsBtn = document.getElementById('clear-logs-btn');
 const emptyState = document.getElementById('empty-state');
 const resultsGrid = document.getElementById('results-grid');
 const noResultsState = document.getElementById('no-results-state');
@@ -251,6 +265,56 @@ document.addEventListener('DOMContentLoaded', () => {
   cancelScanBtn.addEventListener('click', cancelScan);
   saveUsernameBtn.addEventListener('click', saveManualUsername);
   clearCacheBtn.addEventListener('click', clearScanCache);
+  
+  // Expandable Logger Accordion listeners
+  if (logAccordionToggle && statusLogsWrapper) {
+    logAccordionToggle.addEventListener('click', () => {
+      const isHidden = statusLogsWrapper.classList.contains('hidden');
+      if (isHidden) {
+        statusLogsWrapper.classList.remove('hidden');
+        if (logChevron) logChevron.style.transform = 'rotate(180deg)';
+        if (statusLogs) statusLogs.scrollTop = statusLogs.scrollHeight;
+      } else {
+        statusLogsWrapper.classList.add('hidden');
+        if (logChevron) logChevron.style.transform = '';
+      }
+    });
+  }
+
+  if (copyLogsBtn) {
+    copyLogsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (statusLogs) {
+        navigator.clipboard.writeText(statusLogs.innerText).then(() => {
+          const orig = copyLogsBtn.innerHTML;
+          copyLogsBtn.innerHTML = '<span class="material-symbols-outlined text-[13px] text-emerald-400">check</span> Copiado';
+          setTimeout(() => { copyLogsBtn.innerHTML = orig; }, 1500);
+        });
+      }
+    });
+  }
+
+  if (clearLogsBtn) {
+    clearLogsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (statusLogs) statusLogs.innerHTML = '';
+      logEventCount = 0;
+      if (logCountBadge) logCountBadge.textContent = '0 eventos';
+      if (logLatestTicker) logLatestTicker.textContent = 'Registro limpiado.';
+    });
+  }
+
+  // Toggle user fallback input when clicking user card if not auto-detected
+  if (userCard && inputFallback) {
+    userCard.addEventListener('click', () => {
+      if (inputFallback.style.display === 'none' || !inputFallback.style.display) {
+        inputFallback.style.display = 'block';
+        if (manualUsername) manualUsername.focus();
+      } else {
+        inputFallback.style.display = 'none';
+      }
+    });
+  }
   
   // Export to Sheets listeners
   if (exportSheetsSidebarBtn) exportSheetsSidebarBtn.addEventListener('click', openExportSheetsModal);
@@ -609,17 +673,17 @@ function startRadarShaderCanvas() {
   function draw() {
     ctx.clearRect(0, 0, width, height);
     
-    // Draw glowing center radar pulses
-    const centerX = width * 0.15;
-    const centerY = height * 0.5;
+    // Draw glowing center radar pulses centered on the vinyl artwork
+    const centerX = width * 0.5;
+    const centerY = height * 0.38;
     
     angle += 0.03;
     
     // Concentric glowing vinyl grooves
-    for (let r = 20; r <= 120; r += 20) {
+    for (let r = 30; r <= 160; r += 26) {
       ctx.beginPath();
       ctx.arc(centerX, centerY, r + Math.sin(angle + r) * 2, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(245, 166, 35, ${0.15 - r * 0.001})`;
+      ctx.strokeStyle = `rgba(245, 166, 35, ${0.18 - r * 0.0009})`;
       ctx.lineWidth = 1.5;
       ctx.stroke();
     }
@@ -778,14 +842,20 @@ async function initApp() {
   }
 }
 
-// Write message to dashboard log section
+// Write message to dashboard log section & live ticker
+let logEventCount = 0;
 function log(message, type = 'info') {
   console.log(`[Log] ${message}`);
+  logEventCount++;
+  if (logCountBadge) logCountBadge.textContent = `${logEventCount} eventos`;
+  if (logLatestTicker) logLatestTicker.textContent = message;
+
   if (statusLogs) {
     const p = document.createElement('p');
     p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    if (type === 'error') p.style.color = '#ef4444';
-    if (type === 'success') p.style.color = '#10b981';
+    if (type === 'error') p.style.color = '#f87171';
+    else if (type === 'success') p.style.color = '#34d399';
+    else p.style.color = '#e2e8f0';
     statusLogs.appendChild(p);
     statusLogs.scrollTop = statusLogs.scrollHeight;
   }
@@ -1318,11 +1388,25 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
   const progress = Math.round(((index + 1) / totalWants) * 100);
   
-  // Update UI Progress
-  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}${timeEstText}`;
+  // Update UI Progress & Hero Artwork
+  statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}`;
+  if (scanningEtaBadge) {
+    const cleanEta = (timeEstText || '').replace(/^[ ·]+/, '').trim();
+    scanningEtaBadge.textContent = cleanEta || 'Calculando tiempo...';
+  }
   progressBar.style.width = `${progress}%`;
-  progressText.textContent = `Analizando: ${item.artist} - ${item.title}...`;
+  progressText.textContent = `Analizando: ${item.artist || ''} - ${item.title || ''}...`;
   progressPercent.textContent = `${progress}%`;
+
+  // Update Hero Metadata Info
+  if (scanningArtist) scanningArtist.textContent = item.artist || 'Artista';
+  if (scanningTitle) scanningTitle.textContent = item.title || 'Título del Disco';
+  if (scanningBadgeStep) scanningBadgeStep.textContent = `Disco ${index + 1} de ${totalWants}`;
+  if (scanningPriorityTag) scanningPriorityTag.style.display = item.isPriority ? 'flex' : 'none';
+  if (scanningOffersBadge) {
+    scanningOffersBadge.textContent = 'Buscando ofertas...';
+    scanningOffersBadge.className = 'text-[11px] font-semibold bg-primary/10 text-primary border border-primary/25 px-2.5 py-0.5 rounded-full';
+  }
 
   // Update Cover Art Preview with animated fade via Motion system
   if (window.Motion) {
@@ -1340,6 +1424,25 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
       }
     }
   }
+
+  // Helper to update live offers badge once listings are known
+  const updateOffersDisplay = (list) => {
+    if (scanningOffersBadge) {
+      if (list && list.length > 0) {
+        const prices = list.map(l => l.priceNum).filter(p => !isNaN(p) && p > 0);
+        let minPriceStr = '';
+        if (prices.length > 0) {
+          const minP = Math.min(...prices);
+          minPriceStr = ` · desde ${formatPrice(minP, list[0].currencyCode || 'USD')}`;
+        }
+        scanningOffersBadge.textContent = `${list.length} en venta${minPriceStr}`;
+        scanningOffersBadge.className = 'text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
+      } else {
+        scanningOffersBadge.textContent = 'Sin copias en venta';
+        scanningOffersBadge.className = 'text-[11px] font-semibold bg-surface-container text-tertiary border border-outline-variant/30 px-2.5 py-0.5 rounded-full';
+      }
+    }
+  };
   
   let parsedListings = null;
   let isFromCache = false;
@@ -1377,6 +1480,7 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   if (isFromCache && parsedListings) {
     const priorityTag = item.isPriority ? ' ★ Prioritario' : '';
     log(`[Caché${priorityTag}] Cargadas ${parsedListings.length} copias en venta para este disco (hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
+    updateOffersDisplay(parsedListings);
     return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
   }
   
@@ -1388,6 +1492,7 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     const result = parseReleaseHTML(html, item.id);
     parsedListings = result.listings;
     communityStats = result.communityStats;
+    updateOffersDisplay(parsedListings);
     
     // Save to cache with version 3 tag
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -1405,6 +1510,7 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
   } catch (e) {
     log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
+    updateOffersDisplay([]);
     return { listings: [], communityStats: null, isFromCache: false };
   }
 }
@@ -1427,6 +1533,9 @@ async function startMarketplaceScan(startIndex = 0) {
     state.allListings = [];
     state.groupedSellers = [];
     statusLogs.innerHTML = '';
+    logEventCount = 0;
+    if (logCountBadge) logCountBadge.textContent = '0 eventos';
+    if (logLatestTicker) logLatestTicker.textContent = 'Iniciando escaneo del marketplace...';
     log('Iniciando escaneo del marketplace...');
   } else {
     log(`Reanudando escaneo del marketplace desde el disco ${startIndex + 1}...`, 'info');
@@ -1438,16 +1547,21 @@ async function startMarketplaceScan(startIndex = 0) {
   if (refreshWantsBtn) refreshWantsBtn.disabled = true;
   logoVinyl.classList.add('spinning');
   
-  // Show progress panel with animation and trigger turntable spinning
+  // Show progress panel with animation, start radar shader and trigger turntable spinning
+  startRadarShaderCanvas();
   if (window.Motion) {
     window.Motion.showScanCard();
   } else {
     statusCard.style.display = 'block';
-    const turntableVinyl = document.getElementById('turntable-vinyl');
-    if (turntableVinyl) turntableVinyl.classList.add('spinning');
   }
   
-  // Reset cover art preview
+  // Reset cover art preview & hero text
+  if (scanningArtist) scanningArtist.textContent = 'Iniciando análisis...';
+  if (scanningTitle) scanningTitle.textContent = 'Preparando colección...';
+  if (scanningBadgeStep) scanningBadgeStep.textContent = `0 de ${state.wants.length}`;
+  if (scanningOffersBadge) scanningOffersBadge.textContent = 'Preparando...';
+  if (scanningPriorityTag) scanningPriorityTag.style.display = 'none';
+
   const scanningCoverArt = document.getElementById('scanning-cover-art');
   const coverPlaceholder = document.getElementById('cover-placeholder');
   if (scanningCoverArt) {
@@ -1562,10 +1676,12 @@ async function startMarketplaceScan(startIndex = 0) {
     const refreshWantsBtn = document.getElementById('refresh-wants-btn');
     if (refreshWantsBtn) refreshWantsBtn.disabled = false;
     logoVinyl.classList.remove('spinning');
-    statusCard.style.display = 'none';
-    
-    const turntableVinyl = document.getElementById('turntable-vinyl');
-    if (turntableVinyl) turntableVinyl.classList.remove('spinning');
+    stopRadarShaderCanvas();
+    if (window.Motion) {
+      window.Motion.hideScanCard();
+    } else {
+      statusCard.style.display = 'none';
+    }
     
     // Reset cover art preview
     const scanningCoverArt = document.getElementById('scanning-cover-art');
