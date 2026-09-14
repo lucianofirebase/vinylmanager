@@ -32,20 +32,21 @@ const CURRENCY_MAP = {
 };
 
 function formatPrice(val, currencyCode, overrideDisplayCurrency = null) {
+  const numVal = typeof val === 'number' ? (isNaN(val) ? 0 : val) : (parseFloat(val) || 0);
   const displayCurrencySelect = document.getElementById('display-currency');
   const displayCurr = overrideDisplayCurrency || (displayCurrencySelect ? displayCurrencySelect.value : 'UYU');
   
   if (displayCurr === 'original' || !displayCurr) {
     const info = CURRENCY_MAP[currencyCode] || { symbol: '$', code: currencyCode || 'USD' };
     if (info.code === info.symbol) {
-      return `${info.code} ${val.toFixed(2)}`;
+      return `${info.code} ${numVal.toFixed(2)}`;
     }
-    return `${info.code} ${info.symbol}${val.toFixed(2)}`;
+    return `${info.code} ${info.symbol}${numVal.toFixed(2)}`;
   }
   
   // Convert val from currencyCode to USD first
   const sourceRate = CURRENCY_MAP[currencyCode]?.rate || 1.0;
-  const valInUSD = val * sourceRate;
+  const valInUSD = numVal * sourceRate;
   
   // Convert USD to displayCurr
   const targetInfo = CURRENCY_MAP[displayCurr] || { symbol: '$', code: displayCurr, rate: 1.0 };
@@ -3011,7 +3012,17 @@ function renderResults() {
     refreshWantsBtn.style.display = 'flex';
     refreshWantsBtn.disabled = false;
   }
-  resultsGrid.style.display = 'grid';
+  const currentActiveTab = state.currentTab || 'sellers';
+  resultsGrid.style.display = currentActiveTab === 'sellers' ? 'grid' : 'none';
+  const smartCard = document.getElementById('smart-purchase-card');
+  if (smartCard) smartCard.style.display = currentActiveTab === 'sellers' ? 'block' : 'none';
+  const statsView = document.getElementById('stats-view');
+  if (statsView) statsView.style.display = currentActiveTab === 'stats' ? 'flex' : 'none';
+  const localView = document.getElementById('local-view');
+  if (localView) localView.style.display = currentActiveTab === 'local' ? 'block' : 'none';
+  if (currentActiveTab === 'stats') {
+    calculateAndRenderStats();
+  }
   resultsGrid.innerHTML = '';
   
   // Render cards
@@ -3427,31 +3438,49 @@ function calculateAndRenderStats() {
   const statsView = document.getElementById('stats-view');
   if (!statsView) return;
   
-  const totalWantsCount = (state.wants || []).length;
-  const allListings = state.allListings || [];
-  
-  // Find releases that are actually for sale (have at least one match, comparing IDs as strings)
-  const wantsForSale = (state.wants || []).filter(w => 
-    allListings.some(l => String(l.releaseId) === String(w.id))
-  );
-  
-  // Find releases not for sale (0 matches)
-  const wantsNotForSale = (state.wants || []).filter(w => 
-    !allListings.some(l => String(l.releaseId) === String(w.id))
-  );
-  
-  // For each release in Wantlist with at least one listing, find its CHEAPEST entry copy (fair comparison in USD)
-  const releaseEntryPrices = [];
-  
-  (state.wants || []).forEach(w => {
-    const listingsForRelease = allListings.filter(l => String(l.releaseId) === String(w.id) && l.priceVal > 0);
-    if (listingsForRelease.length > 0) {
+  try {
+    const allWants = (state.wants || []).filter(w => w && w.id != null);
+    const allListings = (state.allListings || []).filter(l => l && l.releaseId != null);
+    const totalWantsCount = allWants.length;
+    
+    // Fast lookup set of release IDs that have at least one valid listing
+    const releasesWithListings = new Set(
+      allListings
+        .filter(l => (typeof l.priceVal === 'number' ? l.priceVal : parseFloat(l.priceVal) || 0) > 0)
+        .map(l => String(l.releaseId))
+    );
+    
+    // Find releases that are actually for sale (have at least one match)
+    const wantsForSale = allWants.filter(w => releasesWithListings.has(String(w.id)));
+    
+    // Find releases not for sale (0 matches)
+    const wantsNotForSale = allWants.filter(w => !releasesWithListings.has(String(w.id)));
+    
+    // Group listings by releaseId for quick cheapest calculation
+    const listingsByRelease = new Map();
+    allListings.forEach(l => {
+      const p = typeof l.priceVal === 'number' ? l.priceVal : (parseFloat(l.priceVal) || 0);
+      if (p <= 0) return;
+      const relIdStr = String(l.releaseId);
+      if (!listingsByRelease.has(relIdStr)) {
+        listingsByRelease.set(relIdStr, []);
+      }
+      listingsByRelease.get(relIdStr).push(l);
+    });
+
+    // For each release in Wantlist with at least one listing, find its CHEAPEST entry copy (fair comparison in USD)
+    const releaseEntryPrices = [];
+    
+    allWants.forEach(w => {
+      const relListings = listingsByRelease.get(String(w.id));
+      if (!relListings || relListings.length === 0) return;
+      
       let cheapestListing = null;
       let cheapestUSD = Infinity;
       
-      listingsForRelease.forEach(l => {
+      relListings.forEach(l => {
         let rate = CURRENCY_MAP[l.currency]?.rate || 1.0;
-        let priceVal = l.priceVal;
+        let priceVal = typeof l.priceVal === 'number' ? l.priceVal : (parseFloat(l.priceVal) || 0);
         
         // Auto-heal small JPY values from legacy cache (e.g. 3.92 JPY -> $3.92 USD) so they aren't treated as $0.02 USD
         if (l.currency === 'JPY' && priceVal < 100) {
@@ -3459,7 +3488,7 @@ function calculateAndRenderStats() {
         }
         
         const priceUSD = priceVal * rate;
-        if (priceUSD < cheapestUSD) {
+        if (priceUSD > 0 && priceUSD < cheapestUSD) {
           cheapestUSD = priceUSD;
           cheapestListing = l;
         }
@@ -3472,226 +3501,244 @@ function calculateAndRenderStats() {
           priceUSD: cheapestUSD
         });
       }
-    }
-  });
+    });
 
-  // Top 5 cheapest releases by their lowest entry price
-  const top5Cheapest = [...releaseEntryPrices]
-    .sort((a, b) => a.priceUSD - b.priceUSD)
-    .slice(0, 5);
-
-  // Top 5 most expensive releases (Objetos de Lujo) by their lowest entry price
-  const top5Expensive = [...releaseEntryPrices]
-    .sort((a, b) => b.priceUSD - a.priceUSD)
-    .slice(0, 5);
-  
-  // Find community wants metrics
-  const wantsWithStats = (state.wants || []).filter(w => w.wantCount !== undefined && w.wantCount !== null && w.wantCount > 0);
-  
-  let top5MostWanted = [];
-  let top5LeastWanted = [];
-  
-  if (wantsWithStats.length > 0) {
-    top5MostWanted = [...wantsWithStats]
-      .sort((a, b) => b.wantCount - a.wantCount)
+    // Top 5 cheapest releases by their lowest entry price
+    const top5Cheapest = [...releaseEntryPrices]
+      .sort((a, b) => a.priceUSD - b.priceUSD)
       .slice(0, 5);
 
-    top5LeastWanted = [...wantsWithStats]
-      .sort((a, b) => a.wantCount - b.wantCount)
+    // Top 5 most expensive releases (Objetos de Lujo) by their lowest entry price
+    const top5Expensive = [...releaseEntryPrices]
+      .sort((a, b) => b.priceUSD - a.priceUSD)
       .slice(0, 5);
-  }
-  
-  // Render Cheapest html list
-  let cheapestListHtml = '';
-  if (top5Cheapest.length > 0) {
-    top5Cheapest.forEach((x, idx) => {
-      const l = x.listing;
-      const w = x.want || state.wants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
-      cheapestListHtml += `
-        <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
-          <div class="stats-album-cover" style="background-image: url('${w.image || ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
-          <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.title)}">${idx + 1}. ${escapeHTML(w.title)}</span>
-            <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
-              <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: var(--color-green, #10b981);">${formatPrice(l.priceVal, l.currency)}</span>
-              <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName)} (📍 ${escapeHTML(l.shipsFrom)})</span>
-              <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center;">Ver Oferta</a>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-  } else {
-    cheapestListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
-  }
-
-  // Render Expensive html list
-  let expensiveListHtml = '';
-  if (top5Expensive.length > 0) {
-    top5Expensive.forEach((x, idx) => {
-      const l = x.listing;
-      const w = x.want || state.wants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
-      expensiveListHtml += `
-        <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
-          <div class="stats-album-cover" style="background-image: url('${w.image || ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
-          <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
-            <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.title)}">${idx + 1}. ${escapeHTML(w.title)}</span>
-            <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
-            <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
-              <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: #9333ea;">${formatPrice(l.priceVal, l.currency)}</span>
-              <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName)} (📍 ${escapeHTML(l.shipsFrom)})</span>
-              <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center; background: rgba(147, 51, 234, 0.1); border-color: rgba(147, 51, 234, 0.3); color: #9333ea;">Ver Oferta</a>
-            </div>
-          </div>
-        </div>
-      `;
-    });
-  } else {
-    expensiveListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
-  }
-
-  // Render Popularity html list
-  let popularityListHtml = '';
-  if (wantsWithStats.length > 0) {
-    let mostWantedHtml = '';
-    top5MostWanted.forEach((w, idx) => {
-      mostWantedHtml += `
-        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
-          <div style="min-width: 0; flex: 1; margin-right: 8px;">
-            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
-              ${idx + 1}. ${escapeHTML(w.title)} 🔗
-            </a>
-            <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
-          </div>
-          <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
-            <strong style="color: var(--primary, #835500); font-size: 11px; flex-shrink: 0; cursor: pointer;">${w.wantCount.toLocaleString()} wants ↗</strong>
-          </a>
-        </div>
-      `;
-    });
-
-    let leastWantedHtml = '';
-    top5LeastWanted.forEach((w, idx) => {
-      leastWantedHtml += `
-        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
-          <div style="min-width: 0; flex: 1; margin-right: 8px;">
-            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
-              ${idx + 1}. ${escapeHTML(w.title)} 🔗
-            </a>
-            <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
-          </div>
-          <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
-            <strong style="color: #9333ea; font-size: 11px; flex-shrink: 0; cursor: pointer;">${w.wantCount.toLocaleString()} wants ↗</strong>
-          </a>
-        </div>
-      `;
-    });
-
-    popularityListHtml = `
-      <div style="display: flex; flex-direction: column; gap: 14px;">
-        <div>
-          <span style="font-size: 10px; color: var(--primary, #835500); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">🔥 EL TOP 5 MÁS DESEADO DE TU LISTA</span>
-          ${mostWantedHtml}
-        </div>
-        
-        <div>
-          <span style="font-size: 10px; color: #9333ea; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">❄️ EL TOP 5 MENOS QUERIDO / RAREZA OSCURA</span>
-          ${leastWantedHtml}
-        </div>
-      </div>
-    `;
-  } else {
-    popularityListHtml = `
-      <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 10px 0; line-height: 1.4; text-align: left;">
-        ℹ️ <strong>Datos de popularidad de comunidad:</strong><br>
-        Los contadores de <em>wants/haves</em> se completan automáticamente al analizar los discos o con sesión iniciada en Discogs.
-      </p>
-    `;
-  }
-  
-  // Render layout
-  let html = `
-    <!-- Top metrics bar -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 8px;">
-      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Discos a la venta</span>
-        <span style="font-size: 26px; font-weight: 800; color: var(--color-green, #10b981); margin-top: 6px; display: block;">${wantsForSale.length} / ${totalWantsCount}</span>
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Disponibles para comprar hoy</span>
-      </div>
-      
-      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Agotados en Discogs</span>
-        <span style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px; display: block;">${wantsNotForSale.length}</span>
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Sin copias listadas en venta</span>
-      </div>
-      
-      <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Total de ofertas</span>
-        <span style="font-size: 26px; font-weight: 800; color: #8b5cf6; margin-top: 6px; display: block;">${allListings.length}</span>
-        <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Copias encontradas en el marketplace</span>
-      </div>
-    </div>
     
-    <div class="stats-grid">
-      <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
-      <div style="display: flex; flex-direction: column; gap: 20px;">
-        
-        <!-- CHEAPEST VINYL -->
-        <div class="stats-card-rich">
-          <div class="stats-card-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-green, #10b981);">El más barato</div>
-          <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💰 Más Económico (Top 5)</h3>
-          ${cheapestListHtml}
+    // Safe want count extractor
+    const getWantCount = (item) => {
+      if (!item || item.wantCount == null) return 0;
+      const parsed = typeof item.wantCount === 'number'
+        ? item.wantCount
+        : parseFloat(String(item.wantCount).replace(/,/g, ''));
+      return isNaN(parsed) ? 0 : parsed;
+    };
+
+    // Find community wants metrics
+    const wantsWithStats = allWants.filter(w => getWantCount(w) > 0);
+    
+    let top5MostWanted = [];
+    let top5LeastWanted = [];
+    
+    if (wantsWithStats.length > 0) {
+      top5MostWanted = [...wantsWithStats]
+        .sort((a, b) => getWantCount(b) - getWantCount(a))
+        .slice(0, 5);
+
+      top5LeastWanted = [...wantsWithStats]
+        .sort((a, b) => getWantCount(a) - getWantCount(b))
+        .slice(0, 5);
+    }
+    
+    // Render Cheapest html list
+    let cheapestListHtml = '';
+    if (top5Cheapest.length > 0) {
+      top5Cheapest.forEach((x, idx) => {
+        const l = x.listing;
+        const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
+        cheapestListHtml += `
+          <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
+            <div class="stats-album-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
+            <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
+                <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: var(--color-green, #10b981);">${formatPrice(l.priceVal, l.currency)}</span>
+                <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (📍 ${escapeHTML(l.shipsFrom || 'N/A')})</span>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center;">Ver Oferta</a>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    } else {
+      cheapestListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
+    }
+
+    // Render Expensive html list
+    let expensiveListHtml = '';
+    if (top5Expensive.length > 0) {
+      top5Expensive.forEach((x, idx) => {
+        const l = x.listing;
+        const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
+        expensiveListHtml += `
+          <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
+            <div class="stats-album-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
+            <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
+              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
+                <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: #9333ea;">${formatPrice(l.priceVal, l.currency)}</span>
+                <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (📍 ${escapeHTML(l.shipsFrom || 'N/A')})</span>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center; background: rgba(147, 51, 234, 0.1); border-color: rgba(147, 51, 234, 0.3); color: #9333ea;">Ver Oferta</a>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    } else {
+      expensiveListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
+    }
+
+    // Render Popularity html list
+    let popularityListHtml = '';
+    if (wantsWithStats.length > 0) {
+      let mostWantedHtml = '';
+      top5MostWanted.forEach((w, idx) => {
+        mostWantedHtml += `
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
+            <div style="min-width: 0; flex: 1; margin-right: 8px;">
+              <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
+                ${idx + 1}. ${escapeHTML(w.title)} 🔗
+              </a>
+              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
+            </div>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
+              <strong style="color: var(--primary, #835500); font-size: 11px; flex-shrink: 0; cursor: pointer;">${getWantCount(w).toLocaleString()} wants ↗</strong>
+            </a>
+          </div>
+        `;
+      });
+
+      let leastWantedHtml = '';
+      top5LeastWanted.forEach((w, idx) => {
+        leastWantedHtml += `
+          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
+            <div style="min-width: 0; flex: 1; margin-right: 8px;">
+              <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
+                ${idx + 1}. ${escapeHTML(w.title)} 🔗
+              </a>
+              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
+            </div>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
+              <strong style="color: #9333ea; font-size: 11px; flex-shrink: 0; cursor: pointer;">${getWantCount(w).toLocaleString()} wants ↗</strong>
+            </a>
+          </div>
+        `;
+      });
+
+      popularityListHtml = `
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          <div>
+            <span style="font-size: 10px; color: var(--primary, #835500); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">🔥 EL TOP 5 MÁS DESEADO DE TU LISTA</span>
+            ${mostWantedHtml}
+          </div>
+          
+          <div>
+            <span style="font-size: 10px; color: #9333ea; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">❄️ EL TOP 5 MENOS QUERIDO / RAREZA OSCURA</span>
+            ${leastWantedHtml}
+          </div>
+        </div>
+      `;
+    } else {
+      popularityListHtml = `
+        <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 10px 0; line-height: 1.4; text-align: left;">
+          ℹ️ <strong>Datos de popularidad de comunidad:</strong><br>
+          Los contadores de <em>wants/haves</em> se completan automáticamente al analizar los discos o con sesión iniciada en Discogs.
+        </p>
+      `;
+    }
+    
+    // Render layout
+    let html = `
+      <!-- Top metrics bar -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 8px;">
+        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Discos a la venta</span>
+          <span style="font-size: 26px; font-weight: 800; color: var(--color-green, #10b981); margin-top: 6px; display: block;">${wantsForSale.length} / ${totalWantsCount}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Disponibles para comprar hoy</span>
         </div>
         
-        <!-- MOST EXPENSIVE VINYL -->
-        <div class="stats-card-rich">
-          <div class="stats-card-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">El más costoso</div>
-          <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💎 Objeto de Lujo (Top 5)</h3>
-          ${expensiveListHtml}
+        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Agotados en Discogs</span>
+          <span style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px; display: block;">${wantsNotForSale.length}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Sin copias listadas en venta</span>
         </div>
         
-        <!-- COMMUNITY POPULARITY -->
-        <div class="stats-card-rich">
-          <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">📈 Preferencias de Diggers</h3>
-          ${popularityListHtml}
+        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Total de ofertas</span>
+          <span style="font-size: 26px; font-weight: 800; color: #8b5cf6; margin-top: 6px; display: block;">${allListings.length}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Copias encontradas en el marketplace</span>
         </div>
       </div>
       
-      <!-- COLUMN 2: NOT FOR SALE (AGOTADOS) -->
-      <div style="display: flex; flex-direction: column; gap: 20px;">
-        <div class="stats-card-rich" style="flex-grow: 1;">
-          <h3 style="text-align: left; font-weight: 700; color: var(--on-surface, #1e1e1e);">⚠️ Discos sin stock (Agotados en venta)</h3>
-          <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 4px 0 12px 0; line-height: 1.4; text-align: left;">
-            Estos vinilos de tu lista de deseos no disponen de copias publicadas actualmente en el Marketplace de Discogs.
-          </p>
+      <div class="stats-grid">
+        <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
           
-          <div class="not-for-sale-list">
-            ${wantsNotForSale.length > 0 ? wantsNotForSale.map(w => `
-              <div class="not-for-sale-row">
-                <div class="not-for-sale-info">
-                  <div class="not-for-sale-cover" style="background-image: url('${w.image || ''}')">
-                    ${!w.image ? `<span style="font-size: 14px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
+          <!-- CHEAPEST VINYL -->
+          <div class="stats-card-rich">
+            <div class="stats-card-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-green, #10b981);">El más barato</div>
+            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💰 Más Económico (Top 5)</h3>
+            ${cheapestListHtml}
+          </div>
+          
+          <!-- MOST EXPENSIVE VINYL -->
+          <div class="stats-card-rich">
+            <div class="stats-card-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">El más costoso</div>
+            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💎 Objeto de Lujo (Top 5)</h3>
+            ${expensiveListHtml}
+          </div>
+          
+          <!-- COMMUNITY POPULARITY -->
+          <div class="stats-card-rich">
+            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">📈 Preferencias de Diggers</h3>
+            ${popularityListHtml}
+          </div>
+        </div>
+        
+        <!-- COLUMN 2: NOT FOR SALE (AGOTADOS) -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          <div class="stats-card-rich" style="flex-grow: 1;">
+            <h3 style="text-align: left; font-weight: 700; color: var(--on-surface, #1e1e1e);">⚠️ Discos sin stock (Agotados en venta)</h3>
+            <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 4px 0 12px 0; line-height: 1.4; text-align: left;">
+              Estos vinilos de tu lista de deseos no disponen de copias publicadas actualmente en el Marketplace de Discogs.
+            </p>
+            
+            <div class="not-for-sale-list" style="max-height: 540px;">
+              ${wantsNotForSale.length > 0 ? wantsNotForSale.map(w => `
+                <div class="not-for-sale-row">
+                  <div class="not-for-sale-info">
+                    <div class="not-for-sale-cover" style="background-image: url('${(w && w.image) ? w.image : ''}')">
+                      ${(!w || !w.image) ? `<span style="font-size: 14px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
+                    </div>
+                    <div class="not-for-sale-text" style="text-align: left;">
+                      <span class="not-for-sale-title" title="${escapeHTML(w ? w.title : '')}">${escapeHTML(w ? w.title : 'Desconocido')}</span>
+                      <span class="not-for-sale-artist" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+                    </div>
                   </div>
-                  <div class="not-for-sale-text" style="text-align: left;">
-                    <span class="not-for-sale-title" title="${escapeHTML(w.title)}">${escapeHTML(w.title)}</span>
-                    <span class="not-for-sale-artist" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
-                  </div>
+                  <a href="https://www.discogs.com/sell/list?release_id=${w ? w.id : ''}" target="_blank" class="btn-search-discogs-sm">Ver en Discogs</a>
                 </div>
-                <a href="https://www.discogs.com/sell/list?release_id=${w.id}" target="_blank" class="btn-search-discogs-sm">Ver en Discogs</a>
-              </div>
-            `).join('') : `
-              <p style="font-size: 13px; color: var(--tertiary, #5f5e5e); padding: 30px; text-align: center;">
-                🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia en venta hoy.
-              </p>
-            `}
+              `).join('') : `
+                <p style="font-size: 13px; color: var(--tertiary, #5f5e5e); padding: 30px; text-align: center;">
+                  🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia en venta hoy.
+                </p>
+              `}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  `;
-  
-  statsView.innerHTML = html;
+    `;
+    
+    statsView.innerHTML = html;
+  } catch (err) {
+    console.error('[calculateAndRenderStats Error]', err);
+    statsView.innerHTML = `
+      <div class="stats-card-rich" style="text-align: center; padding: 40px;">
+        <span class="material-symbols-outlined text-4xl text-amber-500 mb-2">bar_chart</span>
+        <h3 style="font-size: 16px; font-weight: 700; color: var(--on-surface);">No se pudieron calcular las estadísticas</h3>
+        <p style="font-size: 12px; color: var(--tertiary); margin: 8px 0 16px;">Ocurrió un detalle al procesar los datos de tu lista: ${escapeHTML(err.message)}</p>
+      </div>
+    `;
+  }
 }
 
 // ==========================================
@@ -3905,6 +3952,7 @@ function handleDownloadCsvAction() {
 // ===============================================
 
 function switchTab(tabName) {
+  state.currentTab = tabName;
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
@@ -3935,7 +3983,7 @@ function switchTab(tabName) {
 
   if (resultsGrid) resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
   if (smartPurchaseCard) smartPurchaseCard.style.display = tabName === 'sellers' ? 'block' : 'none';
-  if (statsView) statsView.style.display = tabName === 'stats' ? 'block' : 'none';
+  if (statsView) statsView.style.display = tabName === 'stats' ? 'flex' : 'none';
   if (localView) localView.style.display = tabName === 'local' ? 'block' : 'none';
 
   if (tabName === 'stats' && typeof calculateAndRenderStats === 'function') {
