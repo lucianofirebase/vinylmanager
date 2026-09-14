@@ -3981,10 +3981,31 @@ function switchTab(tabName) {
     }
   });
 
-  if (resultsGrid) resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
+  if (resultsGrid) {
+    resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
+    if (tabName === 'sellers') {
+      resultsGrid.classList.remove('scroll-reveal');
+      resultsGrid.classList.add('visible');
+      resultsGrid.style.opacity = '1';
+    }
+  }
   if (smartPurchaseCard) smartPurchaseCard.style.display = tabName === 'sellers' ? 'block' : 'none';
-  if (statsView) statsView.style.display = tabName === 'stats' ? 'flex' : 'none';
-  if (localView) localView.style.display = tabName === 'local' ? 'block' : 'none';
+  if (statsView) {
+    statsView.style.display = tabName === 'stats' ? 'flex' : 'none';
+    if (tabName === 'stats') {
+      statsView.classList.remove('scroll-reveal');
+      statsView.classList.add('visible');
+      statsView.style.opacity = '1';
+    }
+  }
+  if (localView) {
+    localView.style.display = tabName === 'local' ? 'block' : 'none';
+    if (tabName === 'local') {
+      localView.classList.remove('scroll-reveal');
+      localView.classList.add('visible');
+      localView.style.opacity = '1';
+    }
+  }
 
   if (tabName === 'stats' && typeof calculateAndRenderStats === 'function') {
     calculateAndRenderStats();

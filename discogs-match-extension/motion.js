@@ -595,11 +595,9 @@ function initMotionSystem() {
     });
   });
 
-  // Add scroll-reveal class to main sections that don't already have it
+  // Add scroll-reveal class to standalone cards that don't already have it
   const revealTargets = [
     '#smart-purchase-card',
-    '#results-grid',
-    '#stats-view',
   ];
   revealTargets.forEach((sel) => {
     const el = document.querySelector(sel);

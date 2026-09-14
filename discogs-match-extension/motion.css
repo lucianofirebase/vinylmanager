@@ -459,6 +459,12 @@ label:active .material-symbols-outlined {
   transform: translateY(0);
 }
 
+/* Ensure tab views are never hidden with opacity 0 by scroll-reveal */
+#stats-view, #results-grid, #local-view {
+  opacity: 1 !important;
+  transform: none !important;
+}
+
 /* ── 12. Connection Lines (Canvas Network Graph) ── */
 #connection-canvas {
   position: absolute;

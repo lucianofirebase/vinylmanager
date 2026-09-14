@@ -1,3 +1,44 @@
+:root {
+  --background: #fbf9f4;
+  --on-background: #1b1c19;
+  --surface: #fbf9f4;
+  --on-surface: #1b1c19;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f3ee;
+  --surface-container: #f0eee9;
+  --surface-container-high: #eae8e3;
+  --surface-container-highest: #e4e2dd;
+  --primary: #835500;
+  --primary-container: #f5a623;
+  --on-primary: #ffffff;
+  --tertiary: #5f5e5e;
+  --outline: #857462;
+  --outline-variant: #d7c3ae;
+  --color-green: #10b981;
+  --color-amber: #d97706;
+  --color-purple: #9333ea;
+  --color-purple-dark: #6b21a8;
+  --text-main: #1b1c19;
+  --text-muted: #5f5e5e;
+}
+
+.dark {
+  --background: #121212;
+  --on-background: #e4e2dd;
+  --surface: #121212;
+  --on-surface: #f5f3ee;
+  --surface-container-lowest: #1e1e1e;
+  --surface-container-low: #242424;
+  --surface-container: #2c2c2c;
+  --surface-container-high: #333333;
+  --surface-container-highest: #3d3d3d;
+  --primary: #ffb955;
+  --tertiary: #a0aec0;
+  --outline-variant: #444444;
+  --text-main: #f5f3ee;
+  --text-muted: #a0aec0;
+}
+
 *, ::before, ::after {
   --tw-border-spacing-x: 0;
   --tw-border-spacing-y: 0;
