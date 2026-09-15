@@ -3258,3 +3258,44 @@ video {
   color: #fb7185 !important;
   border-color: rgba(244, 63, 94, 0.4) !important;
 }
+
+/* Navigation & Back Buttons Micro-Interactions */
+#nav-back-btn {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#nav-back-btn:hover {
+  border-color: var(--primary);
+  background-color: var(--surface-container-high);
+  transform: translateX(-1px);
+}
+
+.btn-back-to-sellers {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-back-to-sellers:hover {
+  border-color: var(--primary) !important;
+  background-color: var(--surface-container-high) !important;
+  transform: translateX(-2px);
+}
+
+#btn-back-to-wants,
+#btn-back-to-wizard,
+#bottom-btn-back-to-wizard,
+#btn-forward-to-results,
+#bottom-btn-forward-to-results {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#btn-back-to-wants:hover,
+#btn-back-to-wizard:hover,
+#bottom-btn-back-to-wizard:hover {
+  border-color: var(--primary) !important;
+  transform: translateX(-2px);
+}
+
+#btn-forward-to-results:hover,
+#bottom-btn-forward-to-results:hover {
+  transform: translateX(2px);
+}

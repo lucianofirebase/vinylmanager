@@ -352,13 +352,65 @@ document.addEventListener('DOMContentLoaded', () => {
       setLoggedInUser(manualVal);
       log(`Usuario '${manualVal}' guardado automáticamente al continuar.`, 'success');
     }
-    goToWizardStep(2);
+    navigateToView('wizard-2');
   });
-  wizardNext2Btn.addEventListener('click', () => goToWizardStep(3));
-  wizardBack2Btn.addEventListener('click', () => goToWizardStep(1));
-  wizardBack3Btn.addEventListener('click', () => goToWizardStep(2));
+  wizardNext2Btn.addEventListener('click', () => navigateToView('wizard-3'));
+  wizardBack2Btn.addEventListener('click', () => navigateToView('wizard-1'));
+  wizardBack3Btn.addEventListener('click', () => navigateToView('wizard-2'));
   wizardSyncBtn.addEventListener('click', loadWantlist);
   wizardSaveUsernameBtn.addEventListener('click', saveWizardManualUsername);
+
+  // Screen & Back Navigation Event Listeners
+  const navBackBtn = document.getElementById('nav-back-btn');
+  const btnBackToWants = document.getElementById('btn-back-to-wants');
+  const btnBackToWantsFromNoResults = document.getElementById('btn-back-to-wants-from-no-results');
+  const btnBackToWizard = document.getElementById('btn-back-to-wizard');
+  const bottomBtnBackToWizard = document.getElementById('bottom-btn-back-to-wizard');
+  const btnForwardToResults = document.getElementById('btn-forward-to-results');
+  const bottomBtnForwardToResults = document.getElementById('bottom-btn-forward-to-results');
+  const wizardResumeWantsBtn1 = document.getElementById('wizard-resume-wants-btn-1');
+  const wizardResumeWantsBtn3 = document.getElementById('wizard-resume-wants-btn-3');
+
+  if (navBackBtn) navBackBtn.addEventListener('click', () => handleHierarchicalBack());
+  if (btnBackToWants) btnBackToWants.addEventListener('click', () => navigateToView('wantlist'));
+  if (btnBackToWantsFromNoResults) btnBackToWantsFromNoResults.addEventListener('click', () => navigateToView('wantlist'));
+  if (btnBackToWizard) btnBackToWizard.addEventListener('click', () => navigateToView('wizard-1'));
+  if (bottomBtnBackToWizard) bottomBtnBackToWizard.addEventListener('click', () => navigateToView('wizard-1'));
+  if (btnForwardToResults) btnForwardToResults.addEventListener('click', () => navigateToView('results-sellers'));
+  if (bottomBtnForwardToResults) bottomBtnForwardToResults.addEventListener('click', () => navigateToView('results-sellers'));
+  if (wizardResumeWantsBtn1) wizardResumeWantsBtn1.addEventListener('click', () => navigateToView('wantlist'));
+  if (wizardResumeWantsBtn3) wizardResumeWantsBtn3.addEventListener('click', () => navigateToView('wantlist'));
+
+  // Close modals on overlay backdrop click
+  document.querySelectorAll('.modal-overlay').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.style.display = 'none';
+      }
+    });
+  });
+
+  // Global Escape key handler to close modals or go back
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const closed = closeAllModals();
+      if (!closed) {
+        handleHierarchicalBack();
+      }
+    }
+  });
+
+  // Browser / Mouse Back Button (popstate)
+  window.addEventListener('popstate', (e) => {
+    const closed = closeAllModals();
+    if (closed) return;
+
+    if (e.state && e.state.view) {
+      navigateToView(e.state.view, false);
+    } else {
+      handleHierarchicalBack(false);
+    }
+  });
   
   if (wizardManualUsername) {
     wizardManualUsername.addEventListener('input', () => {
@@ -792,16 +844,169 @@ function stopRadarShaderCanvas() {
   }
 }
 
-// Show Wantlist Manager section when wants are loaded
-function showWantlistManager() {
+// ==========================================
+// UNIFIED SCREEN & NAVIGATION MANAGER
+// ==========================================
+
+let currentAppView = 'wizard-1';
+
+function closeAllModals() {
+  const modals = [
+    document.getElementById('export-sheets-modal'),
+    document.getElementById('local-sheet-modal'),
+    document.getElementById('private-wantlist-modal'),
+    document.getElementById('resume-modal')
+  ];
+  let closedAny = false;
+  modals.forEach(m => {
+    if (m && (m.style.display === 'flex' || m.style.display === 'block')) {
+      m.style.display = 'none';
+      closedAny = true;
+    }
+  });
+  return closedAny;
+}
+
+function updateForwardAndBackButtons() {
+  const hasWants = state.wants && state.wants.length > 0;
+  const hasResults = state.groupedSellers && state.groupedSellers.length > 0;
+  
+  // Forward to results button in wantlist manager
+  const btnForwardToResults = document.getElementById('btn-forward-to-results');
+  const bottomBtnForwardToResults = document.getElementById('bottom-btn-forward-to-results');
+  if (btnForwardToResults) btnForwardToResults.style.display = hasResults ? 'inline-flex' : 'none';
+  if (bottomBtnForwardToResults) bottomBtnForwardToResults.style.display = hasResults ? 'inline-flex' : 'none';
+
+  // Resume buttons in wizard
+  const resume1 = document.getElementById('wizard-resume-wants-btn-1');
+  const resume3 = document.getElementById('wizard-resume-wants-btn-3');
+  const text1 = document.getElementById('wizard-resume-wants-text-1');
+  const text3 = document.getElementById('wizard-resume-wants-text-3');
+  if (resume1) {
+    resume1.style.display = hasWants ? 'inline-flex' : 'none';
+    if (text1) text1.textContent = `Continuar con mi lista (${state.wants.length} discos)`;
+  }
+  if (resume3) {
+    resume3.style.display = hasWants ? 'inline-flex' : 'none';
+    if (text3) text3.textContent = `Ir a mi lista cargada (${state.wants.length} discos)`;
+  }
+
+  // Top navbar back button
+  const navBackBtn = document.getElementById('nav-back-btn');
+  if (navBackBtn) {
+    const isRoot = currentAppView === 'wizard-1' && !hasWants;
+    navBackBtn.style.display = isRoot ? 'none' : 'inline-flex';
+  }
+}
+
+function navigateToView(viewName, pushHistory = true) {
+  closeAllModals();
+
   const emptyState = document.getElementById('empty-state');
   const wantlistManager = document.getElementById('wantlist-manager');
-  
-  if (emptyState) emptyState.style.display = 'none';
-  if (wantlistManager) {
-    wantlistManager.style.display = 'block';
-    renderWantsListInManager();
+  const resultsGrid = document.getElementById('results-grid');
+  const noResultsState = document.getElementById('no-results-state');
+  const smartPurchaseCard = document.getElementById('smart-purchase-card');
+  const tabNavigation = document.getElementById('tab-navigation');
+  const statsView = document.getElementById('stats-view');
+  const localView = document.getElementById('local-view');
+  const filterToolbar = document.getElementById('filter-toolbar');
+
+  if (viewName.startsWith('wizard')) {
+    const stepNum = parseInt(viewName.split('-')[1] || '1', 10);
+    if (wantlistManager) wantlistManager.style.display = 'none';
+    if (resultsGrid) resultsGrid.style.display = 'none';
+    if (noResultsState) noResultsState.style.display = 'none';
+    if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+    if (tabNavigation) tabNavigation.style.display = 'none';
+    if (statsView) statsView.style.display = 'none';
+    if (localView) localView.style.display = 'none';
+    if (filterToolbar) filterToolbar.style.display = 'none';
+    
+    if (emptyState) {
+      emptyState.style.display = 'flex';
+      goToWizardStep(stepNum);
+    }
+    currentAppView = `wizard-${stepNum}`;
+  } else if (viewName === 'wantlist') {
+    if (emptyState) emptyState.style.display = 'none';
+    if (resultsGrid) resultsGrid.style.display = 'none';
+    if (noResultsState) noResultsState.style.display = 'none';
+    if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+    if (tabNavigation) tabNavigation.style.display = 'none';
+    if (statsView) statsView.style.display = 'none';
+    if (localView) localView.style.display = 'none';
+    if (filterToolbar) filterToolbar.style.display = 'none';
+
+    if (wantlistManager) {
+      wantlistManager.style.display = 'block';
+      renderWantsListInManager();
+    }
+    currentAppView = 'wantlist';
+  } else if (viewName.startsWith('results')) {
+    const subTab = viewName.includes('-') ? viewName.split('-')[1] : 'sellers';
+    if (emptyState) emptyState.style.display = 'none';
+    if (wantlistManager) wantlistManager.style.display = 'none';
+    if (tabNavigation) tabNavigation.style.display = 'flex';
+    if (filterToolbar) filterToolbar.style.display = 'block';
+
+    switchTab(subTab);
+    currentAppView = `results-${subTab}`;
   }
+
+  updateForwardAndBackButtons();
+
+  if (pushHistory) {
+    try {
+      window.history.pushState({ view: currentAppView }, '', '');
+    } catch (e) {
+      // Ignore in sandboxed environment
+    }
+  }
+}
+
+function handleHierarchicalBack(pushHistory = true) {
+  if (closeAllModals()) return;
+
+  if (currentAppView.startsWith('results-') && currentAppView !== 'results-sellers') {
+    switchTab('sellers');
+    currentAppView = 'results-sellers';
+    updateForwardAndBackButtons();
+    if (pushHistory) {
+      try { window.history.pushState({ view: currentAppView }, '', ''); } catch(e){}
+    }
+    return;
+  }
+  if (currentAppView.startsWith('results')) {
+    if (state.wants && state.wants.length > 0) {
+      navigateToView('wantlist', pushHistory);
+    } else {
+      navigateToView('wizard-1', pushHistory);
+    }
+    return;
+  }
+  if (currentAppView === 'wantlist') {
+    navigateToView('wizard-3', pushHistory);
+    return;
+  }
+  if (currentAppView === 'wizard-3') {
+    navigateToView('wizard-2', pushHistory);
+    return;
+  }
+  if (currentAppView === 'wizard-2') {
+    navigateToView('wizard-1', pushHistory);
+    return;
+  }
+  if (currentAppView === 'wizard-1') {
+    if (state.wants && state.wants.length > 0) {
+      navigateToView('wantlist', pushHistory);
+    }
+  }
+}
+
+// Show Wantlist Manager section when wants are loaded
+function showWantlistManager(pushHistory = true) {
+  navigateToView('wantlist', pushHistory);
 }
 
 // Render loaded wants list inside Wantlist Manager for marking favorites (★)
@@ -1771,9 +1976,14 @@ async function startMarketplaceScan(startIndex = 0) {
       if (!state.cancelRequested) {
         clearScanSession();
       }
+      currentAppView = 'results-sellers';
     } else {
       toggleFiltersState(false);
+      if (state.wants.length > 0) {
+        navigateToView('wantlist', false);
+      }
     }
+    updateForwardAndBackButtons();
   }
 }
 
@@ -2933,16 +3143,22 @@ function renderSmartPurchase(filteredSellers) {
 // Render dynamic results card matching filters
 function renderResults() {
   if (state.groupedSellers.length === 0) {
-    emptyState.style.display = 'flex';
-    resultsGrid.style.display = 'none';
-    noResultsState.style.display = 'none';
-    const smartCard = document.getElementById('smart-purchase-card');
-    if (smartCard) smartCard.style.display = 'none';
-    const tabNavigation = document.getElementById('tab-navigation');
-    if (tabNavigation) tabNavigation.style.display = 'none';
-    const statsView = document.getElementById('stats-view');
-    if (statsView) statsView.style.display = 'none';
-    toggleFiltersState(false);
+    if (state.wants.length > 0) {
+      showWantlistManager(false);
+    } else {
+      emptyState.style.display = 'flex';
+      resultsGrid.style.display = 'none';
+      noResultsState.style.display = 'none';
+      const smartCard = document.getElementById('smart-purchase-card');
+      if (smartCard) smartCard.style.display = 'none';
+      const tabNavigation = document.getElementById('tab-navigation');
+      if (tabNavigation) tabNavigation.style.display = 'none';
+      const statsView = document.getElementById('stats-view');
+      if (statsView) statsView.style.display = 'none';
+      toggleFiltersState(false);
+      currentAppView = 'wizard-1';
+    }
+    updateForwardAndBackButtons();
     return;
   }
   
@@ -3051,9 +3267,11 @@ function renderResults() {
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
     const tabNavigation = document.getElementById('tab-navigation');
-    if (tabNavigation) tabNavigation.style.display = 'none';
+    if (tabNavigation) tabNavigation.style.display = 'flex';
     const statsView = document.getElementById('stats-view');
     if (statsView) statsView.style.display = 'none';
+    currentAppView = 'results-no-results';
+    updateForwardAndBackButtons();
     return;
   }
   
@@ -3079,6 +3297,8 @@ function renderResults() {
     refreshWantsBtn.disabled = false;
   }
   const currentActiveTab = state.currentTab || 'sellers';
+  currentAppView = `results-${currentActiveTab}`;
+  updateForwardAndBackButtons();
   resultsGrid.style.display = currentActiveTab === 'sellers' ? 'grid' : 'none';
   const smartCard = document.getElementById('smart-purchase-card');
   if (smartCard) smartCard.style.display = currentActiveTab === 'sellers' ? 'block' : 'none';
@@ -3715,6 +3935,15 @@ function calculateAndRenderStats() {
     
     // Render layout
     let html = `
+      <!-- Top Sub-View Header & Navigation Bar -->
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
+        <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
+          <span>Volver a Vendedores Marketplace</span>
+        </button>
+        <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Estadísticas de tu lista de deseos</span>
+      </div>
+
       <!-- Top metrics bar -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 8px;">
         <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
@@ -4019,6 +4248,8 @@ function handleDownloadCsvAction() {
 
 function switchTab(tabName) {
   state.currentTab = tabName;
+  currentAppView = `results-${tabName}`;
+  updateForwardAndBackButtons();
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
@@ -4416,6 +4647,13 @@ function renderLocalMatches() {
   
   if (matches.length === 0) {
     localView.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
+        <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
+          <span>Volver a Vendedores Marketplace</span>
+        </button>
+        <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Coincidencias con catálogo local</span>
+      </div>
       <div style="text-align: center; padding: 60px 20px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-glow); border-radius: 16px;">
         <div style="font-size: 42px; margin-bottom: 14px;">🇺🇾</div>
         <h3 style="margin: 0 0 8px 0; color: #fff;">Sin coincidencias locales cargadas</h3>
@@ -4435,6 +4673,13 @@ function renderLocalMatches() {
   const priorityMatchesCount = matches.filter(m => m.wantItem.isPriority).length;
   
   let html = `
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
+      <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
+        <span>Volver a Vendedores Marketplace</span>
+      </button>
+      <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Coincidencias con catálogo local</span>
+    </div>
     <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); padding: 16px 20px; border-radius: 14px;">
       <div>
         <h2 style="margin: 0; font-size: 20px; color: #fff;">🇺🇾 Coincidencias en Disquería Local</h2>
