@@ -3386,6 +3386,7 @@ function renderResults() {
         'P': 'cond-p'
       };
       const badgeCondClass = condClassMap[list.mediaCondition] || list.mediaCondClass || 'cond-vg';
+      const condTooltip = conditionTitles[list.mediaCondition] || 'Estado del vinilo';
       
       listingsHtml += `
         <tr>
