@@ -604,6 +604,28 @@ document.addEventListener('click', (e) => {
     return;
   }
 
+  // Handle Not-for-sale filtering tabs in Wantlist Stats view
+  const notForSaleTab = e.target.closest('.not-for-sale-tab-btn');
+  if (notForSaleTab) {
+    e.preventDefault();
+    const filter = notForSaleTab.getAttribute('data-filter');
+    const container = notForSaleTab.closest('.stats-card-rich');
+    if (container) {
+      container.querySelectorAll('.not-for-sale-tab-btn').forEach(btn => btn.classList.remove('active'));
+      notForSaleTab.classList.add('active');
+      const rows = container.querySelectorAll('.not-for-sale-row');
+      rows.forEach(row => {
+        const cat = row.getAttribute('data-category');
+        if (filter === 'all' || filter === cat) {
+          row.style.display = 'flex';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+    }
+    return;
+  }
+
   // Handle Accordion clicks for Consolidated Smart Purchase candidates
   const header = e.target.closest('.smart-candidate-header');
   if (header) {
@@ -1548,7 +1570,8 @@ async function loadWantlist() {
             year: item.basic_information.year,
             image: item.basic_information.cover_image || item.basic_information.thumb || '',
             wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
-            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0
+            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
+            forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
           }));
           
           loadedWants.push(...pageWants);
@@ -1760,6 +1783,13 @@ function parseWantlistHTML(html) {
     if (wantMatch) rowWantCount = parseInt(wantMatch[1].replace(/[^\d]/g, ''), 10);
     const haveMatch = rowText.match(/(\d[\d.,]*)\s*(?:tienen|haves?)/i) || rowText.match(/(?:tienen|haves?)\S*\s*:?\s*(\d[\d.,]*)/i);
     if (haveMatch) rowHaveCount = parseInt(haveMatch[1].replace(/[^\d]/g, ''), 10);
+
+    // Extract for sale count from row text (e.g. "3 en venta desde US$33,78" or "9 for sale from")
+    let rowForSaleCount = 0;
+    const forSaleMatch = rowText.match(/(\d[\d.,]*)\s*(?:en venta|for sale)/i);
+    if (forSaleMatch) {
+      rowForSaleCount = parseInt(forSaleMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+    }
     
     wants.push({
       id,
@@ -1768,7 +1798,8 @@ function parseWantlistHTML(html) {
       year: '',
       image,
       wantCount: rowWantCount,
-      haveCount: rowHaveCount
+      haveCount: rowHaveCount,
+      forSaleCount: rowForSaleCount
     });
   });
   
@@ -1871,6 +1902,9 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   let isFromCache = false;
   let cacheAgeHours = 0;
   let communityStats = null;
+  let totalWorldListings = 0;
+  let unshippableCount = 0;
+  let unshippableLocations = [];
   
   // Try fetching from chrome.storage.local cache first (if user enabled cache)
   const isCacheEnabled = localStorage.getItem('use_scan_cache') !== 'false' && (!useCacheCheckbox || useCacheCheckbox.checked);
@@ -1893,6 +1927,9 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
         if (cacheAgeHours < maxAgeAllowed) {
           parsedListings = cacheData.listings;
           communityStats = cacheData.communityStats || null;
+          totalWorldListings = cacheData.totalWorldListings !== undefined ? cacheData.totalWorldListings : (item.forSaleCount || (parsedListings ? parsedListings.length : 0));
+          unshippableCount = cacheData.unshippableCount || 0;
+          unshippableLocations = cacheData.unshippableLocations || [];
           isFromCache = true;
         }
       }
@@ -1905,7 +1942,14 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     const priorityTag = item.isPriority ? ' ★ Prioritario' : '';
     log(`[Caché${priorityTag}] Cargadas ${parsedListings.length} copias en venta para este disco (hace ${Math.round(cacheAgeHours * 10) / 10}h).`, 'success');
     updateOffersDisplay(parsedListings);
-    return { listings: parsedListings, communityStats: communityStats, isFromCache: true };
+    return { 
+      listings: parsedListings, 
+      communityStats: communityStats, 
+      isFromCache: true,
+      totalWorldListings: totalWorldListings,
+      unshippableCount: unshippableCount,
+      unshippableLocations: unshippableLocations
+    };
   }
   
   log(`Escaneando en vivo (${index + 1}/${totalWants}${timeEstText}): ${item.artist} - ${item.title}...`);
@@ -1916,6 +1960,9 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     const result = parseReleaseHTML(html, item.id);
     parsedListings = result.listings;
     communityStats = result.communityStats;
+    totalWorldListings = result.totalWorldListings !== undefined ? result.totalWorldListings : (item.forSaleCount || (parsedListings ? parsedListings.length : 0));
+    unshippableCount = result.unshippableCount || 0;
+    unshippableLocations = result.unshippableLocations || [];
     updateOffersDisplay(parsedListings);
     
     // Save to cache with version 3 tag
@@ -1926,16 +1973,33 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
           timestamp: Date.now(),
           version: 3,
           listings: parsedListings,
-          communityStats: communityStats
+          communityStats: communityStats,
+          totalWorldListings: totalWorldListings,
+          unshippableCount: unshippableCount,
+          unshippableLocations: unshippableLocations
         }
       });
     }
     
-    return { listings: parsedListings, communityStats: communityStats, isFromCache: false };
+    return { 
+      listings: parsedListings, 
+      communityStats: communityStats, 
+      isFromCache: false,
+      totalWorldListings: totalWorldListings,
+      unshippableCount: unshippableCount,
+      unshippableLocations: unshippableLocations
+    };
   } catch (e) {
     log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
     updateOffersDisplay([]);
-    return { listings: [], communityStats: null, isFromCache: false };
+    return { 
+      listings: [], 
+      communityStats: null, 
+      isFromCache: false,
+      totalWorldListings: item.forSaleCount || 0,
+      unshippableCount: 0,
+      unshippableLocations: []
+    };
   }
 }
 
@@ -2055,6 +2119,12 @@ async function startMarketplaceScan(startIndex = 0) {
         }
         state.allListings.push(...result.listings);
         
+        item.totalWorldListings = result.totalWorldListings !== undefined 
+          ? result.totalWorldListings 
+          : (item.forSaleCount || (result.listings ? result.listings.length : 0));
+        item.unshippableCount = result.unshippableCount || 0;
+        item.unshippableLocations = result.unshippableLocations || [];
+
         if (result.communityStats) {
           if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
           if (result.communityStats.haveCount !== null && result.communityStats.haveCount !== undefined) item.haveCount = result.communityStats.haveCount;
@@ -2165,7 +2235,8 @@ async function refreshWantlistIncremental() {
             year: item.basic_information.year,
             image: item.basic_information.cover_image || item.basic_information.thumb || '',
             wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
-            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0
+            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
+            forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
           }));
           newWants.push(...pageWants);
           totalPages = data.pagination.pages;
@@ -2248,6 +2319,11 @@ async function refreshWantlistIncremental() {
           const item = batchItems[bIdx];
           if (!result.isFromCache) hasLiveFetch = true;
           state.allListings.push(...result.listings);
+          item.totalWorldListings = result.totalWorldListings !== undefined 
+            ? result.totalWorldListings 
+            : (item.forSaleCount || (result.listings ? result.listings.length : 0));
+          item.unshippableCount = result.unshippableCount || 0;
+          item.unshippableLocations = result.unshippableLocations || [];
           if (result.communityStats) {
             if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
             if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
@@ -2439,6 +2515,7 @@ function parseReleaseHTML(html, releaseId) {
   let catalogNumber = null;
   let recordLabel = null;
 
+  let jsonLdOffersCount = 0;
   try {
     const jsonLdEl = doc.querySelector('script#release_schema, script[type="application/ld+json"]');
     if (jsonLdEl) {
@@ -2454,6 +2531,11 @@ function parseReleaseHTML(html, releaseId) {
         if (data.offers) {
           lowPrice = parseFloat(data.offers.lowPrice) || null;
           highPrice = parseFloat(data.offers.highPrice) || null;
+          if (data.offers.offerCount != null) {
+            jsonLdOffersCount = parseInt(data.offers.offerCount, 10) || 0;
+          } else if (Array.isArray(data.offers)) {
+            jsonLdOffersCount = data.offers.length;
+          }
         }
       }
     }
@@ -2469,6 +2551,10 @@ function parseReleaseHTML(html, releaseId) {
     rows = Array.from(rows).filter(r => r.querySelector('.seller_info, [class*="seller"]'));
   }
   
+  const rawRowsCount = rows.length;
+  let unshippableCount = 0;
+  const unshippableLocations = [];
+
   rows.forEach(row => {
     try {
       // Check if seller does not ship to buyer's location (skip them)
@@ -2481,6 +2567,25 @@ function parseReleaseHTML(html, releaseId) {
         rowTextLower.includes('no envia a') ||
         rowTextLower.includes('no envía a')
       ) {
+        unshippableCount++;
+        // Capture seller location if available
+        const sellerInfoText = row.querySelector('.seller_info')?.textContent || '';
+        let shipsFrom = '';
+        if (sellerInfoText.toLowerCase().includes('ships from:') || sellerInfoText.toLowerCase().includes('desde:')) {
+          const parts = sellerInfoText.split(/(?:Ships From:|Desde:)/i);
+          if (parts.length > 1) {
+            shipsFrom = parts[1].split('\n')[0].trim();
+          }
+        } else {
+          const locationEl = row.querySelector('.seller_info li:nth-child(3), .seller_info span:nth-child(3)');
+          if (locationEl) shipsFrom = locationEl.textContent.trim();
+        }
+        if (shipsFrom) {
+          shipsFrom = shipsFrom.replace(/[\n\r]/g, '').trim();
+          if (shipsFrom && !unshippableLocations.includes(shipsFrom)) {
+            unshippableLocations.push(shipsFrom);
+          }
+        }
         return; // Skip this listing
       }
 
@@ -2689,8 +2794,25 @@ function parseReleaseHTML(html, releaseId) {
     }
   });
   
+  let textOffersCount = 0;
+  const bodyText = doc.body ? doc.body.textContent : html;
+  const offerMatch = bodyText.match(/(\d[\d.,]*)\s*(?:en venta|for sale|items? for sale)/i);
+  if (offerMatch) {
+    textOffersCount = parseInt(offerMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+  }
+
+  const totalWorldListings = Math.max(
+    rawRowsCount,
+    unshippableCount,
+    jsonLdOffersCount || 0,
+    textOffersCount || 0
+  );
+
   return {
     listings: listings,
+    totalWorldListings: totalWorldListings,
+    unshippableCount: unshippableCount,
+    unshippableLocations: unshippableLocations,
     communityStats: {
       haveCount,
       wantCount,
@@ -2698,7 +2820,8 @@ function parseReleaseHTML(html, releaseId) {
       highPrice,
       ratingValue,
       catalogNumber,
-      recordLabel
+      recordLabel,
+      totalOffersCount: totalWorldListings
     }
   };
 }
@@ -3912,8 +4035,69 @@ function calculateAndRenderStats() {
     // Find releases that are actually for sale (have at least one match)
     const wantsForSale = allWants.filter(w => releasesWithListings.has(String(w.id)));
     
-    // Find releases not for sale (0 matches)
+    // Find releases not for sale (0 matches for the buyer's destination)
     const wantsNotForSale = allWants.filter(w => !releasesWithListings.has(String(w.id)));
+
+    const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay') || 'Uruguay';
+
+    // Helper to determine if a release has copies on Discogs that don't ship to the buyer
+    const isBlockedByShipping = (w) => {
+      if (w.unshippableCount && w.unshippableCount > 0) return true;
+      if (w.totalWorldListings && w.totalWorldListings > 0) return true;
+      if (w.forSaleCount && w.forSaleCount > 0) return true;
+      if (w.communityStats && w.communityStats.totalOffersCount > 0) return true;
+      return false;
+    };
+
+    const getWorldCount = (w) => {
+      return (typeof w.totalWorldListings === 'number' ? w.totalWorldListings : 0) ||
+             (typeof w.forSaleCount === 'number' ? w.forSaleCount : 0) ||
+             (w.communityStats && w.communityStats.totalOffersCount ? w.communityStats.totalOffersCount : 0) ||
+             (w.unshippableCount > 0 ? w.unshippableCount : 0) ||
+             0;
+    };
+
+    const wantsBlockedByShipping = wantsNotForSale.filter(w => isBlockedByShipping(w));
+    const wantsTrulyUnavailable = wantsNotForSale.filter(w => !isBlockedByShipping(w));
+
+    const renderNotForSaleItem = (w, isBlocked) => {
+      const worldCount = getWorldCount(w);
+      const locations = w.unshippableLocations || [];
+      const locationsText = locations.length > 0
+        ? `<span class="badge-seller-countries" title="Vendedores ubicados en: ${escapeHTML(locations.join(', '))}">📍 ${escapeHTML(locations.slice(0, 3).join(', '))}${locations.length > 3 ? ' +' + (locations.length - 3) : ''}</span>`
+        : '';
+      
+      const badgeHtml = isBlocked
+        ? `<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
+             <span class="badge-shipping-blocked">🌍 ${worldCount > 0 ? worldCount + ' en venta' : 'En venta'} · No envía a ${escapeHTML(buyerCountryVal)}</span>
+             ${locationsText}
+           </div>`
+        : `<div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
+             <span class="badge-truly-unavailable">🚫 0 en venta en todo Discogs</span>
+           </div>`;
+
+      const discogsBtn = isBlocked
+        ? `<a href="https://www.discogs.com/sell/release/${w ? w.id : ''}?limit=100" target="_blank" class="btn-search-discogs-sm" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); color: #d97706; white-space: nowrap;" title="Ver copias en venta en otros países">Ver Ofertas (${worldCount || '↗'})</a>`
+        : `<a href="https://www.discogs.com/release/${w ? w.id : ''}" target="_blank" class="btn-search-discogs-sm" style="white-space: nowrap;" title="Ver ficha técnica en Discogs">Ficha Discogs ↗</a>`;
+
+      return `
+        <div class="not-for-sale-row" data-category="${isBlocked ? 'blocked' : 'zero'}">
+          <div class="not-for-sale-info">
+            <div class="not-for-sale-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; background-size: cover; background-position: center; border: 1px solid var(--outline-variant, rgba(0,0,0,0.08));">
+              ${(!w || !w.image) ? `<span style="font-size: 16px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
+            </div>
+            <div class="not-for-sale-text" style="text-align: left; min-width: 0; flex: 1;">
+              <span class="not-for-sale-title" title="${escapeHTML(w ? w.title : '')}" style="font-size: 13px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span class="not-for-sale-artist" title="${escapeHTML(w ? w.artist : '')}" style="font-size: 11px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              ${badgeHtml}
+            </div>
+          </div>
+          <div style="flex-shrink: 0; margin-left: 8px;">
+            ${discogsBtn}
+          </div>
+        </div>
+      `;
+    };
     
     // Group listings by releaseId for quick cheapest calculation
     const listingsByRelease = new Map();
@@ -4118,23 +4302,29 @@ function calculateAndRenderStats() {
       </div>
 
       <!-- Top metrics bar -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 8px;">
-        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Discos a la venta</span>
-          <span style="font-size: 26px; font-weight: 800; color: var(--color-green, #10b981); margin-top: 6px; display: block;">${wantsForSale.length} / ${totalWantsCount}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Disponibles para comprar hoy</span>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;">
+        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Disponibles para ti</span>
+          <span style="font-size: 24px; font-weight: 800; color: var(--color-green, #10b981); margin-top: 4px; display: block;">${wantsForSale.length} / ${totalWantsCount}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Envían a ${escapeHTML(buyerCountryVal)}</span>
         </div>
         
-        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Agotados en Discogs</span>
-          <span style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px; display: block;">${wantsNotForSale.length}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Sin copias listadas en venta</span>
+        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
+          <span style="font-size: 11px; color: #d97706; font-weight: 600; text-transform: uppercase;">🌍 En venta (Sin envío a ti)</span>
+          <span style="font-size: 24px; font-weight: 800; color: #f59e0b; margin-top: 4px; display: block;">${wantsBlockedByShipping.length}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Hay copias en otros países</span>
+        </div>
+
+        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
+          <span style="font-size: 11px; color: #ef4444; font-weight: 600; text-transform: uppercase;">🚫 Realmente Agotados</span>
+          <span style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px; display: block;">${wantsTrulyUnavailable.length}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">0 copias en todo Discogs</span>
         </div>
         
-        <div class="stats-card-rich" style="padding: 16px; min-height: auto;">
+        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
           <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Total de ofertas</span>
-          <span style="font-size: 26px; font-weight: 800; color: #8b5cf6; margin-top: 6px; display: block;">${allListings.length}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 4px; display: block;">Copias encontradas en el marketplace</span>
+          <span style="font-size: 24px; font-weight: 800; color: #8b5cf6; margin-top: 4px; display: block;">${allListings.length}</span>
+          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Copias aptas para compra</span>
         </div>
       </div>
       
@@ -4163,31 +4353,38 @@ function calculateAndRenderStats() {
           </div>
         </div>
         
-        <!-- COLUMN 2: NOT FOR SALE (AGOTADOS) -->
+        <!-- COLUMN 2: NOT FOR SALE / RESTRICTED SHIPPING -->
         <div style="display: flex; flex-direction: column; gap: 20px;">
           <div class="stats-card-rich" style="flex-grow: 1;">
-            <h3 style="text-align: left; font-weight: 700; color: var(--on-surface, #1e1e1e);">⚠️ Discos sin stock (Agotados en venta)</h3>
-            <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 4px 0 12px 0; line-height: 1.4; text-align: left;">
-              Estos vinilos de tu lista de deseos no disponen de copias publicadas actualmente en el Marketplace de Discogs.
-            </p>
+            <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
+              <div>
+                <h3 style="text-align: left; font-weight: 700; color: var(--on-surface, #1e1e1e); margin: 0;">⚠️ Discos sin stock directo (${wantsNotForSale.length})</h3>
+                <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 4px 0 0 0; line-height: 1.4; text-align: left;">
+                  Filtra entre vinilos con <strong>stock existente sin envío</strong> a ${escapeHTML(buyerCountryVal)} y vinilos <strong>agotados a nivel mundial</strong>.
+                </p>
+              </div>
+            </div>
+
+            <!-- Filter tabs -->
+            <div class="not-for-sale-tabs" style="display: flex; gap: 8px; margin: 14px 0 12px 0; flex-wrap: wrap;">
+              <button type="button" class="not-for-sale-tab-btn active" data-filter="all">
+                Todos (${wantsNotForSale.length})
+              </button>
+              <button type="button" class="not-for-sale-tab-btn" data-filter="blocked" style="border-color: rgba(245, 158, 11, 0.4);">
+                <span style="color: #f59e0b;">🌍</span> No envían a ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
+              </button>
+              <button type="button" class="not-for-sale-tab-btn" data-filter="zero" style="border-color: rgba(239, 68, 68, 0.4);">
+                <span style="color: #ef4444;">🚫</span> Totalmente Agotados (${wantsTrulyUnavailable.length})
+              </button>
+            </div>
             
-            <div class="not-for-sale-list" style="max-height: 540px;">
-              ${wantsNotForSale.length > 0 ? wantsNotForSale.map(w => `
-                <div class="not-for-sale-row">
-                  <div class="not-for-sale-info">
-                    <div class="not-for-sale-cover" style="background-image: url('${(w && w.image) ? w.image : ''}')">
-                      ${(!w || !w.image) ? `<span style="font-size: 14px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
-                    </div>
-                    <div class="not-for-sale-text" style="text-align: left;">
-                      <span class="not-for-sale-title" title="${escapeHTML(w ? w.title : '')}">${escapeHTML(w ? w.title : 'Desconocido')}</span>
-                      <span class="not-for-sale-artist" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
-                    </div>
-                  </div>
-                  <a href="https://www.discogs.com/sell/list?release_id=${w ? w.id : ''}" target="_blank" class="btn-search-discogs-sm">Ver en Discogs</a>
-                </div>
-              `).join('') : `
+            <div class="not-for-sale-list" style="max-height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+              ${wantsNotForSale.length > 0 ? (
+                [...wantsBlockedByShipping.map(w => renderNotForSaleItem(w, true)),
+                 ...wantsTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
+              ) : `
                 <p style="font-size: 13px; color: var(--tertiary, #5f5e5e); padding: 30px; text-align: center;">
-                  🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia en venta hoy.
+                  🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia disponible para comprar hoy.
                 </p>
               `}
             </div>
