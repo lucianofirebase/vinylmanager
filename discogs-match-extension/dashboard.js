@@ -260,12 +260,16 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);
+  const mobileLoadWantsBtn = document.getElementById('mobile-load-wants-btn');
+  if (mobileLoadWantsBtn) mobileLoadWantsBtn.addEventListener('click', loadWantlist);
   if (refreshWantsBtn) {
     refreshWantsBtn.style.display = 'flex';
     refreshWantsBtn.disabled = false;
     refreshWantsBtn.addEventListener('click', refreshWantlistIncremental);
   }
   startScanBtn.addEventListener('click', startMarketplaceScan);
+  const mobileStartScanBtn = document.getElementById('mobile-start-scan-btn');
+  if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', startMarketplaceScan);
   cancelScanBtn.addEventListener('click', cancelScan);
   saveUsernameBtn.addEventListener('click', saveManualUsername);
   clearCacheBtn.addEventListener('click', clearScanCache);
@@ -589,6 +593,14 @@ document.addEventListener('click', (e) => {
         window.open(url, '_blank');
       }
     }
+    return;
+  }
+
+  // Handle "Volver a Vendedores" button in wantlist stats & local views
+  const backToSellersBtn = e.target.closest('.btn-back-to-sellers');
+  if (backToSellersBtn) {
+    e.preventDefault();
+    switchTab('sellers');
     return;
   }
 
@@ -3060,7 +3072,7 @@ function renderSmartPurchase(filteredSellers) {
 
       albumsHtml += `
         <div class="smart-album-row" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px;">
-          <span class="smart-album-title" style="color: #e5e7eb; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;" title="${escapeHTML(fullLabel)}">💿 ${escapeHTML(fullLabel)}</span>
+          <span class="smart-album-title" style="color: var(--on-surface, #1e1e1e); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;" title="${escapeHTML(fullLabel)}">💿 ${escapeHTML(fullLabel)}</span>
           <span class="smart-album-price" style="color: var(--text-muted); white-space: nowrap; font-weight: 600; font-size: 11px;">${formatPrice(l.priceVal, l.currency)}</span>
         </div>
       `;
@@ -3073,15 +3085,21 @@ function renderSmartPurchase(filteredSellers) {
     return `
       <div class="smart-candidate-card ${isActiveClass} ${isTopRec ? 'border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30' : ''}">
         <div class="smart-candidate-header">
-          <div class="smart-candidate-title">
-            <span style="font-size: 14px;">${medal}</span>
-            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 125px;" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
-            ${isTopRec ? `<span class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded border border-amber-500/30">Recomendado</span>` : ''}
-            <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
+          <div class="smart-candidate-info">
+            <div class="smart-candidate-seller-line">
+              <span class="smart-candidate-medal">${medal}</span>
+              <span class="smart-candidate-name" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
+            </div>
+            <div class="smart-candidate-badges-line">
+              ${isTopRec ? `<span class="smart-candidate-badge-rec">Recomendado</span>` : ''}
+              <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
+            </div>
           </div>
-          <div class="smart-candidate-price">
-            ${formatPrice(totalCost, seller.currency)}
-            <span style="font-size: 8px; opacity: 0.6; margin-left: 2px;">▼</span>
+          <div class="smart-candidate-price-col">
+            <div class="smart-candidate-price">
+              ${formatPrice(totalCost, seller.currency)}
+            </div>
+            <span class="smart-candidate-chevron">▼</span>
           </div>
         </div>
         
@@ -4065,7 +4083,7 @@ function calculateAndRenderStats() {
     let html = `
       <!-- Top Sub-View Header & Navigation Bar -->
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-        <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
           <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
           <span>Volver a Vendedores Marketplace</span>
         </button>
@@ -4780,7 +4798,7 @@ function renderLocalMatches() {
   if (matches.length === 0) {
     localView.innerHTML = `
       <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-        <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
           <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
           <span>Volver a Vendedores Marketplace</span>
         </button>
@@ -4806,7 +4824,7 @@ function renderLocalMatches() {
   
   let html = `
     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-      <button onclick="switchTab('sellers')" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+      <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
         <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
         <span>Volver a Vendedores Marketplace</span>
       </button>
