@@ -13,8 +13,18 @@
     "storage",
     "unlimitedStorage",
     "tabs",
-    "scripting"
+    "scripting",
+    "declarativeNetRequest"
   ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
   "host_permissions": [
     "https://*.discogs.com/*",
     "https://api.discogs.com/*"

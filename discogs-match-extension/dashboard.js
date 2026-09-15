@@ -1022,10 +1022,14 @@ function handleHierarchicalBack(pushHistory = true) {
 // Utility: Upgrade Discogs image URLs to high-resolution versions
 function upgradeDiscogsImageUrl(url) {
   if (!url || typeof url !== 'string') return '';
+  // Discogs uses imgproxy on i.discogs.com with HMAC-SHA256 signatures in the URL path.
+  // Modifying dimensions or quality (/h:600/w:600/ or /q:90/) invalidates the cryptographic signature,
+  // causing Cloudflare/imgproxy to reject the request with HTTP 403 Forbidden.
+  // Therefore, URLs on i.discogs.com must be preserved exactly as generated and signed by Discogs.
+  if (url.includes('i.discogs.com')) {
+    return url;
+  }
   let upgraded = url;
-  // Upgrade rs:fit/g:sm/q:40/h:150/w:150 to q:90/h:600/w:600
-  upgraded = upgraded.replace(/\/h:\d+\/w:\d+\//i, '/h:600/w:600/');
-  upgraded = upgraded.replace(/\/q:\d+\//i, '/q:90/');
   upgraded = upgraded.replace(/height=\d+([,&])width=\d+/i, 'height=600$1width=600');
   upgraded = upgraded.replace(/[?&]w=\d+/gi, '?w=600');
   upgraded = upgraded.replace(/[?&]h=\d+/gi, '&h=600');
@@ -1093,7 +1097,7 @@ function renderWantsListInManager() {
       </button>
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
       <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-2 rounded-lg overflow-hidden border border-outline-variant/30 flex items-center justify-center relative shadow-xs">
-        ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
+        ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
       </div>
       <div class="w-full text-center px-0.5">
         <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5">
@@ -1104,6 +1108,17 @@ function renderWantsListInManager() {
         </p>
       </div>
     `;
+
+    const coverImg = card.querySelector('.record-cover-wrapper img');
+    if (coverImg) {
+      coverImg.addEventListener('error', function() {
+        this.style.display = 'none';
+        const wrapper = this.closest('.record-cover-wrapper');
+        if (wrapper && !wrapper.querySelector('.material-symbols-outlined')) {
+          wrapper.innerHTML = '<span class="material-symbols-outlined text-3xl text-tertiary">album</span>';
+        }
+      });
+    }
 
     const starBtn = card.querySelector('.record-star-btn');
     const starIcon = card.querySelector('.record-star-btn .star-icon');
@@ -1718,10 +1733,22 @@ function parseWantlistHTML(html) {
     title = title.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
     
     // Check if we can get the cover image
-    const img = row.querySelector('img[data-src], img[src]');
+    const img = row.querySelector('img[data-src], img[srcset], img[src]');
     let image = '';
     if (img) {
-      image = img.getAttribute('data-src') || img.getAttribute('src') || '';
+      const srcset = img.getAttribute('srcset');
+      if (srcset) {
+        const parts = srcset.split(',').map(s => s.trim()).filter(Boolean);
+        if (parts.length > 0) {
+          const candidate = parts[parts.length - 1].split(/\s+/)[0];
+          if (candidate && (candidate.startsWith('http://') || candidate.startsWith('https://'))) {
+            image = candidate;
+          }
+        }
+      }
+      if (!image) {
+        image = img.getAttribute('data-src') || img.getAttribute('src') || '';
+      }
       image = upgradeDiscogsImageUrl(image);
     }
 
@@ -4858,7 +4885,7 @@ function renderLocalMatches() {
         
         <div style="display: flex; gap: 14px; margin-bottom: 12px;">
           <div style="width: 54px; height: 54px; border-radius: 8px; overflow: hidden; background: #1a2035; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-            ${item.image ? `<img src="${item.image}" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
+            ${item.image ? `<img src="${item.image}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
           </div>
           <div style="min-width: 0; flex-grow: 1; padding-right: ${item.isPriority ? '80px' : '0'};">
             <p style="font-weight: 700; color: #fff; font-size: 14px; margin: 0 0 2px 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(item.title)}</p>
