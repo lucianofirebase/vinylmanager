@@ -389,6 +389,7 @@ input:where([type='button']),
 input:where([type='reset']),
 input:where([type='submit']) {
   -webkit-appearance: button;
+  appearance: button;
   /* 1 */
   background-color: transparent;
   /* 2 */
@@ -436,6 +437,7 @@ Correct the cursor style of increment and decrement buttons in Safari.
 
 [type='search'] {
   -webkit-appearance: textfield;
+  appearance: textfield;
   /* 1 */
   outline-offset: -2px;
   /* 2 */
@@ -575,8 +577,6 @@ embed,
 object {
   display: block;
   /* 1 */
-  vertical-align: middle;
-  /* 2 */
 }
 
 /*
@@ -2319,15 +2319,23 @@ video {
 }
 
 .total-value-normal {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--on-surface, #1b1c19);
+  color: #18181b; /* text-zinc-900 */
+}
+
+.dark .total-value-normal {
+  color: #f4f4f5;
 }
 
 .total-value-highlight {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--secondary, #0058bc);
+  font-size: 16px;
+  font-weight: 700;
+  color: #18181b; /* dark slate text-zinc-900 */
+}
+
+.dark .total-value-highlight {
+  color: #fafafa;
 }
 
 .seller-actions {
@@ -2434,10 +2442,73 @@ video {
 .badge-condition {
   font-size: 11px;
   font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: var(--surface-container, #f0eee9);
-  color: var(--on-surface, #1b1c19);
+  padding: 2px 7px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.02em;
+  line-height: 1.2;
+}
+
+/* Mint / Near Mint: Emerald sutil */
+.badge-condition.M,
+.badge-condition.NM,
+.badge-condition.cond-m,
+.badge-condition.cond-nm {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+
+/* Very Good Plus / Very Good: Ámbar */
+.badge-condition.VG,
+.badge-condition.VGplus,
+.badge-condition.cond-vg,
+.badge-condition.cond-vgplus {
+  background: #fffbeb !important;
+  color: #b45309 !important;
+  border-color: #fde68a !important;
+}
+
+/* Good Plus y menores: Gris neutro */
+.badge-condition.Gplus,
+.badge-condition.cond-gplus,
+.badge-condition.cond-g,
+.badge-condition.cond-f,
+.badge-condition.cond-p {
+  background: #f4f4f5 !important;
+  color: #52525b !important;
+  border-color: #e4e4e7 !important;
+}
+
+.dark .badge-condition.M,
+.dark .badge-condition.NM,
+.dark .badge-condition.cond-m,
+.dark .badge-condition.cond-nm {
+  background: rgba(16, 185, 129, 0.15) !important;
+  color: #34d399 !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.dark .badge-condition.VG,
+.dark .badge-condition.VGplus,
+.dark .badge-condition.cond-vg,
+.dark .badge-condition.cond-vgplus {
+  background: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.dark .badge-condition.Gplus,
+.dark .badge-condition.cond-gplus,
+.dark .badge-condition.cond-g,
+.dark .badge-condition.cond-f,
+.dark .badge-condition.cond-p {
+  background: rgba(161, 161, 170, 0.15) !important;
+  color: #d4d4d8 !important;
+  border-color: rgba(161, 161, 170, 0.3) !important;
 }
 
 .listing-price-cell {
@@ -3298,4 +3369,172 @@ video {
 #btn-forward-to-results:hover,
 #bottom-btn-forward-to-results:hover {
   transform: translateX(2px);
+}
+
+/* Integrated Horizontal Stat Pill */
+.stat-pill-banner {
+  display: inline-flex;
+  align-items: center;
+  background: var(--surface-container-low, #f5f3ee);
+  border: 1px solid var(--outline-variant, #d7c3ae);
+  border-radius: 9999px;
+  padding: 6px 18px;
+  gap: 12px;
+  font-size: 13px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.dark .stat-pill-banner {
+  background: #1e1e1e;
+  border-color: #383838;
+}
+
+/* Two-Column Results Layout */
+.results-two-col-layout {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .results-two-col-layout {
+    display: flex !important;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .results-col-sidebar {
+    width: 35%;
+    min-width: 340px;
+    max-width: 440px;
+    position: sticky;
+    top: 75px;
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+
+  .results-col-main {
+    flex: 1;
+    min-width: 0;
+    width: 65%;
+  }
+}
+
+/* Smart Purchase Card in 35% Sidebar */
+.smart-purchase-card {
+  border: 1px solid rgba(245, 158, 11, 0.35) !important;
+  background: var(--surface-container-lowest, #ffffff);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.07);
+}
+
+.dark .smart-purchase-card {
+  background: #1e1e1e;
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Record Card & Floating Star Button Enhancements */
+.record-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--outline-variant, #e4e2dd) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.record-card:hover {
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
+  transform: translateY(-2px);
+  border-color: rgba(131, 85, 0, 0.35) !important;
+}
+
+.record-card.active-priority {
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6), 0 4px 14px rgba(245, 158, 11, 0.18) !important;
+  background-color: rgba(245, 158, 11, 0.04) !important;
+}
+
+.record-cover-wrapper {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+/* Floating Circular Star Badge */
+.record-star-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.62);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 20;
+}
+
+.record-star-btn .star-icon {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.65);
+  transition: all 0.2s ease;
+}
+
+.record-star-btn:hover {
+  transform: scale(1.1);
+  background: rgba(0, 0, 0, 0.85);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.record-star-btn:hover .star-icon {
+  color: #ffffff;
+}
+
+.record-star-btn.active {
+  background: #f59e0b !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.45);
+}
+
+.record-star-btn.active .star-icon {
+  color: #ffffff !important;
+  font-variation-settings: 'FILL' 1 !important;
+}
+
+/* Floating Hover Tooltip for Full Title */
+.record-hover-tooltip {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #18181b;
+  color: #f4f4f5;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 6px 10px;
+  border-radius: 8px;
+  pointer-events: none;
+  opacity: 0;
+  white-space: normal;
+  max-width: 220px;
+  width: max-content;
+  text-align: center;
+  z-index: 50;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  line-height: 1.35;
+}
+
+.record-card:hover .record-hover-tooltip {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }

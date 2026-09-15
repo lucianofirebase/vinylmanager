@@ -905,6 +905,7 @@ function navigateToView(viewName, pushHistory = true) {
   const emptyState = document.getElementById('empty-state');
   const wantlistManager = document.getElementById('wantlist-manager');
   const resultsGrid = document.getElementById('results-grid');
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
   const noResultsState = document.getElementById('no-results-state');
   const smartPurchaseCard = document.getElementById('smart-purchase-card');
   const tabNavigation = document.getElementById('tab-navigation');
@@ -916,6 +917,7 @@ function navigateToView(viewName, pushHistory = true) {
     const stepNum = parseInt(viewName.split('-')[1] || '1', 10);
     if (wantlistManager) wantlistManager.style.display = 'none';
     if (resultsGrid) resultsGrid.style.display = 'none';
+    if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
     if (noResultsState) noResultsState.style.display = 'none';
     if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
     if (tabNavigation) tabNavigation.style.display = 'none';
@@ -931,6 +933,7 @@ function navigateToView(viewName, pushHistory = true) {
   } else if (viewName === 'wantlist') {
     if (emptyState) emptyState.style.display = 'none';
     if (resultsGrid) resultsGrid.style.display = 'none';
+    if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
     if (noResultsState) noResultsState.style.display = 'none';
     if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
     if (tabNavigation) tabNavigation.style.display = 'none';
@@ -1032,41 +1035,56 @@ function renderWantsListInManager() {
     const isChecked = item.isPriority ? 'checked' : '';
     const starId = `star-want-${item.id || index}`;
     
-    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'ring-2 ring-primary border-primary bg-primary/5' : ''}`;
+    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'active-priority ring-2 ring-primary border-primary bg-primary/5' : ''}`;
     card.style.animationDelay = `${Math.min(index * 0.02, 0.8)}s`;
     
     card.innerHTML = `
-      <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
-      <label for="${starId}" class="absolute top-1.5 right-1.5 cursor-pointer z-10 bg-surface-container-lowest/90 backdrop-blur-sm rounded-full p-1 shadow-xs hover:scale-110 transition-transform">
-        <span class="material-symbols-outlined text-outline text-[18px]" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0}; color: ${item.isPriority ? '#f5a623' : '#857462'};">star</span>
+      <div class="record-hover-tooltip">
+        <p class="font-bold mb-0.5 leading-snug">${escapeHTML(item.title)}</p>
+        <p class="text-zinc-400 text-[10px] leading-tight">${escapeHTML(item.artist || 'Desconocido')}</p>
+      </div>
+      <label for="${starId}" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" title="${item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario'}">
+        <span class="material-symbols-outlined star-icon" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0};">star</span>
       </label>
+      <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
       <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-2 rounded-lg overflow-hidden border border-outline-variant/30 flex items-center justify-center relative shadow-xs">
         ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(item.title)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
       </div>
       <div class="w-full text-center px-0.5">
-        <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5" title="${escapeHTML(item.title)}">
+        <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5">
           ${escapeHTML(item.title)}
         </p>
-        <p class="text-[11px] text-tertiary truncate w-full leading-tight" title="${escapeHTML(item.artist || '')}">
+        <p class="text-[11px] text-tertiary truncate w-full leading-tight">
           ${escapeHTML(item.artist || 'Desconocido')}
         </p>
       </div>
     `;
 
+    const starBtn = card.querySelector('.record-star-btn');
+    const starIcon = card.querySelector('.record-star-btn .star-icon');
     const starCheckbox = card.querySelector('.star-checkbox');
-    const starLabelSpan = card.querySelector('label span');
 
     const toggleStar = (e) => {
       e.stopPropagation();
       item.isPriority = !item.isPriority;
-      starCheckbox.checked = item.isPriority;
-      starLabelSpan.style.fontVariationSettings = `'FILL' ${item.isPriority ? 1 : 0}`;
-      starLabelSpan.style.color = item.isPriority ? '#f5a623' : '#857462';
+      if (starCheckbox) starCheckbox.checked = item.isPriority;
+      if (starBtn) {
+        starBtn.classList.toggle('active', item.isPriority);
+        starBtn.title = item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario';
+      }
+      if (starIcon) {
+        starIcon.style.fontVariationSettings = `'FILL' ${item.isPriority ? 1 : 0}`;
+      }
+      card.classList.toggle('active-priority', item.isPriority);
       card.classList.toggle('ring-2', item.isPriority);
       card.classList.toggle('ring-primary', item.isPriority);
+
+      if (item.isPriority && window.Motion && window.Motion.starBurst) {
+        window.Motion.starBurst(starBtn || card, true);
+      }
     };
 
-    starCheckbox.addEventListener('change', toggleStar);
+    if (starBtn) starBtn.addEventListener('click', toggleStar);
     card.addEventListener('click', toggleStar);
 
     wantsListGrid.appendChild(card);
@@ -2958,14 +2976,16 @@ function renderSmartPurchase(filteredSellers) {
     });
 
     const isActiveClass = rankIndex === 0 ? 'active' : '';
+    const isTopRec = rankIndex === 0;
     const sellerUrl = seller.listings[0]?.listingUrl || (seller.listings[0]?.listingId ? 'https://www.discogs.com/sell/item/' + seller.listings[0].listingId : 'https://www.discogs.com/release/' + seller.listings[0]?.releaseId);
 
     return `
-      <div class="smart-candidate-card ${isActiveClass}">
+      <div class="smart-candidate-card ${isActiveClass} ${isTopRec ? 'border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30' : ''}">
         <div class="smart-candidate-header">
           <div class="smart-candidate-title">
             <span style="font-size: 14px;">${medal}</span>
-            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
+            <span style="font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 125px;" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
+            ${isTopRec ? `<span class="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded border border-amber-500/30">Recomendado</span>` : ''}
             <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
           </div>
           <div class="smart-candidate-price">
@@ -3148,6 +3168,8 @@ function renderResults() {
     } else {
       emptyState.style.display = 'flex';
       resultsGrid.style.display = 'none';
+      const resultsViewWrapper = document.getElementById('results-view-wrapper');
+      if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
       noResultsState.style.display = 'none';
       const smartCard = document.getElementById('smart-purchase-card');
       if (smartCard) smartCard.style.display = 'none';
@@ -3263,6 +3285,8 @@ function renderResults() {
   if (filtered.length === 0) {
     emptyState.style.display = 'none';
     resultsGrid.style.display = 'none';
+    const resultsViewWrapper = document.getElementById('results-view-wrapper');
+    if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
     noResultsState.style.display = 'block';
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
@@ -3300,6 +3324,8 @@ function renderResults() {
   currentAppView = `results-${currentActiveTab}`;
   updateForwardAndBackButtons();
   resultsGrid.style.display = currentActiveTab === 'sellers' ? 'grid' : 'none';
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
+  if (resultsViewWrapper) resultsViewWrapper.style.display = currentActiveTab === 'sellers' ? 'flex' : 'none';
   const smartCard = document.getElementById('smart-purchase-card');
   if (smartCard) smartCard.style.display = currentActiveTab === 'sellers' ? 'block' : 'none';
   const statsView = document.getElementById('stats-view');
@@ -3349,7 +3375,17 @@ function renderResults() {
         'F': 'Fair (Muy usado)',
         'P': 'Poor (Dañado)'
       };
-      const condTooltip = conditionTitles[list.mediaCondition] || 'Estado del vinilo';
+      const condClassMap = {
+        'M': 'M cond-m',
+        'NM': 'NM cond-nm',
+        'VG+': 'VGplus cond-vgplus',
+        'VG': 'VG cond-vg',
+        'G+': 'Gplus cond-gplus',
+        'G': 'cond-g',
+        'F': 'cond-f',
+        'P': 'cond-p'
+      };
+      const badgeCondClass = condClassMap[list.mediaCondition] || list.mediaCondClass || 'cond-vg';
       
       listingsHtml += `
         <tr>
@@ -3360,7 +3396,7 @@ function renderResults() {
             <span class="listing-artist">${escapeHTML(wantInfo.artist)}</span>
           </td>
           <td>
-            <span class="badge-condition ${list.mediaCondClass}" title="${condTooltip}">${escapeHTML(list.mediaCondition)}</span>
+            <span class="badge-condition ${badgeCondClass}" title="${condTooltip}">${escapeHTML(list.mediaCondition)}</span>
           </td>
           <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
           <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)}${listShippingWarning} envío</td>
@@ -4285,6 +4321,10 @@ function switchTab(tabName) {
       resultsGrid.classList.add('visible');
       resultsGrid.style.opacity = '1';
     }
+  }
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
+  if (resultsViewWrapper) {
+    resultsViewWrapper.style.display = tabName === 'sellers' ? 'flex' : 'none';
   }
   if (smartPurchaseCard) smartPurchaseCard.style.display = tabName === 'sellers' ? 'block' : 'none';
   if (statsView) {
