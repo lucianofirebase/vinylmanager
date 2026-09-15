@@ -3148,3 +3148,113 @@ video {
   cursor: pointer !important;
   line-height: 1.2 !important;
 }
+
+/* ==========================================================================
+   COLOR & CONTRAST UTILITIES (PREVENT BLACK ON BLACK / INVISIBLE TEXT)
+   ========================================================================== */
+
+/* Neutral text & background colors */
+.text-white { color: #ffffff !important; }
+.text-white\/30 { color: rgba(255, 255, 255, 0.3) !important; }
+
+.text-neutral-100 { color: #f5f5f5 !important; }
+.text-neutral-200 { color: #e5e5e5 !important; }
+.text-neutral-300 { color: #d4d4d4 !important; }
+.text-neutral-400 { color: #a3a3a3 !important; }
+.text-neutral-500 { color: #737373 !important; }
+.text-neutral-900 { color: #171717 !important; }
+.text-neutral-950 { color: #0a0a0a !important; }
+
+.bg-neutral-800 { background-color: #262626 !important; }
+.bg-neutral-900 { background-color: #171717 !important; }
+.bg-neutral-950 { background-color: #0a0a0a !important; }
+
+.border-neutral-700 { border-color: #404040 !important; }
+.border-neutral-700\/40 { border-color: rgba(64, 64, 64, 0.4) !important; }
+.border-neutral-700\/50 { border-color: rgba(64, 64, 64, 0.5) !important; }
+.border-neutral-800 { border-color: #262626 !important; }
+.border-neutral-800\/70 { border-color: rgba(38, 38, 38, 0.7) !important; }
+
+/* Status & Brand Colors */
+.bg-amber-500 { background-color: #f59e0b !important; }
+.bg-amber-400 { background-color: #fbbf24 !important; }
+.text-amber-500 { color: #f59e0b !important; }
+.text-amber-400 { color: #fbbf24 !important; }
+.border-amber-400\/40 { border-color: rgba(251, 191, 36, 0.4) !important; }
+.border-amber-500\/40 { border-color: rgba(245, 158, 11, 0.4) !important; }
+.bg-neutral-800\/80 { background-color: rgba(38, 38, 38, 0.8) !important; }
+
+.bg-emerald-400 { background-color: #34d399 !important; }
+.bg-emerald-500 { background-color: #10b981 !important; }
+.text-emerald-400 { color: #34d399 !important; }
+.text-emerald-600 { color: #059669 !important; }
+.bg-emerald-500\/10 { background-color: rgba(16, 185, 129, 0.1) !important; }
+.border-emerald-500\/30 { border-color: rgba(16, 185, 129, 0.3) !important; }
+
+.bg-green-500 { background-color: #22c55e !important; }
+.bg-green-500\/10 { background-color: rgba(34, 197, 94, 0.1) !important; }
+.border-green-500\/30 { border-color: rgba(34, 197, 94, 0.3) !important; }
+.text-green-700 { color: #15803d !important; }
+
+.text-rose-400 { color: #fb7185 !important; }
+
+/* Surface opacities */
+.border-outline-variant\/20 { border-color: rgba(120, 120, 120, 0.2) !important; }
+.border-outline-variant\/30 { border-color: rgba(120, 120, 120, 0.3) !important; }
+.border-outline-variant\/40 { border-color: rgba(120, 120, 120, 0.4) !important; }
+.border-outline-variant\/50 { border-color: rgba(120, 120, 120, 0.5) !important; }
+.border-outline-variant\/60 { border-color: rgba(120, 120, 120, 0.6) !important; }
+
+.bg-primary\/10 { background-color: rgba(229, 149, 0, 0.1) !important; }
+.bg-primary\/15 { background-color: rgba(229, 149, 0, 0.15) !important; }
+.border-primary\/20 { border-color: rgba(229, 149, 0, 0.2) !important; }
+.border-primary\/25 { border-color: rgba(229, 149, 0, 0.25) !important; }
+.border-primary\/30 { border-color: rgba(229, 149, 0, 0.3) !important; }
+
+.border-error\/30 { border-color: rgba(239, 68, 68, 0.3) !important; }
+.hover\:bg-error\/10:hover { background-color: rgba(239, 68, 68, 0.1) !important; }
+
+/* Dedicated Dock Logger Elements */
+.scan-bottom-dock {
+  color: #e5e5e5 !important;
+}
+
+#log-count-badge {
+  background-color: #262626 !important;
+  color: #fbbf24 !important; /* Crisp amber text on dark charcoal */
+  border: 1px solid rgba(245, 158, 11, 0.4) !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+#log-latest-ticker {
+  color: #a3a3a3 !important;
+}
+
+#log-chevron {
+  color: #a3a3a3 !important;
+}
+
+#copy-logs-btn,
+#clear-logs-btn {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #d4d4d4 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  transition: all 0.2s ease !important;
+}
+
+#copy-logs-btn:hover {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+}
+
+#clear-logs-btn:hover {
+  background-color: rgba(244, 63, 94, 0.15) !important;
+  color: #fb7185 !important;
+  border-color: rgba(244, 63, 94, 0.4) !important;
+}
