@@ -1007,6 +1007,23 @@ function handleHierarchicalBack(pushHistory = true) {
   }
 }
 
+// Utility: Upgrade Discogs image URLs to high-resolution versions
+function upgradeDiscogsImageUrl(url) {
+  if (!url || typeof url !== 'string') return '';
+  let upgraded = url;
+  // Upgrade rs:fit/g:sm/q:40/h:150/w:150 to q:90/h:600/w:600
+  upgraded = upgraded.replace(/\/h:\d+\/w:\d+\//i, '/h:600/w:600/');
+  upgraded = upgraded.replace(/\/q:\d+\//i, '/q:90/');
+  upgraded = upgraded.replace(/height=\d+([,&])width=\d+/i, 'height=600$1width=600');
+  upgraded = upgraded.replace(/[?&]w=\d+/gi, '?w=600');
+  upgraded = upgraded.replace(/[?&]h=\d+/gi, '&h=600');
+  upgraded = upgraded.replace(/\/150x150\//i, '/600x600/');
+  upgraded = upgraded.replace(/\/40x40\//i, '/600x600/');
+  upgraded = upgraded.replace(/\/90x90\//i, '/600x600/');
+  upgraded = upgraded.replace(/\/R-(?:90|150)-\d+/i, (m) => m.replace(/-(?:90|150)-/, '-'));
+  return upgraded;
+}
+
 // Show Wantlist Manager section when wants are loaded
 function showWantlistManager(pushHistory = true) {
   navigateToView('wantlist', pushHistory);
@@ -1035,27 +1052,43 @@ function renderWantsListInManager() {
     const isChecked = item.isPriority ? 'checked' : '';
     const starId = `star-want-${item.id || index}`;
     
-    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'active-priority ring-2 ring-primary border-primary bg-primary/5' : ''}`;
+    // Resolve clean title and artist for display
+    let displayTitle = (item.title || '').trim();
+    let displayArtist = (item.artist || '').trim();
+    if ((!displayTitle || displayTitle === 'Título del Disco' || displayTitle === 'Unknown Title') && (displayArtist.includes(' - ') || displayArtist.includes(' – '))) {
+      let clean = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+      const parts = clean.split(/\s+[-–—]\s+/);
+      if (parts.length >= 2) {
+        displayArtist = parts[0].trim();
+        displayTitle = parts.slice(1).join(' - ').replace(/\s*\([^)]*\)\s*$/, '').trim();
+      }
+    } else if (!displayTitle || displayTitle === 'Título del Disco' || displayTitle === 'Unknown Title') {
+      displayTitle = displayArtist || `Disco #${item.id || index}`;
+      displayArtist = 'Desconocido';
+    }
+    displayArtist = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+
+    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'active-priority ring-2 ring-amber-500/50 border-amber-500/60 bg-amber-500/5' : ''}`;
     card.style.animationDelay = `${Math.min(index * 0.02, 0.8)}s`;
     
     card.innerHTML = `
       <div class="record-hover-tooltip">
-        <p class="font-bold mb-0.5 leading-snug">${escapeHTML(item.title)}</p>
-        <p class="text-zinc-400 text-[10px] leading-tight">${escapeHTML(item.artist || 'Desconocido')}</p>
+        <p class="font-bold mb-0.5 leading-snug">${escapeHTML(displayTitle)}</p>
+        <p class="text-zinc-400 text-[10px] leading-tight">${escapeHTML(displayArtist)}</p>
       </div>
-      <label for="${starId}" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" title="${item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario'}">
+      <button type="button" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" title="${item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario'}">
         <span class="material-symbols-outlined star-icon" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0};">star</span>
-      </label>
+      </button>
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
       <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-2 rounded-lg overflow-hidden border border-outline-variant/30 flex items-center justify-center relative shadow-xs">
-        ${item.image ? `<img src="${item.image}" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(item.title)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
+        ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
       </div>
       <div class="w-full text-center px-0.5">
         <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5">
-          ${escapeHTML(item.title)}
+          ${escapeHTML(displayTitle)}
         </p>
         <p class="text-[11px] text-tertiary truncate w-full leading-tight">
-          ${escapeHTML(item.artist || 'Desconocido')}
+          ${escapeHTML(displayArtist)}
         </p>
       </div>
     `;
@@ -1065,27 +1098,39 @@ function renderWantsListInManager() {
     const starCheckbox = card.querySelector('.star-checkbox');
 
     const toggleStar = (e) => {
-      e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        e.preventDefault();
+      }
       item.isPriority = !item.isPriority;
       if (starCheckbox) starCheckbox.checked = item.isPriority;
       if (starBtn) {
         starBtn.classList.toggle('active', item.isPriority);
         starBtn.title = item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario';
+        if (item.isPriority) {
+          starBtn.classList.add('star-pop-anim');
+          starBtn.addEventListener('animationend', () => starBtn.classList.remove('star-pop-anim'), { once: true });
+        }
       }
       if (starIcon) {
         starIcon.style.fontVariationSettings = `'FILL' ${item.isPriority ? 1 : 0}`;
       }
       card.classList.toggle('active-priority', item.isPriority);
       card.classList.toggle('ring-2', item.isPriority);
-      card.classList.toggle('ring-primary', item.isPriority);
+      card.classList.toggle('ring-amber-500/50', item.isPriority);
 
       if (item.isPriority && window.Motion && window.Motion.starBurst) {
         window.Motion.starBurst(starBtn || card, true);
       }
     };
 
-    if (starBtn) starBtn.addEventListener('click', toggleStar);
-    card.addEventListener('click', toggleStar);
+    if (starBtn) {
+      starBtn.addEventListener('click', (e) => toggleStar(e));
+    }
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.record-star-btn')) return;
+      toggleStar(e);
+    });
 
     wantsListGrid.appendChild(card);
   });
@@ -1615,10 +1660,12 @@ function parseWantlistHTML(html) {
   }
   
   rows.forEach(row => {
-    const releaseLink = row.matches && row.matches('a[href*="/release/"]') ? row : row.querySelector('a[href*="/release/"]');
+    // Find all release links in row, prioritizing those with non-empty text
+    const allLinks = Array.from(row.matches && row.matches('a[href*="/release/"]') ? [row] : row.querySelectorAll('a[href*="/release/"]'));
+    const releaseLink = allLinks.find(a => (a.textContent || '').trim().length > 0) || allLinks[0];
     if (!releaseLink) return;
     
-    const href = releaseLink.getAttribute('href');
+    const href = releaseLink.getAttribute('href') || '';
     const match = href.match(/\/release\/(\d+)/);
     if (!match) return;
     
@@ -1627,30 +1674,43 @@ function parseWantlistHTML(html) {
     // Avoid duplicates
     if (wants.some(w => w.id === id)) return;
     
-    // Parse title & artist from text
-    // E.g., "Daft Punk - Discovery (CD, Album)"
-    let text = releaseLink.textContent.trim();
-    let artist = 'Unknown Artist';
-    let title = 'Unknown Title';
+    // Check specific sub-elements in Discogs table
+    const artistEl = row.querySelector('.artist, [class*="artist"], a[href*="/artist/"]');
+    const titleEl = row.querySelector('.item_description, .title, [class*="title"], [class*="release-title"]');
     
-    const parts = text.split(' - ');
-    if (parts.length > 1) {
-      artist = parts[0].trim();
-      // Remove formats in parentheses at the end of the title
-      title = parts.slice(1).join(' - ').split('(')[0].trim();
-    } else {
-      title = text.split('(')[0].trim();
-      const artistEl = row.querySelector('.artist, [class*="artist"], a[href*="/artist/"]');
-      if (artistEl) {
-        artist = artistEl.textContent.trim();
+    let text = (releaseLink.textContent || '').trim();
+    let artist = artistEl ? artistEl.textContent.trim() : '';
+    let title = titleEl ? titleEl.textContent.trim() : '';
+    
+    // If not found in specific cells, parse from text
+    if (!title && text) {
+      let cleanText = text.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+      const parts = cleanText.split(/\s+[-–—]\s+/);
+      if (parts.length >= 2) {
+        if (!artist) artist = parts[0].trim();
+        title = parts.slice(1).join(' - ').replace(/\s*\([^)]*\)\s*$/, '').trim();
+      } else {
+        title = cleanText.replace(/\s*\([^)]*\)\s*$/, '').trim();
       }
+    } else if (title && !artist && title.includes(' - ')) {
+      const parts = title.split(/\s+[-–—]\s+/);
+      artist = parts[0].trim();
+      title = parts.slice(1).join(' - ').trim();
     }
+    
+    if (!artist) artist = 'Desconocido';
+    if (!title) title = 'Disco #' + id;
+    
+    // Clean trailing market copies info if present
+    artist = artist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+    title = title.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
     
     // Check if we can get the cover image
     const img = row.querySelector('img[data-src], img[src]');
     let image = '';
     if (img) {
       image = img.getAttribute('data-src') || img.getAttribute('src') || '';
+      image = upgradeDiscogsImageUrl(image);
     }
 
     // Extract want/have counts from row if present
@@ -1681,6 +1741,34 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay').trim().toLowerCase();
   const progress = Math.round(((index + 1) / totalWants) * 100);
   
+  // Extract and clean display title and artist
+  let displayTitle = (item.title || '').trim();
+  let displayArtist = (item.artist || '').trim();
+
+  // If title is missing/placeholder and artist has "Artist - Title"
+  if ((!displayTitle || displayTitle === 'Título del Disco' || displayTitle === 'Unknown Title') && (displayArtist.includes(' - ') || displayArtist.includes(' – '))) {
+    let clean = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+    const parts = clean.split(/\s+[-–—]\s+/);
+    if (parts.length >= 2) {
+      displayArtist = parts[0].trim();
+      displayTitle = parts.slice(1).join(' - ').replace(/\s*\([^)]*\)\s*$/, '').trim();
+    }
+  } else if (!displayTitle || displayTitle === 'Título del Disco' || displayTitle === 'Unknown Title') {
+    displayTitle = displayArtist || `Disco #${item.id}`;
+    displayArtist = '';
+  }
+
+  // Clean copies/market info from displayArtist and displayTitle
+  displayArtist = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+  displayTitle = displayTitle.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
+  
+  let labelPart = '';
+  const parenMatch = displayTitle.match(/\s*\(([^)]+)\)\s*$/) || displayArtist.match(/\s*\(([^)]+)\)\s*$/);
+  if (parenMatch) {
+    labelPart = parenMatch[1].trim();
+    displayTitle = displayTitle.replace(/\s*\(([^)]+)\)\s*$/, '').trim();
+  }
+
   // Update UI Progress & Hero Artwork
   statusTitle.textContent = `Escaneando disco ${index + 1} de ${totalWants}`;
   if (scanningEtaBadge) {
@@ -1688,12 +1776,14 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     scanningEtaBadge.textContent = cleanEta || 'Calculando tiempo...';
   }
   progressBar.style.width = `${progress}%`;
-  progressText.textContent = `Analizando: ${item.artist || ''} - ${item.title || ''}...`;
+  progressText.textContent = `Analizando: ${displayArtist ? displayArtist + ' - ' : ''}${displayTitle}...`;
   progressPercent.textContent = `${progress}%`;
 
   // Update Hero Metadata Info
-  if (scanningArtist) scanningArtist.textContent = item.artist || 'Artista';
-  if (scanningTitle) scanningTitle.textContent = item.title || 'Título del Disco';
+  if (scanningTitle) scanningTitle.textContent = displayTitle || 'Disco sin título';
+  if (scanningArtist) {
+    scanningArtist.textContent = labelPart ? `${displayArtist || 'Artista'} • ${labelPart}` : (displayArtist || 'Artista');
+  }
   if (scanningBadgeStep) scanningBadgeStep.textContent = `Disco ${index + 1} de ${totalWants}`;
   if (scanningPriorityTag) scanningPriorityTag.style.display = item.isPriority ? 'flex' : 'none';
   if (scanningOffersBadge) {
@@ -1701,15 +1791,16 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     scanningOffersBadge.className = 'text-[11px] font-semibold bg-primary/10 text-primary border border-primary/25 px-2.5 py-0.5 rounded-full';
   }
 
-  // Update Cover Art Preview with animated fade via Motion system
+  // Update Cover Art Preview with high resolution image
+  const highResImage = upgradeDiscogsImageUrl(item.image || '');
   if (window.Motion) {
-    window.Motion.updateCoverArt(item.image || '', item.title || '');
+    window.Motion.updateCoverArt(highResImage, displayTitle);
   } else {
     const scanningCoverArt = document.getElementById('scanning-cover-art');
     const coverPlaceholder = document.getElementById('cover-placeholder');
     if (scanningCoverArt) {
-      if (item.image) {
-        scanningCoverArt.style.backgroundImage = `url('${item.image}')`;
+      if (highResImage) {
+        scanningCoverArt.style.backgroundImage = `url('${highResImage}')`;
         if (coverPlaceholder) coverPlaceholder.style.display = 'none';
       } else {
         scanningCoverArt.style.backgroundImage = '';

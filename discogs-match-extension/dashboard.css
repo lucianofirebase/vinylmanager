@@ -3465,48 +3465,99 @@ video {
 
 /* Floating Circular Star Badge */
 .record-star-btn {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  width: 28px;
-  height: 28px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.62);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 20;
+  position: absolute !important;
+  top: 8px !important;
+  right: 8px !important;
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 9999px !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(6px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+  z-index: 20 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+  outline: none !important;
 }
 
 .record-star-btn .star-icon {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.65);
-  transition: all 0.2s ease;
+  font-size: 16px !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  transition: all 0.2s ease !important;
+  user-select: none !important;
+  pointer-events: none !important;
 }
 
 .record-star-btn:hover {
-  transform: scale(1.1);
-  background: rgba(0, 0, 0, 0.85);
-  border-color: rgba(255, 255, 255, 0.6);
+  transform: scale(1.12) !important;
+  background: rgba(0, 0, 0, 0.85) !important;
+  border-color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .record-star-btn:hover .star-icon {
-  color: #ffffff;
+  color: #ffffff !important;
 }
 
 .record-star-btn.active {
   background: #f59e0b !important;
   border-color: #fbbf24 !important;
-  box-shadow: 0 2px 6px rgba(245, 158, 11, 0.45);
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.55), 0 2px 5px rgba(0, 0, 0, 0.2) !important;
 }
 
 .record-star-btn.active .star-icon {
   color: #ffffff !important;
   font-variation-settings: 'FILL' 1 !important;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) !important;
+}
+
+@keyframes starButtonPop {
+  0% { transform: scale(0.85) rotate(-10deg); }
+  50% { transform: scale(1.28) rotate(12deg); }
+  75% { transform: scale(0.95) rotate(-4deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+.star-pop-anim {
+  animation: starButtonPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+/* Star Burst Particle Effects */
+.star-burst {
+  position: absolute !important;
+  inset: 0 !important;
+  pointer-events: none !important;
+  overflow: visible !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  z-index: 25 !important;
+}
+
+.star-burst span {
+  position: absolute !important;
+  width: 4px !important;
+  height: 4px !important;
+  border-radius: 50% !important;
+  background: #fbbf24 !important;
+  box-shadow: 0 0 4px #f59e0b !important;
+  pointer-events: none !important;
+  animation: starParticleFly 0.55s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+@keyframes starParticleFly {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--dx), var(--dy)) scale(0);
+    opacity: 0;
+  }
 }
 
 /* Floating Hover Tooltip for Full Title */

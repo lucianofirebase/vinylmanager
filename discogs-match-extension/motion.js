@@ -56,7 +56,7 @@ function motionGoToStep(from, to) {
  * @param {boolean} isActive    - Whether star is now active
  */
 function motionStarBurst(labelEl, isActive) {
-  if (!isActive) return; // only burst on activation
+  if (!isActive || !labelEl) return; // only burst on activation
 
   const burst = document.createElement('div');
   burst.className = 'star-burst';
@@ -64,7 +64,7 @@ function motionStarBurst(labelEl, isActive) {
   const PARTICLE_COUNT = 8;
   for (let i = 0; i < PARTICLE_COUNT; i++) {
     const angle = (i / PARTICLE_COUNT) * 360;
-    const distance = 20 + Math.random() * 18;
+    const distance = 16 + Math.random() * 14;
     const rad = (angle * Math.PI) / 180;
     const dx = Math.cos(rad) * distance;
     const dy = Math.sin(rad) * distance;
@@ -72,20 +72,19 @@ function motionStarBurst(labelEl, isActive) {
     const particle = document.createElement('span');
     particle.style.setProperty('--dx', `${dx}px`);
     particle.style.setProperty('--dy', `${dy}px`);
-    particle.style.animationDelay = `${Math.random() * 0.1}s`;
+    particle.style.animationDelay = `${Math.random() * 0.08}s`;
     burst.appendChild(particle);
   }
 
-  labelEl.style.position = 'relative';
   labelEl.appendChild(burst);
   
   // Halo on card
-  const card = labelEl.closest('.record-card-animated');
+  const card = labelEl.closest('.record-card, .record-card-animated');
   if (card) {
-    card.classList.add('priority-active');
+    card.classList.add('active-priority');
   }
 
-  setTimeout(() => burst.remove(), 700);
+  setTimeout(() => burst.remove(), 600);
 }
 
 // ─────────────────────────────────────────────
@@ -644,28 +643,7 @@ function initMotionSystem() {
  * Call this after renderWantsListInManager() to patch in burst effects.
  */
 function motionPatchStarCards() {
-  const grid = document.getElementById('wants-list-grid');
-  if (!grid) return;
-
-  grid.querySelectorAll('.record-card-animated').forEach((card) => {
-    const label = card.querySelector('label');
-    if (!label || label._motionPatched) return;
-    label._motionPatched = true;
-
-    label.addEventListener('click', () => {
-      const isActive = card.classList.contains('ring-2');
-      // isActive here refers to AFTER the toggle which happens in main code
-      setTimeout(() => {
-        const nowActive = card.classList.contains('ring-2');
-        motionStarBurst(label, nowActive);
-        if (nowActive) {
-          card.classList.add('priority-active');
-        } else {
-          card.classList.remove('priority-active');
-        }
-      }, 10);
-    });
-  });
+  // Handled directly inside renderWantsListInManager in dashboard.js
 }
 
 // Export to global scope for dashboard.js to use
