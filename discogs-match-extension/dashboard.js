@@ -11,6 +11,10 @@ let state = {
   localMatches: []
 };
 
+// Detect whether running inside a Chrome extension context or as a plain web page.
+// In web mode (GitHub Pages, local file, etc.) chrome.tabs / chrome.cookies are unavailable.
+const IS_EXTENSION = (typeof chrome !== 'undefined' && !!chrome.tabs && !!chrome.runtime?.id);
+
 const CURRENCY_MAP = {
   'EUR': { symbol: '€', code: 'EUR', rate: 1.08 },
   'USD': { symbol: '$', code: 'USD', rate: 1.0 },
@@ -346,6 +350,11 @@ document.addEventListener('DOMContentLoaded', () => {
   loadWantsBtn.addEventListener('click', loadWantlist);
   const mobileLoadWantsBtn = document.getElementById('mobile-load-wants-btn');
   if (mobileLoadWantsBtn) mobileLoadWantsBtn.addEventListener('click', loadWantlist);
+  // Mobile user badge opens the account dropdown
+  const mobileUserBadge = document.getElementById('mobile-user-badge');
+  if (mobileUserBadge && userCard) {
+    mobileUserBadge.addEventListener('click', () => userCard.click());
+  }
   if (refreshWantsBtn) {
     refreshWantsBtn.style.display = 'flex';
     refreshWantsBtn.disabled = false;
@@ -1730,6 +1739,7 @@ function setDisconnectedUser() {
   }
   
   updateUserDropdownInfo();
+  updateMobileBar();
   
   // Update wizard detection status with clear options to reconnect or enter username
   if (wizardDetectionStatus) {
@@ -1866,6 +1876,18 @@ function saveManualUsername() {
   }
 }
 
+// Sync the mobile action bar user badge with current session state
+function updateMobileBar() {
+  const mobileUsername = document.getElementById('mobile-username');
+  const mobileDot = document.getElementById('mobile-status-dot');
+  if (mobileUsername) mobileUsername.textContent = state.username || 'INVITADO';
+  if (mobileDot) {
+    mobileDot.className = state.username
+      ? 'w-1.5 h-1.5 bg-prada-red'
+      : 'w-1.5 h-1.5 bg-stone-400';
+  }
+}
+
 // Set user layout as logged in
 function setLoggedInUser(username) {
   state.username = username;
@@ -1897,6 +1919,7 @@ function setLoggedInUser(username) {
   
   loadWantsBtn.disabled = false;
   updateUserDropdownInfo();
+  updateMobileBar();
   
   // Enable onboarding next step
   if (wizardDetectionStatus) {
@@ -2014,6 +2037,13 @@ async function fetchDirect(url) {
 
 // Fetch helper using the content script proxy to bypass Cloudflare
 async function fetchThroughTab(url) {
+  // In web mode (no extension context) fall straight through to a direct fetch.
+  // api.discogs.com supports CORS so this works fine for API endpoints.
+  if (!IS_EXTENSION) {
+    console.log(`[ProxyFetch] No extension context — using fetchDirect for: ${url}`);
+    return fetchDirect(url);
+  }
+
   return retryOnRateLimit(async () => {
     console.log(`[ProxyFetch] Solicitando URL a través de pestaña proxy: ${url}`);
     

@@ -53,7 +53,7 @@
   <header id="top-navbar" class="sticky top-0 z-50 bg-ivory-warm/95 backdrop-blur-md border-b border-hairline-light">
     <!-- Top row: Brand Monogram, Editorial Title & Global Controls -->
     <div
-      class="max-w-[1780px] mx-auto px-6 pt-4 pb-3 flex flex-wrap items-center justify-between gap-4 border-b border-hairline-subtle">
+      class="max-w-[1780px] mx-auto px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-hairline-subtle overflow-x-auto">
       <!-- Brand Logo / Wordmark -->
       <div class="flex items-center gap-4">
         <button id="nav-back-btn"
@@ -382,6 +382,34 @@
     </div>
   </section>
 </header>
+
+  <!-- MOBILE ACTION BAR — visible only on screens < lg, replaces hidden desktop nav buttons -->
+  <div id="mobile-action-bar"
+    class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-ivory-warm/97 backdrop-blur-sm border-t-2 border-prada-red px-4 py-2.5 flex items-center gap-2 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <!-- Load wantlist -->
+    <button id="mobile-load-wants-btn"
+      class="flex-1 bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      <span class="material-symbols-outlined text-[16px]">favorite</span>
+      <span>CARGAR</span>
+    </button>
+    <!-- Start scan -->
+    <button id="mobile-start-scan-btn"
+      class="flex-1 bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      <span class="material-symbols-outlined text-[16px]">radar</span>
+      <span>ANALIZAR</span>
+    </button>
+    <!-- User badge -->
+    <div id="mobile-user-badge"
+      class="shrink-0 border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center gap-1.5 cursor-pointer"
+      title="Gestionar cuenta">
+      <span class="w-1.5 h-1.5 bg-prada-red" id="mobile-status-dot"></span>
+      <span class="font-mono text-[10px] font-bold uppercase text-pitch-black max-w-[70px] truncate" id="mobile-username">—</span>
+    </div>
+  </div>
+
+  <!-- Spacer so mobile content isn't hidden behind the bar -->
+  <div class="lg:hidden h-16" id="mobile-bar-spacer"></div>
+
 
   <!-- Preserved Metric Counter Elements (kept for JS animated counters) -->
   <div style="display: none;">
