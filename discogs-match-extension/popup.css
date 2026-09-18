@@ -1,97 +1,325 @@
+/* ==========================================================================
+   DISCOGS MATCHER PRO - EXTENSION POPUP STYLES
+   PRADA LINEA ROSSA ARCHIVAL LUXURY AESTHETIC
+   ========================================================================== */
+
 :root {
-  --bg-primary: #111111;
-  --bg-card: rgba(26, 26, 26, 0.95);
-  --text-primary: #f1f0f7;
-  --text-secondary: #a0aec0;
-  --accent-color: #F5C518;
-  --accent-glow: rgba(245, 197, 24, 0.3);
-  --border-color: rgba(245, 197, 24, 0.15);
+  --pitch-black: #0a0a0a;
+  --pure-white: #ffffff;
+  --ivory-warm: #faf9f5;
+  --surface-low: #f4f3ef;
+  --hairline-dark: #1a1a1a;
+  --hairline-light: rgba(26, 26, 26, 0.12);
+  --muted-graphite: #737373;
+  --prada-red: #e02b20;
+  --prada-red-dark: #b91c1c;
+  --prada-red-bg: #fdf2f1;
+  --prada-blue: #1d4ed8;
+  --prada-blue-bg: #eff6ff;
+  --prada-emerald: #047857;
+  --prada-emerald-bg: #ecfdf5;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
 }
 
 body {
+  width: 330px;
+  background-color: var(--ivory-warm);
+  font-family: var(--font-mono);
+  color: var(--pitch-black);
   margin: 0;
   padding: 0;
-  width: 280px;
-  background-color: var(--bg-primary);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-  color: var(--text-primary);
   overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
 }
 
 .popup-container {
-  padding: 20px;
+  background-color: var(--pure-white);
+  border: 1px solid var(--hairline-dark);
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
-  border: 1px solid var(--border-color);
-  background: radial-gradient(circle at top left, rgba(245, 197, 24, 0.08), transparent 70%);
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.08);
 }
 
-.header {
+/* Signature Red Linea Rossa Accent */
+.brand-top-stripe {
+  height: 3px;
+  background-color: var(--prada-red);
+  width: 100%;
+}
+
+/* Header */
+.popup-header {
+  padding: 14px 16px 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hairline-light);
+  background-color: var(--pure-white);
+}
+
+.brand-group {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
 }
 
-.vinyl-icon {
-  font-size: 24px;
-  animation: spin 3s linear infinite;
-  display: inline-block;
-}
-
-@keyframes spin {
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-h1 {
-  font-size: 18px;
-  margin: 0;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.subtitle {
-  font-size: 12px;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: 0 0 20px 0;
-}
-
-.btn {
-  background: linear-gradient(135deg, #F5C518 0%, #D4A313 100%);
-  color: #111111;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 8px;
+.brand-badge {
+  position: relative;
+  width: 28px;
+  height: 28px;
+  background-color: var(--pitch-black);
+  color: var(--pure-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 800;
   font-size: 13px;
+  overflow: hidden;
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.15);
+  flex-shrink: 0;
+}
+
+.badge-red-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3.5px;
+  background-color: var(--prada-red);
+}
+
+.brand-titles {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-text {
+  font-family: var(--font-sans);
+  font-weight: 900;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pitch-black);
+  line-height: 1.1;
+}
+
+.brand-red-dash {
+  display: inline-block;
+  width: 14px;
+  height: 4px;
+  background-color: var(--prada-red);
+}
+
+.brand-sub {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--muted-graphite);
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.version-tag {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
   font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--prada-blue);
+  background-color: var(--prada-blue-bg);
+  border: 1px solid rgba(29, 78, 216, 0.25);
+  padding: 2px 6px;
+  border-radius: 0;
+}
+
+/* Session Strip */
+.session-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 16px;
+  background-color: var(--surface-low);
+  border-bottom: 1px solid var(--hairline-light);
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.session-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--prada-emerald);
+  box-shadow: 0 0 0 2px rgba(4, 120, 87, 0.2);
+}
+
+.status-label {
+  font-weight: 700;
+  color: var(--prada-emerald);
+}
+
+.session-user {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--pitch-black);
+  font-weight: 700;
+  max-width: 140px;
+}
+
+.session-user .icon-user {
+  font-size: 13px;
+  color: var(--muted-graphite);
+}
+
+.user-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Feature Receipt */
+.feature-receipt {
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background-color: var(--pure-white);
+  border-bottom: 1px solid var(--hairline-light);
+}
+
+.feature-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background-color: var(--ivory-warm);
+  border: 1px solid var(--hairline-light);
+  transition: border-color 0.2s;
+}
+
+.feature-item:hover {
+  border-color: var(--hairline-dark);
+}
+
+.feature-index {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 11px;
+  background-color: var(--pitch-black);
+  color: var(--pure-white);
+  padding: 2px 5px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.feature-copy strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pitch-black);
+  margin-bottom: 2px;
+}
+
+.feature-copy p {
+  font-size: 9.5px;
+  color: var(--muted-graphite);
+  line-height: 1.35;
+  margin: 0;
+  font-family: var(--font-sans);
+}
+
+/* Actions Group */
+.actions-group {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  background-color: var(--pure-white);
+}
+
+.btn-primary {
+  width: 100%;
+  background-color: var(--pitch-black);
+  color: var(--pure-white);
+  border: 1px solid var(--hairline-dark);
+  padding: 11px 14px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  width: 100%;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 4px 15px var(--accent-glow);
+  transition: all 0.2s ease;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.1);
 }
 
-.btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(245, 197, 24, 0.5);
+.btn-primary .icon-btn {
+  font-size: 15px;
+  color: var(--prada-red);
 }
 
-.btn:active {
-  transform: translateY(0);
-}
-
-.btn .arrow {
+.btn-primary .btn-arrow {
+  font-size: 14px;
   transition: transform 0.2s ease;
 }
 
-.btn:hover .arrow {
-  transform: translateX(3px);
+.btn-primary:hover {
+  background-color: var(--prada-red);
+  border-color: var(--prada-red-dark);
+}
+
+.btn-primary:hover .icon-btn {
+  color: var(--pure-white);
+}
+
+.btn-primary:hover .btn-arrow {
+  transform: translateX(4px);
+}
+
+.btn-primary:active {
+  transform: translateY(1px);
+  box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.1);
+}
+
+
+/* Footer */
+.popup-footer {
+  padding: 8px 16px;
+  background-color: var(--surface-low);
+  border-top: 1px solid var(--hairline-light);
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 0.1em;
+  color: var(--muted-graphite);
+  text-transform: uppercase;
 }

@@ -71,18 +71,94 @@ function escapeHTML(str) {
   );
 }
 
-// Retries any async function if it throws a 429 Rate Limit error
-async function retryOnRateLimit(fn, retries = 3, initialDelay = 2000) {
+function getCountryFlag(country) {
+  if (!country) return '🌐';
+  const c = country.toLowerCase();
+  if (c.includes('germany') || c.includes('alemania') || c.includes('deutschland')) return '🇩🇪';
+  if (c.includes('united kingdom') || c.includes('reino unido') || c.includes('uk') || c.includes('great britain')) return '🇬🇧';
+  if (c.includes('united states') || c.includes('estados unidos') || c.includes('usa') || c.includes('ee.uu')) return '🇺🇸';
+  if (c.includes('spain') || c.includes('españa')) return '🇪🇸';
+  if (c.includes('france') || c.includes('francia')) return '🇫🇷';
+  if (c.includes('italy') || c.includes('italia')) return '🇮🇹';
+  if (c.includes('netherlands') || c.includes('países bajos') || c.includes('holanda') || c.includes('amsterdam')) return '🇳🇱';
+  if (c.includes('japan') || c.includes('japón') || c.includes('tokyo')) return '🇯🇵';
+  if (c.includes('uruguay') || c.includes('montevideo')) return '🇺🇾';
+  if (c.includes('argentina') || c.includes('buenos aires')) return '🇦🇷';
+  if (c.includes('brazil') || c.includes('brasil')) return '🇧🇷';
+  if (c.includes('hungary') || c.includes('hungría')) return '🇭🇺';
+  if (c.includes('austria')) return '🇦🇹';
+  if (c.includes('switzerland') || c.includes('suiza')) return '🇨🇭';
+  if (c.includes('canada') || c.includes('canadá')) return '🇨🇦';
+  if (c.includes('australia')) return '🇦🇺';
+  if (c.includes('belgium') || c.includes('bélgica')) return '🇧🇪';
+  if (c.includes('sweden') || c.includes('suecia')) return '🇸🇪';
+  if (c.includes('poland') || c.includes('polonia')) return '🇵🇱';
+  return '📍';
+}
+
+function renderGoldmineTag(cond, isSleeve) {
+  const c = (cond || '').toUpperCase().trim();
+  let bg = 'border-prada-ochre/50 bg-prada-ochre-bg text-amber-950';
+  if (c.includes('M') && !c.includes('NM') && !c.includes('VG')) {
+    bg = 'border-prada-emerald bg-prada-emerald-bg text-emerald-900 font-bold';
+  } else if (c.includes('NM')) {
+    bg = 'border-prada-blue/40 bg-blue-50 text-prada-blue font-bold';
+  } else if (c.includes('VG+') || c.includes('VG')) {
+    bg = 'border-prada-ochre/50 bg-prada-ochre-bg text-amber-950 font-bold';
+  }
+  let displayCond = c;
+  if (c.includes('GENERIC')) {
+    bg = 'border-hairline-light bg-stone-100 text-muted-graphite';
+    displayCond = 'GENÉRICA';
+  }
+  return `<span class="border ${bg} px-2 py-0.5 text-[9px] font-mono uppercase shadow-2xs">${escapeHTML(displayCond || (isSleeve ? 'GENÉRICA' : 'VG+'))}</span>`;
+}
+
+// Resilient Exponential Backoff with Jitter for Network & Discogs Rate-Limiting
+let globalRateLimitCooldownPromise = null;
+
+async function retryOnRateLimit(fn, retries = 5, initialDelay = 2200) {
+  // If another request is currently waiting out a cooldown, queue behind it
+  if (globalRateLimitCooldownPromise) {
+    await globalRateLimitCooldownPromise;
+  }
+
   let delay = initialDelay;
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       return await fn();
     } catch (error) {
-      const isRateLimit = error.message.includes('429') || error.message.toLowerCase().includes('too many requests');
-      if (isRateLimit && attempt < retries) {
-        log(`[Límite Excedido 429] Demasiadas peticiones. Esperando ${delay / 1000}s para reintentar (intento ${attempt}/${retries})...`, 'action');
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay *= 2.5; // Exponential backoff
+      // 1. Check for session expiration: abort retries immediately to protect progress
+      if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {
+        console.warn('[SessionGuard] Sesión expirada detectada. Abortando reintentos para solicitar reautenticación.');
+        throw error;
+      }
+
+      // 2. Check for rate limiting (429 or explicit flag)
+      const isRateLimit = error && (
+        error.isRateLimited || 
+        (error.message && (error.message.includes('429') || error.message.toLowerCase().includes('too many requests')))
+      );
+
+      if (isRateLimit && attempt <= retries) {
+        // Compute backoff with +/- 20% randomized jitter to prevent synchronous re-bursts
+        const jitterMultiplier = 0.8 + (Math.random() * 0.4); // 0.8 to 1.2
+        const sleepTimeMs = Math.round(delay * jitterMultiplier);
+        const sleepSec = (sleepTimeMs / 1000).toFixed(1);
+
+        log(`[Anti-Rate-Limit] Límite de consultas Discogs detectado. Pausando ${sleepSec}s (reintento ${attempt}/${retries})...`, 'action');
+        if (logLatestTicker) logLatestTicker.textContent = `[Enfriamiento ${sleepSec}s] Protegiendo sesión ante límite 429...`;
+
+        // Establish global lock so parallel batch requests pause as well
+        let cooldownResolver;
+        globalRateLimitCooldownPromise = new Promise(res => { cooldownResolver = res; });
+
+        await new Promise(resolve => setTimeout(resolve, sleepTimeMs));
+
+        globalRateLimitCooldownPromise = null;
+        if (cooldownResolver) cooldownResolver();
+
+        delay = Math.min(delay * 2.2, 45000); // Exponential backoff capped at 45 seconds
       } else {
         throw error;
       }
@@ -174,6 +250,7 @@ const wantlistManager = document.getElementById('wantlist-manager');
 const wantsSearchInput = document.getElementById('wants-search-input');
 const wantsListGrid = document.getElementById('wants-list-grid');
 const managerStartScanBtn = document.getElementById('manager-start-scan-btn');
+const managerStartScanTopBtn = document.getElementById('manager-start-scan-top-btn');
 
 // Location Elements
 const buyerCountry = document.getElementById('buyer-country');
@@ -182,6 +259,7 @@ const wizardBuyerCountry = document.getElementById('wizard-buyer-country');
 // Export to Sheets Elements
 const exportSheetsSidebarBtn = document.getElementById('export-sheets-sidebar-btn');
 const exportWantsManagerBtn = document.getElementById('export-wants-manager-btn');
+const btnExportResultsCsv = document.getElementById('btn-export-results-csv');
 const exportSheetsModal = document.getElementById('export-sheets-modal');
 const btnCloseExportModal = document.getElementById('btn-close-export-modal');
 const btnCloseExportModalTop = document.getElementById('btn-close-export-modal-top');
@@ -198,7 +276,7 @@ const btnAnalyzeLocalPaste = document.getElementById('btn-analyze-local-paste');
 const btnRunLocalMatch = document.getElementById('btn-run-local-match');
 const btnBackLocalStep1 = document.getElementById('btn-back-local-step-1');
 
-// Onboarding Wizard Elements
+// Onboarding Portal & Wizard Elements
 const wizardNext1Btn = document.getElementById('wizard-next-1-btn');
 const wizardNext2Btn = document.getElementById('wizard-next-2-btn');
 const wizardBack2Btn = document.getElementById('wizard-back-2-btn');
@@ -211,6 +289,12 @@ const wizardDetectionText = document.getElementById('wizard-detection-text');
 const wizardInputFallback = document.getElementById('wizard-input-fallback');
 const wizardManualUsername = document.getElementById('wizard-manual-username');
 const wizardSaveUsernameBtn = document.getElementById('wizard-save-username-btn');
+const btnChangeUsernameToggle = document.getElementById('btn-change-username-toggle');
+const onboardSheetPasteArea = document.getElementById('onboard-sheet-paste-area');
+const onboardSheetFileInput = document.getElementById('onboard-sheet-file-input');
+const onboardFileName = document.getElementById('onboard-file-name');
+const onboardSheetAnalyzeBtn = document.getElementById('onboard-sheet-analyze-btn');
+let currentSheetTarget = 'wishlist'; // 'wishlist' | 'local_catalog'
 
 // Metrics elements
 const metricWantsCount = document.getElementById('metric-wants-count');
@@ -254,9 +338,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
-  if (tabBtnSellers) tabBtnSellers.addEventListener('click', () => switchTab('sellers'));
-  if (tabBtnLocal) tabBtnLocal.addEventListener('click', () => switchTab('local'));
-  if (tabBtnStats) tabBtnStats.addEventListener('click', () => switchTab('stats'));
+  if (tabBtnSellers) tabBtnSellers.addEventListener('click', () => switchTab('sellers', true));
+  if (tabBtnLocal) tabBtnLocal.addEventListener('click', () => switchTab('local', true));
+  if (tabBtnStats) tabBtnStats.addEventListener('click', () => switchTab('stats', true));
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);
@@ -267,11 +351,15 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshWantsBtn.disabled = false;
     refreshWantsBtn.addEventListener('click', refreshWantlistIncremental);
   }
-  startScanBtn.addEventListener('click', startMarketplaceScan);
-  const mobileStartScanBtn = document.getElementById('mobile-start-scan-btn');
-  if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', startMarketplaceScan);
+  // startScanBtn and mobileStartScanBtn listeners are wired below to openScanCacheModal
   cancelScanBtn.addEventListener('click', cancelScan);
-  saveUsernameBtn.addEventListener('click', saveManualUsername);
+  if (saveUsernameBtn) saveUsernameBtn.addEventListener('click', saveManualUsername);
+  // Also allow pressing Enter inside the username field to confirm
+  if (manualUsername) {
+    manualUsername.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); saveManualUsername(); }
+    });
+  }
   clearCacheBtn.addEventListener('click', clearScanCache);
   
   // Expandable Logger Accordion listeners
@@ -312,14 +400,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Toggle user fallback input when clicking user card if not auto-detected
+  // Toggle user account / testing dropdown when clicking user card
   if (userCard && inputFallback) {
-    userCard.addEventListener('click', () => {
-      if (inputFallback.style.display === 'none' || !inputFallback.style.display) {
+    userCard.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isClosed = inputFallback.style.display === 'none' || !inputFallback.style.display;
+      if (isClosed) {
+        positionUserDropdown();
         inputFallback.style.display = 'block';
+        updateUserDropdownInfo();
         if (manualUsername) manualUsername.focus();
       } else {
         inputFallback.style.display = 'none';
+      }
+    });
+
+    const btnCloseUserDropdown = document.getElementById('btn-close-user-dropdown');
+    if (btnCloseUserDropdown) {
+      btnCloseUserDropdown.addEventListener('click', (e) => {
+        e.stopPropagation();
+        inputFallback.style.display = 'none';
+      });
+    }
+
+    const btnDisconnectSession = document.getElementById('btn-disconnect-session');
+    if (btnDisconnectSession) {
+      btnDisconnectSession.addEventListener('click', (e) => {
+        e.stopPropagation();
+        disconnectUserSession(true);
+        inputFallback.style.display = 'none';
+      });
+    }
+
+    const btnReconnectSession = document.getElementById('btn-reconnect-session');
+    if (btnReconnectSession) {
+      btnReconnectSession.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await reconnectUserSession();
+      });
+    }
+
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (inputFallback.style.display === 'block') {
+        if (!inputFallback.contains(e.target) && !userCard.contains(e.target)) {
+          inputFallback.style.display = 'none';
+        }
       }
     });
   }
@@ -327,6 +453,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Export to Sheets listeners
   if (exportSheetsSidebarBtn) exportSheetsSidebarBtn.addEventListener('click', openExportSheetsModal);
   if (exportWantsManagerBtn) exportWantsManagerBtn.addEventListener('click', openExportSheetsModal);
+  if (btnExportResultsCsv) btnExportResultsCsv.addEventListener('click', openExportSheetsModal);
   if (btnCloseExportModal) btnCloseExportModal.addEventListener('click', closeExportSheetsModal);
   if (btnCloseExportModalTop) btnCloseExportModalTop.addEventListener('click', closeExportSheetsModal);
   if (btnCopySheetsAction) btnCopySheetsAction.addEventListener('click', handleCopySheetsAction);
@@ -348,21 +475,98 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Onboarding Wizard Navigation
-  wizardNext1Btn.addEventListener('click', () => {
-    const manualVal = wizardManualUsername ? wizardManualUsername.value.trim() : '';
-    if (manualVal && !state.username) {
-      localStorage.setItem('discogs_username', manualVal);
-      setLoggedInUser(manualVal);
-      log(`Usuario '${manualVal}' guardado automáticamente al continuar.`, 'success');
-    }
-    navigateToView('wizard-2');
-  });
-  wizardNext2Btn.addEventListener('click', () => navigateToView('wizard-3'));
-  wizardBack2Btn.addEventListener('click', () => navigateToView('wizard-1'));
-  wizardBack3Btn.addEventListener('click', () => navigateToView('wizard-2'));
-  wizardSyncBtn.addEventListener('click', loadWantlist);
-  wizardSaveUsernameBtn.addEventListener('click', saveWizardManualUsername);
+  // Onboarding Portal & Wizard Navigation
+  if (wizardNext1Btn) {
+    wizardNext1Btn.addEventListener('click', () => {
+      const manualVal = wizardManualUsername ? wizardManualUsername.value.trim() : '';
+      if (manualVal && !state.username) {
+        localStorage.setItem('discogs_username', manualVal);
+        setLoggedInUser(manualVal);
+        log(`Usuario '${manualVal}' guardado automáticamente al continuar.`, 'success');
+      }
+      navigateToView('wizard-2');
+    });
+  }
+  if (wizardNext2Btn) wizardNext2Btn.addEventListener('click', () => navigateToView('wizard-3'));
+  if (wizardBack2Btn) wizardBack2Btn.addEventListener('click', () => navigateToView('wizard-1'));
+  if (wizardBack3Btn) wizardBack3Btn.addEventListener('click', () => navigateToView('wizard-2'));
+  
+  if (wizardSyncBtn) {
+    wizardSyncBtn.addEventListener('click', () => {
+      const manualVal = wizardManualUsername ? wizardManualUsername.value.trim() : '';
+      if (manualVal && !state.username) {
+        localStorage.setItem('discogs_username', manualVal);
+        setLoggedInUser(manualVal);
+      }
+      loadWantlist();
+    });
+  }
+
+  if (wizardSaveUsernameBtn) wizardSaveUsernameBtn.addEventListener('click', saveWizardManualUsername);
+
+  if (btnChangeUsernameToggle) {
+    btnChangeUsernameToggle.addEventListener('click', () => {
+      if (wizardInputFallback) {
+        const isHidden = wizardInputFallback.style.display === 'none';
+        wizardInputFallback.style.display = isHidden ? 'flex' : 'none';
+        if (isHidden && wizardManualUsername) wizardManualUsername.focus();
+      }
+    });
+  }
+
+  // Onboarding Sheet Paste & Upload
+  if (onboardSheetFileInput) {
+    onboardSheetFileInput.addEventListener('change', () => {
+      if (onboardSheetFileInput.files && onboardSheetFileInput.files[0]) {
+        if (onboardFileName) onboardFileName.textContent = onboardSheetFileInput.files[0].name;
+      }
+    });
+  }
+
+  if (onboardSheetAnalyzeBtn) {
+    onboardSheetAnalyzeBtn.addEventListener('click', () => {
+      handleAnalyzeOnboardSheet();
+    });
+  }
+
+  if (wizardBuyerCountry) {
+    wizardBuyerCountry.addEventListener('change', () => {
+      if (buyerCountry) buyerCountry.value = wizardBuyerCountry.value;
+      localStorage.setItem('buyer_country', wizardBuyerCountry.value);
+    });
+  }
+
+  // Onboarding Two-Step Choice Navigation
+  const choiceBtnDiscogs = document.getElementById('choice-btn-discogs');
+  const choiceBtnSheet = document.getElementById('choice-btn-sheet');
+  const btnBackToChoiceDiscogs = document.getElementById('btn-back-to-choice-discogs');
+  const btnBackToChoiceSheet = document.getElementById('btn-back-to-choice-sheet');
+  const onboardStepChoice = document.getElementById('onboard-step-choice');
+  const onboardPaneDiscogs = document.getElementById('onboard-pane-discogs');
+  const onboardPaneSheet = document.getElementById('onboard-pane-sheet');
+
+  const showChoiceStep = () => {
+    if (onboardStepChoice) onboardStepChoice.style.display = 'flex';
+    if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'none';
+    if (onboardPaneSheet) onboardPaneSheet.style.display = 'none';
+  };
+
+  const showDiscogsPane = () => {
+    if (onboardStepChoice) onboardStepChoice.style.display = 'none';
+    if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'block';
+    if (onboardPaneSheet) onboardPaneSheet.style.display = 'none';
+  };
+
+  const showSheetPane = () => {
+    if (onboardStepChoice) onboardStepChoice.style.display = 'none';
+    if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'none';
+    if (onboardPaneSheet) onboardPaneSheet.style.display = 'block';
+  };
+
+  if (choiceBtnDiscogs) choiceBtnDiscogs.addEventListener('click', showDiscogsPane);
+  if (choiceBtnSheet) choiceBtnSheet.addEventListener('click', showSheetPane);
+  if (btnBackToChoiceDiscogs) btnBackToChoiceDiscogs.addEventListener('click', showChoiceStep);
+  if (btnBackToChoiceSheet) btnBackToChoiceSheet.addEventListener('click', showChoiceStep);
 
   // Screen & Back Navigation Event Listeners
   const navBackBtn = document.getElementById('nav-back-btn');
@@ -464,42 +668,143 @@ document.addEventListener('DOMContentLoaded', () => {
   if (managerUseCacheCheckbox) managerUseCacheCheckbox.addEventListener('change', () => syncCacheState(managerUseCacheCheckbox.checked));
   if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.addEventListener('change', () => syncCacheState(bottomUseCacheCheckbox.checked));
 
-  // Grid Density Switcher (Compact vs Standard)
+  // Scan Mode / Cache Choice Dialog Handler
+  const scanCacheModal = document.getElementById('scan-cache-modal');
+  const btnScanWithCache = document.getElementById('btn-scan-with-cache');
+  const btnScanLiveDirect = document.getElementById('btn-scan-live-direct');
+  const btnCloseScanCacheModal = document.getElementById('btn-close-scan-cache-modal');
+  const btnCancelScanCacheModal = document.getElementById('btn-cancel-scan-cache-modal');
+  const scanRememberCacheChoice = document.getElementById('scan-remember-cache-choice');
+
+  const openScanCacheModal = (e) => {
+    if (e && typeof e.preventDefault === 'function') e.preventDefault();
+    if (!state.wants || state.wants.length === 0) {
+      if (typeof showToast === 'function') {
+        showToast('Tu Wantlist no tiene vinilos cargados. Sincroniza tu lista en el Paso 03 antes de escanear.', 'warning', 4500);
+      } else {
+        alert('Tu Wantlist no tiene vinilos cargados. Carga tus deseos en el Paso 03 antes de escanear.');
+      }
+      return;
+    }
+
+    // If user previously set "remember choice", execute directly
+    const rememberPref = localStorage.getItem('remember_scan_cache_choice') === 'true';
+    if (rememberPref) {
+      const savedUseCache = localStorage.getItem('use_scan_cache') !== 'false';
+      syncCacheState(savedUseCache);
+      startMarketplaceScan();
+      return;
+    }
+
+    if (scanCacheModal) {
+      scanCacheModal.style.display = 'flex';
+      scanCacheModal.classList.add('open');
+    } else {
+      startMarketplaceScan();
+    }
+  };
+
+  const closeScanCacheModal = () => {
+    if (scanCacheModal) {
+      scanCacheModal.classList.remove('open');
+      scanCacheModal.style.display = 'none';
+    }
+  };
+
+  if (btnCloseScanCacheModal) btnCloseScanCacheModal.addEventListener('click', closeScanCacheModal);
+  if (btnCancelScanCacheModal) btnCancelScanCacheModal.addEventListener('click', closeScanCacheModal);
+
+  if (btnScanWithCache) {
+    btnScanWithCache.addEventListener('click', () => {
+      if (scanRememberCacheChoice && scanRememberCacheChoice.checked) {
+        localStorage.setItem('remember_scan_cache_choice', 'true');
+      }
+      syncCacheState(true);
+      closeScanCacheModal();
+      startMarketplaceScan();
+    });
+  }
+
+  if (btnScanLiveDirect) {
+    btnScanLiveDirect.addEventListener('click', () => {
+      if (scanRememberCacheChoice && scanRememberCacheChoice.checked) {
+        localStorage.setItem('remember_scan_cache_choice', 'true');
+      }
+      syncCacheState(false);
+      closeScanCacheModal();
+      startMarketplaceScan();
+    });
+  }
+
+  // Grid Density Switcher (Compact vs Standard with mutually exclusive high-contrast colors)
   const setGridDensity = (density) => {
     if (!wantsGrid) return;
     localStorage.setItem('wants_grid_density', density);
+    const activeClass = 'px-2.5 py-1 bg-pitch-black text-pure-white font-bold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors shadow-xs';
+    const inactiveClass = 'px-2.5 py-1 bg-transparent text-muted-graphite hover:text-pitch-black font-semibold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors';
+
     if (density === 'standard') {
       wantsGrid.classList.remove('density-compact');
       wantsGrid.classList.add('density-standard');
-      if (btnDensityStandard) {
-        btnDensityStandard.classList.add('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
-        btnDensityStandard.classList.remove('text-tertiary');
-      }
-      if (btnDensityCompact) {
-        btnDensityCompact.classList.remove('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
-        btnDensityCompact.classList.add('text-tertiary');
-      }
+      if (btnDensityStandard) btnDensityStandard.className = activeClass;
+      if (btnDensityCompact) btnDensityCompact.className = inactiveClass;
     } else {
       wantsGrid.classList.remove('density-standard');
       wantsGrid.classList.add('density-compact');
-      if (btnDensityCompact) {
-        btnDensityCompact.classList.add('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
-        btnDensityCompact.classList.remove('text-tertiary');
-      }
-      if (btnDensityStandard) {
-        btnDensityStandard.classList.remove('bg-primary', 'text-on-primary', 'shadow-xs', 'font-semibold');
-        btnDensityStandard.classList.add('text-tertiary');
-      }
+      if (btnDensityCompact) btnDensityCompact.className = activeClass;
+      if (btnDensityStandard) btnDensityStandard.className = inactiveClass;
     }
   };
+
+  // Delegated event listener to guarantee Wantlist Manager buttons always trigger modals and actions
+  document.addEventListener('click', (e) => {
+    const exportBtn = e.target.closest('#export-wants-manager-btn');
+    if (exportBtn) {
+      e.preventDefault();
+      openExportSheetsModal();
+      return;
+    }
+    const importBtn = e.target.closest('#import-local-sheet-manager-btn');
+    if (importBtn) {
+      e.preventDefault();
+      openLocalSheetModal();
+      return;
+    }
+    const scanTopBtn = e.target.closest('#manager-start-scan-top-btn');
+    if (scanTopBtn) {
+      e.preventDefault();
+      openScanCacheModal(e);
+      return;
+    }
+    const scanBottomBtn = e.target.closest('#manager-start-scan-btn');
+    if (scanBottomBtn) {
+      e.preventDefault();
+      openScanCacheModal(e);
+      return;
+    }
+  });
 
   if (btnDensityCompact) btnDensityCompact.addEventListener('click', () => setGridDensity('compact'));
   if (btnDensityStandard) btnDensityStandard.addEventListener('click', () => setGridDensity('standard'));
   setGridDensity(localStorage.getItem('wants_grid_density') || 'compact');
 
-  wantsSearchInput.addEventListener('input', filterWantsInManager);
-  if (managerStartScanBtn) managerStartScanBtn.addEventListener('click', startMarketplaceScan);
-  if (managerStartScanTopBtn) managerStartScanTopBtn.addEventListener('click', startMarketplaceScan);
+  if (wantsSearchInput) {
+    wantsSearchInput.addEventListener('input', filterWantsInManager);
+    wantsSearchInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Escape') {
+        wantsSearchInput.value = '';
+        filterWantsInManager();
+      } else if (e.key === 'Enter') {
+        filterWantsInManager();
+      }
+    });
+    wantsSearchInput.addEventListener('search', filterWantsInManager);
+  }
+  if (managerStartScanBtn) managerStartScanBtn.addEventListener('click', openScanCacheModal);
+  if (managerStartScanTopBtn) managerStartScanTopBtn.addEventListener('click', openScanCacheModal);
+  if (startScanBtn) startScanBtn.addEventListener('click', openScanCacheModal);
+  const mobileStartScanBtn = document.getElementById('mobile-start-scan-btn');
+  if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', openScanCacheModal);
   
   // Filters
   const displayCurrencySelect = document.getElementById('display-currency');
@@ -517,6 +822,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (filterSearchRelease) {
     filterSearchRelease.addEventListener('input', renderResults);
+    filterSearchRelease.addEventListener('keyup', (e) => {
+      if (e.key === 'Escape') {
+        filterSearchRelease.value = '';
+        renderResults();
+      } else if (e.key === 'Enter') {
+        renderResults();
+      }
+    });
+    filterSearchRelease.addEventListener('search', renderResults);
   }
   filterMinMatches.addEventListener('change', renderResults);
   if (filterMinCondition) {
@@ -525,7 +839,10 @@ document.addEventListener('DOMContentLoaded', () => {
   filterCountry.addEventListener('change', renderResults);
   filterRating.addEventListener('change', renderResults);
   sortBy.addEventListener('change', renderResults);
-  filterPriorityOnly.addEventListener('change', renderResults);
+  filterPriorityOnly.addEventListener('change', () => {
+    localStorage.setItem('filter_priority_only', filterPriorityOnly.checked ? 'true' : 'false');
+    renderResults();
+  });
   if (filterHasShipping) {
     filterHasShipping.addEventListener('change', renderResults);
   }
@@ -556,6 +873,7 @@ document.addEventListener('DOMContentLoaded', () => {
       filterCountry.value = "all";
       filterRating.value = "0";
       filterPriorityOnly.checked = false;
+      localStorage.setItem('filter_priority_only', 'false');
       if (filterSearchRelease) filterSearchRelease.value = "";
       renderResults();
     });
@@ -655,6 +973,35 @@ function getConditionRank(cond) {
   return 1;
 }
 
+// Dynamic priority filter state management
+function updatePriorityFilterUI() {
+  const priorityCount = state.wants ? state.wants.filter(w => w.isPriority).length : 0;
+  const filterPriorityOnly = document.getElementById('filter-priority-only');
+  const label = document.getElementById('label-filter-priority') || (filterPriorityOnly ? filterPriorityOnly.closest('label') : null);
+  if (!filterPriorityOnly || !label) return;
+
+  if (priorityCount === 0) {
+    filterPriorityOnly.disabled = true;
+    filterPriorityOnly.checked = false;
+    label.classList.add('opacity-40', 'cursor-not-allowed');
+    label.classList.remove('cursor-pointer');
+    filterPriorityOnly.classList.add('cursor-not-allowed');
+    label.setAttribute('data-tooltip', 'No has marcado ningún disco como favorito (★)');
+  } else {
+    filterPriorityOnly.disabled = false;
+    label.classList.remove('opacity-40', 'cursor-not-allowed');
+    label.classList.add('cursor-pointer');
+    filterPriorityOnly.classList.remove('cursor-not-allowed');
+    label.setAttribute('data-tooltip', 'Mostrar únicamente tiendas con discos prioritarios ★');
+    
+    // User preference from localStorage (default to false if not set)
+    const saved = localStorage.getItem('filter_priority_only');
+    if (saved !== null) {
+      filterPriorityOnly.checked = (saved === 'true');
+    }
+  }
+}
+
 // Dynamic lock/unlock filters section
 function toggleFiltersState(enabled) {
   const displayCurrencySelect = document.getElementById('display-currency');
@@ -664,7 +1011,11 @@ function toggleFiltersState(enabled) {
   filterCountry.disabled = !enabled;
   filterRating.disabled = !enabled;
   sortBy.disabled = !enabled;
-  filterPriorityOnly.disabled = !enabled;
+  if (enabled) {
+    updatePriorityFilterUI();
+  } else {
+    filterPriorityOnly.disabled = true;
+  }
   if (filterHasShipping) filterHasShipping.disabled = !enabled;
   
   const filterSection = document.querySelector('.filter-section');
@@ -678,10 +1029,14 @@ function toggleFiltersState(enabled) {
     }
   }
 
-  // Only show horizontal filter toolbar when results exist and are active
+  // Only show horizontal filter toolbar and navigation row when results exist and are active
   const filterToolbarEl = document.getElementById('filter-toolbar');
   if (filterToolbarEl) {
     filterToolbarEl.style.display = enabled ? 'block' : 'none';
+  }
+  const headerNavRowEl = document.getElementById('header-nav-row');
+  if (headerNavRowEl) {
+    headerNavRowEl.style.display = enabled ? 'flex' : 'none';
   }
 }
 
@@ -889,7 +1244,8 @@ function closeAllModals() {
     document.getElementById('export-sheets-modal'),
     document.getElementById('local-sheet-modal'),
     document.getElementById('private-wantlist-modal'),
-    document.getElementById('resume-modal')
+    document.getElementById('resume-modal'),
+    document.getElementById('scan-cache-modal')
   ];
   let closedAny = false;
   modals.forEach(m => {
@@ -943,6 +1299,7 @@ function navigateToView(viewName, pushHistory = true) {
   const noResultsState = document.getElementById('no-results-state');
   const smartPurchaseCard = document.getElementById('smart-purchase-card');
   const tabNavigation = document.getElementById('tab-navigation');
+  const headerNavRow = document.getElementById('header-nav-row');
   const statsView = document.getElementById('stats-view');
   const localView = document.getElementById('local-view');
   const filterToolbar = document.getElementById('filter-toolbar');
@@ -955,12 +1312,19 @@ function navigateToView(viewName, pushHistory = true) {
     if (noResultsState) noResultsState.style.display = 'none';
     if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
     if (tabNavigation) tabNavigation.style.display = 'none';
+    if (headerNavRow) headerNavRow.style.display = 'none';
     if (statsView) statsView.style.display = 'none';
     if (localView) localView.style.display = 'none';
     if (filterToolbar) filterToolbar.style.display = 'none';
     
     if (emptyState) {
       emptyState.style.display = 'flex';
+      const choice = document.getElementById('onboard-step-choice');
+      const pDiscogs = document.getElementById('onboard-pane-discogs');
+      const pSheet = document.getElementById('onboard-pane-sheet');
+      if (choice) choice.style.display = 'flex';
+      if (pDiscogs) pDiscogs.style.display = 'none';
+      if (pSheet) pSheet.style.display = 'none';
       goToWizardStep(stepNum);
     }
     currentAppView = `wizard-${stepNum}`;
@@ -971,6 +1335,7 @@ function navigateToView(viewName, pushHistory = true) {
     if (noResultsState) noResultsState.style.display = 'none';
     if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
     if (tabNavigation) tabNavigation.style.display = 'none';
+    if (headerNavRow) headerNavRow.style.display = 'none';
     if (statsView) statsView.style.display = 'none';
     if (localView) localView.style.display = 'none';
     if (filterToolbar) filterToolbar.style.display = 'none';
@@ -985,6 +1350,7 @@ function navigateToView(viewName, pushHistory = true) {
     if (emptyState) emptyState.style.display = 'none';
     if (wantlistManager) wantlistManager.style.display = 'none';
     if (tabNavigation) tabNavigation.style.display = 'flex';
+    if (headerNavRow) headerNavRow.style.display = 'flex';
     if (filterToolbar) filterToolbar.style.display = 'block';
 
     switchTab(subTab);
@@ -1006,12 +1372,7 @@ function handleHierarchicalBack(pushHistory = true) {
   if (closeAllModals()) return;
 
   if (currentAppView.startsWith('results-') && currentAppView !== 'results-sellers') {
-    switchTab('sellers');
-    currentAppView = 'results-sellers';
-    updateForwardAndBackButtons();
-    if (pushHistory) {
-      try { window.history.pushState({ view: currentAppView }, '', ''); } catch(e){}
-    }
+    switchTab('sellers', pushHistory);
     return;
   }
   if (currentAppView.startsWith('results')) {
@@ -1023,14 +1384,6 @@ function handleHierarchicalBack(pushHistory = true) {
     return;
   }
   if (currentAppView === 'wantlist') {
-    navigateToView('wizard-3', pushHistory);
-    return;
-  }
-  if (currentAppView === 'wizard-3') {
-    navigateToView('wizard-2', pushHistory);
-    return;
-  }
-  if (currentAppView === 'wizard-2') {
     navigateToView('wizard-1', pushHistory);
     return;
   }
@@ -1069,6 +1422,7 @@ function showWantlistManager(pushHistory = true) {
 
 // Render loaded wants list inside Wantlist Manager for marking favorites (★)
 function renderWantsListInManager() {
+  updatePriorityFilterUI();
   const wantsListGrid = document.getElementById('wants-list-grid');
   if (!wantsListGrid) return;
   
@@ -1106,26 +1460,28 @@ function renderWantsListInManager() {
     }
     displayArtist = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
 
-    card.className = `record-card record-card-animated bg-surface-container-lowest border border-outline-variant/40 rounded-xl p-2 flex flex-col items-center relative transition-all duration-200 hover:shadow-md hover:border-primary/40 cursor-pointer ${item.isPriority ? 'active-priority ring-2 ring-amber-500/50 border-amber-500/60 bg-amber-500/5' : ''}`;
+    card.className = `record-card record-card-animated bg-pure-white border border-hairline-dark p-2.5 flex flex-col items-center relative transition-all duration-200 hover:shadow-md cursor-pointer ${item.isPriority ? 'active-priority' : ''}`;
     card.style.animationDelay = `${Math.min(index * 0.02, 0.8)}s`;
+    card.dataset.title = displayTitle.toLowerCase();
+    card.dataset.artist = displayArtist.toLowerCase();
     
     card.innerHTML = `
       <div class="record-hover-tooltip">
         <p class="font-bold mb-0.5 leading-snug">${escapeHTML(displayTitle)}</p>
         <p class="text-zinc-400 text-[10px] leading-tight">${escapeHTML(displayArtist)}</p>
       </div>
-      <button type="button" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" title="${item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario'}">
+      <button type="button" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" data-tooltip="${item.isPriority ? 'Quitar de prioritarios' : 'Destacar disco favorito'}" data-tooltip-pos="top">
         <span class="material-symbols-outlined star-icon" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0};">star</span>
       </button>
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
-      <div class="record-cover-wrapper w-full aspect-square bg-surface-container mb-2 rounded-lg overflow-hidden border border-outline-variant/30 flex items-center justify-center relative shadow-xs">
-        ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-tertiary">album</span>`}
+      <div class="record-cover-wrapper w-full aspect-square bg-surface-low mb-2 overflow-hidden border border-hairline-light flex items-center justify-center relative shadow-xs">
+        ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>`}
       </div>
       <div class="w-full text-center px-0.5">
-        <p class="font-bold text-xs text-on-surface truncate w-full leading-tight mb-0.5">
+        <p class="font-sans font-extrabold text-[11px] uppercase tracking-tight text-pitch-black truncate w-full leading-tight mb-1" title="${escapeHTML(displayTitle)}">
           ${escapeHTML(displayTitle)}
         </p>
-        <p class="text-[11px] text-tertiary truncate w-full leading-tight">
+        <p class="font-mono text-[10px] uppercase tracking-wider text-muted-graphite truncate w-full leading-tight font-medium" title="${escapeHTML(displayArtist)}">
           ${escapeHTML(displayArtist)}
         </p>
       </div>
@@ -1137,7 +1493,7 @@ function renderWantsListInManager() {
         this.style.display = 'none';
         const wrapper = this.closest('.record-cover-wrapper');
         if (wrapper && !wrapper.querySelector('.material-symbols-outlined')) {
-          wrapper.innerHTML = '<span class="material-symbols-outlined text-3xl text-tertiary">album</span>';
+          wrapper.innerHTML = '<span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>';
         }
       });
     }
@@ -1152,9 +1508,11 @@ function renderWantsListInManager() {
         e.preventDefault();
       }
       item.isPriority = !item.isPriority;
+      updatePriorityFilterUI();
       if (starCheckbox) starCheckbox.checked = item.isPriority;
       if (starBtn) {
         starBtn.classList.toggle('active', item.isPriority);
+        starBtn.setAttribute('data-tooltip', item.isPriority ? 'Quitar de prioritarios' : 'Destacar disco favorito');
         starBtn.title = item.isPriority ? 'Quitar prioridad' : 'Marcar como prioritario';
         if (item.isPriority) {
           starBtn.classList.add('star-pop-anim');
@@ -1165,8 +1523,6 @@ function renderWantsListInManager() {
         starIcon.style.fontVariationSettings = `'FILL' ${item.isPriority ? 1 : 0}`;
       }
       card.classList.toggle('active-priority', item.isPriority);
-      card.classList.toggle('ring-2', item.isPriority);
-      card.classList.toggle('ring-amber-500/50', item.isPriority);
 
       if (item.isPriority && window.Motion && window.Motion.starBurst) {
         window.Motion.starBurst(starBtn || card, true);
@@ -1191,7 +1547,50 @@ function renderWantsListInManager() {
 }
 
 function filterWantsInManager() {
-  renderWantsListInManager();
+  const input = document.getElementById('wants-search-input');
+  const query = (input ? input.value : '').toLowerCase().trim();
+  const grid = document.getElementById('wants-list-grid');
+  if (!grid) return;
+  
+  const cards = grid.querySelectorAll('.record-card');
+  if (!cards || cards.length === 0) {
+    if (state.wants && state.wants.length > 0) {
+      renderWantsListInManager();
+    }
+    return;
+  }
+  
+  let visibleCount = 0;
+  cards.forEach(card => {
+    const title = (card.dataset.title || card.querySelector('p.font-sans')?.textContent || '').toLowerCase();
+    const artist = (card.dataset.artist || card.querySelector('p.font-mono')?.textContent || '').toLowerCase();
+    const allText = card.textContent.toLowerCase();
+    
+    if (!query || title.includes(query) || artist.includes(query) || allText.includes(query)) {
+      card.style.display = 'flex';
+      visibleCount++;
+    } else {
+      card.style.display = 'none';
+    }
+  });
+
+  let emptyMsg = document.getElementById('wants-filter-empty-msg');
+  if (visibleCount === 0 && query) {
+    if (!emptyMsg) {
+      emptyMsg = document.createElement('div');
+      emptyMsg.id = 'wants-filter-empty-msg';
+      emptyMsg.className = 'w-full py-16 text-center col-span-full flex flex-col items-center justify-center';
+      emptyMsg.style.gridColumn = '1 / -1';
+      emptyMsg.innerHTML = `
+        <span class="material-symbols-outlined text-4xl text-muted-graphite mb-2">search_off</span>
+        <p class="font-sans font-extrabold text-sm uppercase tracking-wide text-pitch-black mb-1">Sin coincidencias para "${escapeHTML(input.value)}"</p>
+        <p class="font-mono text-xs text-muted-graphite">Prueba con otro título o artista de tu Wantlist.</p>
+      `;
+      grid.appendChild(emptyMsg);
+    }
+  } else if (emptyMsg) {
+    emptyMsg.remove();
+  }
 }
 
 // Initialize Application and detect user session
@@ -1203,6 +1602,7 @@ async function initApp() {
   
   // Lock filters initially until results exist
   toggleFiltersState(false);
+  updatePriorityFilterUI();
   
   // Ensure onboarding wizard / empty state is visible on init
   if (emptyState) emptyState.style.display = 'flex';
@@ -1217,11 +1617,17 @@ async function initApp() {
   checkScanSession();
   
   try {
-    const detectedUser = await detectDiscogsSession();
-    if (detectedUser) {
-      setLoggedInUser(detectedUser);
+    const isDisconnectedTesting = localStorage.getItem('discogs_session_disconnected') === 'true';
+    if (isDisconnectedTesting) {
+      log('Iniciando en modo desconectado para pruebas...', 'info');
+      setDisconnectedUser();
     } else {
-      showFallbackLogin();
+      const detectedUser = await detectDiscogsSession();
+      if (detectedUser) {
+        setLoggedInUser(detectedUser);
+      } else {
+        showFallbackLogin();
+      }
     }
   } catch (error) {
     console.error('Session detection error:', error);
@@ -1248,33 +1654,110 @@ function log(message, type = 'info') {
   }
 }
 
-// Show manual input fallback if session detection fails
-function showFallbackLogin() {
-  // Try retrieving from local storage
-  const saved = localStorage.getItem('discogs_username');
-  if (saved) {
-    manualUsername.value = saved;
-    if (wizardManualUsername) {
-      wizardManualUsername.value = saved;
-    }
-    setLoggedInUser(saved);
-    return;
-  }
-
-  connectionStatus.textContent = 'Sesión no detectada';
-  connectionStatus.style.color = '#ef4444';
-  usernameDisplay.textContent = 'Invitado';
-  userAvatar.textContent = '?';
-  userAvatar.style.background = '#374151';
-  inputFallback.style.display = 'block';
+// Update account popup card info based on current state
+function updateUserDropdownInfo() {
+  const statusBadge = document.getElementById('user-dropdown-status-badge');
+  const avatarEl = document.getElementById('user-dropdown-avatar');
+  const userText = document.getElementById('user-dropdown-username');
+  const subtextEl = document.getElementById('user-dropdown-subtext');
+  const btnDisconnect = document.getElementById('btn-disconnect-session');
+  const btnReconnect = document.getElementById('btn-reconnect-session');
   
-  // Update wizard detection status
+  if (state.username) {
+    if (statusBadge) {
+      statusBadge.textContent = 'ACTIVO';
+      statusBadge.className = 'text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300';
+    }
+    if (avatarEl) {
+      avatarEl.textContent = state.username.substring(0, 2).toUpperCase();
+      avatarEl.className = 'w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs';
+    }
+    if (userText) {
+      userText.textContent = state.username;
+    }
+    if (subtextEl) {
+      subtextEl.textContent = 'Sesión vinculada a Discogs';
+    }
+    if (btnDisconnect) {
+      btnDisconnect.style.display = 'flex';
+    }
+    if (btnReconnect) {
+      btnReconnect.style.display = 'none';
+    }
+  } else {
+    if (statusBadge) {
+      statusBadge.textContent = 'DESCONECTADO (MODO TESTING)';
+      statusBadge.className = 'text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider bg-stone-100 text-stone-700 border border-stone-300';
+    }
+    if (avatarEl) {
+      avatarEl.textContent = '?';
+      avatarEl.className = 'w-8 h-8 bg-stone-300 text-stone-700 flex items-center justify-center font-bold text-xs shrink-0 shadow-xs';
+    }
+    if (userText) {
+      userText.textContent = 'INVITADO (SIN SESIÓN)';
+    }
+    if (subtextEl) {
+      subtextEl.textContent = 'Modo de prueba sin cuenta activa';
+    }
+    if (btnDisconnect) {
+      btnDisconnect.style.display = 'none';
+    }
+    if (btnReconnect) {
+      btnReconnect.style.display = 'flex';
+    }
+  }
+}
+
+// Set user layout as disconnected for testing purposes
+function setDisconnectedUser() {
+  state.username = '';
+  
+  if (connectionStatus) {
+    connectionStatus.textContent = 'DESCONECTADO';
+    connectionStatus.style.color = '#71717A';
+    connectionStatus.className = 'text-[9px] text-muted-graphite bg-stone-100 px-1 font-medium';
+  }
+  const dot = document.getElementById('connection-status-dot');
+  if (dot) {
+    dot.className = 'w-1.5 h-1.5 bg-stone-400';
+  }
+  if (usernameDisplay) {
+    usernameDisplay.textContent = 'INVITADO';
+  }
+  if (userAvatar) {
+    userAvatar.textContent = '?';
+    userAvatar.style.background = '#71717A';
+  }
+  
+  updateUserDropdownInfo();
+  
+  // Update wizard detection status with clear options to reconnect or enter username
   if (wizardDetectionStatus) {
     wizardDetectionStatus.innerHTML = `
-      <span class="pulse-indicator orange"></span>
-      <span>Por favor ingresa tu usuario</span>
+      <span class="flex items-center gap-1.5 text-muted-graphite font-bold">
+        <span class="w-2 h-2 rounded-full bg-stone-400 inline-block"></span>
+        <span>Sin sesión activa (Modo pruebas)</span>
+      </span>
+      <div class="flex items-center gap-2">
+        <button id="btn-change-username-toggle" type="button" class="text-[9px] text-prada-blue underline uppercase cursor-pointer hover:text-pitch-black font-semibold">Ingresar usuario</button>
+        <span class="text-hairline-light select-none">|</span>
+        <button id="btn-wizard-reconnect" type="button" class="text-[9px] text-emerald-700 underline uppercase cursor-pointer hover:text-pitch-black font-semibold">Autodetectar</button>
+      </div>
     `;
-    wizardNext1Btn.disabled = true;
+    const toggle = document.getElementById('btn-change-username-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        if (wizardInputFallback) {
+          const isHidden = wizardInputFallback.style.display === 'none';
+          wizardInputFallback.style.display = isHidden ? 'flex' : 'none';
+          if (isHidden && wizardManualUsername) wizardManualUsername.focus();
+        }
+      });
+    }
+    const wizardReconnect = document.getElementById('btn-wizard-reconnect');
+    if (wizardReconnect) {
+      wizardReconnect.addEventListener('click', reconnectUserSession);
+    }
   }
   
   if (wizardInputFallback) {
@@ -1282,35 +1765,169 @@ function showFallbackLogin() {
   }
 }
 
+// Disconnect user session (clears username and prevents auto-relogin for testing)
+function disconnectUserSession(showNotification = true) {
+  state.username = '';
+  localStorage.removeItem('discogs_username');
+  localStorage.setItem('discogs_session_disconnected', 'true');
+  
+  // Clear lists
+  state.wants = [];
+  state.allListings = [];
+  state.groupedSellers = [];
+  
+  setDisconnectedUser();
+  
+  // Reset navigation and views to initial choice
+  if (emptyState) emptyState.style.display = 'flex';
+  if (resultsGrid) resultsGrid.style.display = 'none';
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
+  if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
+  const smartCard = document.getElementById('smart-purchase-card');
+  if (smartCard) smartCard.style.display = 'none';
+  const tabNavigation = document.getElementById('tab-navigation');
+  if (tabNavigation) tabNavigation.style.display = 'none';
+  const filterToolbar = document.getElementById('filter-toolbar');
+  if (filterToolbar) filterToolbar.style.display = 'none';
+  const headerNavRow = document.getElementById('header-nav-row');
+  if (headerNavRow) headerNavRow.style.display = 'none';
+  
+  // Reset counters
+  animateCounter('metric-wants-count', 0, 0);
+  animateCounter('metric-sellers-count', 0, 0);
+  animateCounter('metric-matches-count', 0, 0);
+  const tickerWants = document.getElementById('ticker-wants-count');
+  if (tickerWants) tickerWants.textContent = '0 DISCOS';
+  const tickerSellers = document.getElementById('ticker-sellers-count');
+  if (tickerSellers) tickerSellers.textContent = '0';
+  const tickerMatches = document.getElementById('ticker-matches-count');
+  if (tickerMatches) tickerMatches.textContent = '0';
+  
+  if (typeof goToOnboardChoiceStep === 'function') {
+    goToOnboardChoiceStep();
+  }
+  
+  if (showNotification) {
+    showToast('Sesión desconectada. Modo testing sin cuenta activado.', 'info');
+    log('Sesión desconectada por el usuario (Modo Testing).', 'info');
+  }
+}
+
+// Reconnect to active session by detecting cookies
+async function reconnectUserSession() {
+  localStorage.removeItem('discogs_session_disconnected');
+  log('Intentando autodetectar sesión de Discogs...', 'info');
+  showToast('Buscando sesión activa en Discogs...', 'info');
+  
+  const detectedUser = await detectDiscogsSession();
+  if (detectedUser) {
+    setLoggedInUser(detectedUser);
+    showToast(`Sesión detectada y vinculada: ${detectedUser}`, 'success');
+  } else {
+    showToast('No se detectó sesión abierta en discogs.com. Ingresa un usuario manualmente.', 'warning');
+    showFallbackLogin();
+  }
+}
+
+// Show manual input fallback if session detection fails
+function showFallbackLogin() {
+  // If user explicitly disconnected for testing, do not restore previous username
+  if (localStorage.getItem('discogs_session_disconnected') === 'true') {
+    setDisconnectedUser();
+    return;
+  }
+
+  // Try retrieving from local storage
+  const saved = localStorage.getItem('discogs_username');
+  if (saved) {
+    if (manualUsername) manualUsername.value = saved;
+    if (wizardManualUsername) {
+      wizardManualUsername.value = saved;
+    }
+    setLoggedInUser(saved);
+    return;
+  }
+
+  setDisconnectedUser();
+}
+
 // Save manual username configuration
 function saveManualUsername() {
-  const username = manualUsername.value.trim();
+  const username = manualUsername ? manualUsername.value.trim() : '';
   if (username) {
+    localStorage.removeItem('discogs_session_disconnected');
     localStorage.setItem('discogs_username', username);
     setLoggedInUser(username);
     log(`Usuario '${username}' guardado manualmente.`, 'success');
+    showToast(`Sesión cambiada al usuario: ${username}`, 'success');
+    if (inputFallback) inputFallback.style.display = 'none';
+  } else {
+    showToast('Por favor escribe un nombre de usuario de Discogs válido.', 'warning');
   }
 }
 
 // Set user layout as logged in
 function setLoggedInUser(username) {
   state.username = username;
-  connectionStatus.textContent = 'Conectado a Discogs';
-  connectionStatus.style.color = '#10b981';
-  usernameDisplay.textContent = username;
-  userAvatar.textContent = username.substring(0, 2).toUpperCase();
-  userAvatar.style.background = 'linear-gradient(135deg, var(--color-purple) 0%, var(--color-purple-dark) 100%)';
-  inputFallback.style.display = 'none';
+  localStorage.removeItem('discogs_session_disconnected');
+  localStorage.setItem('discogs_username', username);
+  
+  if (connectionStatus) {
+    connectionStatus.textContent = 'ACTIVO';
+    connectionStatus.style.color = '#047857';
+    connectionStatus.className = 'text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium';
+  }
+  const dot = document.getElementById('connection-status-dot');
+  if (dot) {
+    dot.className = 'w-1.5 h-1.5 bg-prada-red';
+  }
+  if (usernameDisplay) {
+    usernameDisplay.textContent = username;
+  }
+  if (userAvatar) {
+    userAvatar.textContent = username.substring(0, 2).toUpperCase();
+    userAvatar.style.background = 'linear-gradient(135deg, var(--color-purple) 0%, var(--color-purple-dark) 100%)';
+  }
+  if (manualUsername) {
+    manualUsername.value = username;
+  }
+  if (wizardManualUsername) {
+    wizardManualUsername.value = username;
+  }
+  
   loadWantsBtn.disabled = false;
+  updateUserDropdownInfo();
   
   // Enable onboarding next step
   if (wizardDetectionStatus) {
     wizardDetectionStatus.innerHTML = `
-      <span class="pulse-indicator green"></span>
-      <span>¡Sesión detectada: ${username}!</span>
+      <span class="flex items-center gap-1.5 text-emerald-700 font-bold">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+        <span>Sesión activa: ${escapeHTML(username)}</span>
+      </span>
+      <div class="flex items-center gap-2">
+        <button id="btn-change-username-toggle" type="button" class="text-[9px] text-prada-blue underline uppercase cursor-pointer hover:text-pitch-black font-semibold">Cambiar</button>
+        <span class="text-hairline-light select-none">|</span>
+        <button id="btn-wizard-disconnect" type="button" class="text-[9px] text-prada-red underline uppercase cursor-pointer hover:text-pitch-black font-semibold">Desconectar</button>
+      </div>
     `;
-    wizardNext1Btn.disabled = false;
+    const toggle = document.getElementById('btn-change-username-toggle');
+    if (toggle) {
+      toggle.addEventListener('click', () => {
+        if (wizardInputFallback) {
+          const isHidden = wizardInputFallback.style.display === 'none';
+          wizardInputFallback.style.display = isHidden ? 'flex' : 'none';
+          if (isHidden && wizardManualUsername) wizardManualUsername.focus();
+        }
+      });
+    }
+    const wizardDisconnect = document.getElementById('btn-wizard-disconnect');
+    if (wizardDisconnect) {
+      wizardDisconnect.addEventListener('click', () => disconnectUserSession(true));
+    }
   }
+  if (wizardNext1Btn) wizardNext1Btn.disabled = false;
+  if (wizardSyncBtn) wizardSyncBtn.disabled = false;
   
   if (wizardInputFallback) {
     wizardInputFallback.style.display = 'none';
@@ -1502,7 +2119,13 @@ async function fetchThroughTab(url) {
             if (timeoutId) clearTimeout(timeoutId);
             const errMsg = response ? response.error : "Unknown same-origin fetch error";
             console.error(`[ProxyFetch] La pestaña proxy retornó error para ${url}:`, errMsg);
-            reject(new Error(errMsg));
+            const err = new Error(errMsg);
+            if (response) {
+              err.status = response.status;
+              err.isRateLimited = Boolean(response.isRateLimited || response.status === 429);
+              err.isSessionExpired = Boolean(response.isSessionExpired || response.status === 401 || response.status === 403);
+            }
+            reject(err);
           }
         });
       };
@@ -1514,6 +2137,22 @@ async function fetchThroughTab(url) {
 
 // Step 1: Load Wants List from Discogs API
 async function loadWantlist() {
+  if (!state.username) {
+    loadWantsBtn.disabled = false;
+    loadWantsBtn.innerHTML = '<span class="material-symbols-outlined text-[15px]">favorite</span><span>1. CARGAR DESEOS</span>';
+    if (refreshWantsBtn) refreshWantsBtn.disabled = false;
+    if (wizardSyncBtn) wizardSyncBtn.style.display = 'flex';
+    if (wizardSyncLoader) wizardSyncLoader.style.display = 'none';
+    
+    showToast('No hay una cuenta de Discogs conectada. Ingresa un usuario o autodetecta tu sesión para continuar.', 'warning');
+    if (inputFallback) {
+      inputFallback.style.display = 'block';
+      updateUserDropdownInfo();
+      if (manualUsername) manualUsername.focus();
+    }
+    return;
+  }
+
   loadWantsBtn.disabled = true;
   loadWantsBtn.textContent = 'Cargando...';
   if (refreshWantsBtn) refreshWantsBtn.disabled = true;
@@ -1603,22 +2242,29 @@ async function loadWantlist() {
         
         let html = '';
         const limitParam = 'limit=100';
-        try {
-          html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?${limitParam}&page=${page}`);
-        } catch (tabErr1) {
+        const userTrimmed = encodeURIComponent(state.username.trim());
+        const candidateUrls = [
+          `https://www.discogs.com/wantlist?user=${userTrimmed}&${limitParam}&page=${page}`,
+          `https://www.discogs.com/users/${userTrimmed}/wants?${limitParam}&page=${page}`,
+          `https://www.discogs.com/user/${userTrimmed}/wants?${limitParam}&page=${page}`
+        ];
+
+        for (const candidateUrl of candidateUrls) {
           try {
-            html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wantlist?${limitParam}&page=${page}`);
-          } catch (tabErr2) {
-            try {
-              html = await fetchThroughTab(`https://www.discogs.com/wantlist?${limitParam}&page=${page}`);
-            } catch (tabErr3) {
-              try {
-                html = await fetchThroughTab(`https://www.discogs.com/mywantlist?${limitParam}&page=${page}`);
-              } catch (tabErr4) {
-                html = await fetchThroughTab(`https://www.discogs.com/user/${state.username}/wants?page=${page}`);
-              }
+            html = await fetchThroughTab(candidateUrl);
+            if (html && html.length > 500 && !html.includes('HTTP Error 404') && !html.includes('Page Not Found')) {
+              break;
             }
+          } catch (tabErr) {
+            console.warn(`[WantlistScrape] Falló URL ${candidateUrl}:`, tabErr.message);
           }
+        }
+
+        if (html && (html.includes('is private') || html.includes('es privada') || html.includes('private wantlist'))) {
+          log(`La lista de deseos de '${state.username}' es privada en Discogs. Cámbiala a Pública en discogs.com/settings/privacy`, 'error');
+          const privateModal = document.getElementById('private-wantlist-modal');
+          if (privateModal) privateModal.style.display = 'flex';
+          break;
         }
         
         const pageWants = parseWantlistHTML(html);
@@ -1990,6 +2636,14 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
       unshippableLocations: unshippableLocations
     };
   } catch (e) {
+    // If Discogs session is expired or requires human verification, bubble up immediately
+    if (e && (e.isSessionExpired || (e.message && (e.message.includes('401') || e.message.toLowerCase().includes('session expired'))))) {
+      throw e;
+    }
+    // If rate-limited, flag for batch throttle
+    if (e && (e.isRateLimited || (e.message && e.message.includes('429')))) {
+      state.rateLimitTriggered = true;
+    }
     log(`Error al escanear release ${item.id}: ${e.message}`, 'error');
     updateOffersDisplay([]);
     return { 
@@ -2013,6 +2667,7 @@ async function startMarketplaceScan(startIndex = 0) {
   
   state.isScanning = true;
   state.cancelRequested = false;
+  state.rateLimitTriggered = false;
   
   // Lock filters dynamically while scanning
   toggleFiltersState(false);
@@ -2033,7 +2688,7 @@ async function startMarketplaceScan(startIndex = 0) {
   loadWantsBtn.disabled = true;
   const refreshWantsBtn = document.getElementById('refresh-wants-btn');
   if (refreshWantsBtn) refreshWantsBtn.disabled = true;
-  logoVinyl.classList.add('spinning');
+  if (logoVinyl) logoVinyl.classList.add('spinning');
   
   // Show progress panel with animation, start radar shader and trigger turntable spinning
   startRadarShaderCanvas();
@@ -2063,8 +2718,12 @@ async function startMarketplaceScan(startIndex = 0) {
   resultsGrid.style.display = 'none';
   noResultsState.style.display = 'none';
   
+  const headerNavRow = document.getElementById('header-nav-row');
+  if (headerNavRow) headerNavRow.style.display = 'none';
   const tabNavigation = document.getElementById('tab-navigation');
   if (tabNavigation) tabNavigation.style.display = 'none';
+  const filterToolbar = document.getElementById('filter-toolbar');
+  if (filterToolbar) filterToolbar.style.display = 'none';
   const statsView = document.getElementById('stats-view');
   if (statsView) statsView.style.display = 'none';
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
@@ -2077,18 +2736,33 @@ async function startMarketplaceScan(startIndex = 0) {
   // Sort wants so priority/starred items are scanned FIRST
   state.wants.sort((a, b) => (b.isPriority ? 1 : 0) - (a.isPriority ? 1 : 0));
 
-  const BATCH_SIZE = 3;
   const scanStartTime = Date.now();
   let liveScannedCount = 0;
+  let currentBatchSize = 3;
+  let cooldownItemsLeft = 0;
   
   try {
-    for (let i = startIndex; i < state.wants.length; i += BATCH_SIZE) {
+    for (let i = startIndex; i < state.wants.length; i += currentBatchSize) {
       if (state.cancelRequested) {
         log('Escaneo cancelado por el usuario.', 'error');
         break;
       }
       
-      const batchItems = state.wants.slice(i, i + BATCH_SIZE);
+      // Adaptive batch throttling: if rate limit was triggered, switch to serial (1 by 1)
+      if (state.rateLimitTriggered || cooldownItemsLeft > 0) {
+        if (state.rateLimitTriggered) {
+          state.rateLimitTriggered = false;
+          cooldownItemsLeft = 4;
+          log('[Throttling Inteligente] Reduciendo concurrencia a 1 consulta por lote para restablecer margen de API...', 'action');
+        } else {
+          cooldownItemsLeft--;
+        }
+        currentBatchSize = 1;
+      } else {
+        currentBatchSize = 3;
+      }
+
+      const batchItems = state.wants.slice(i, i + currentBatchSize);
       const remainingCount = state.wants.length - i;
       const elapsedTimeSec = (Date.now() - scanStartTime) / 1000;
       const avgSecPerItem = liveScannedCount > 0 ? (elapsedTimeSec / liveScannedCount) : 0.4;
@@ -2138,15 +2812,20 @@ async function startMarketplaceScan(startIndex = 0) {
       
       // Update stats on-the-fly
       const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
-      metricSellersCount.textContent = uniqueSellers.size;
-      metricMatchesCount.textContent = state.allListings.length;
+      if (metricSellersCount) metricSellersCount.textContent = uniqueSellers.size;
+      if (metricMatchesCount) metricMatchesCount.textContent = state.allListings.length;
+      const liveTickerSellers = document.getElementById('ticker-sellers-count');
+      if (liveTickerSellers) liveTickerSellers.textContent = uniqueSellers.size.toLocaleString();
+      const liveTickerMatches = document.getElementById('ticker-matches-count');
+      if (liveTickerMatches) liveTickerMatches.textContent = state.allListings.length.toLocaleString();
       
       // Save scan session progress
-      saveScanSession(Math.min(i + BATCH_SIZE - 1, state.wants.length - 1));
+      saveScanSession(Math.min(i + currentBatchSize - 1, state.wants.length - 1));
       
       // Short pause between live batches to respect Discogs server limits
       if (hasLiveFetch) {
-        await new Promise(resolve => setTimeout(resolve, 600));
+        const pauseDelay = currentBatchSize === 1 ? 900 : 600;
+        await new Promise(resolve => setTimeout(resolve, pauseDelay));
       }
     }
     
@@ -2163,14 +2842,22 @@ async function startMarketplaceScan(startIndex = 0) {
     renderResults();
     
   } catch (error) {
-    log(`Error crítico durante el escaneo: ${error.message}`, 'error');
+    if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {
+      log('⚠️ [Sesión Expirada] Tu sesión en Discogs ha caducado o requiere verificación.', 'error');
+      if (typeof showToast === 'function') {
+        showToast('Sesión de Discogs expirada. Inicia sesión en Discogs y presiona "Reanudar".', 'error', 10000);
+      }
+      alert('Tu sesión en Discogs ha expirado o requiere resolver una verificación de navegador.\n\n1. Inicia sesión en tu cuenta de Discogs en una pestaña.\n2. Vuelve a este Dashboard y presiona "Reanudar Búsqueda" para continuar exactamente donde quedaste.');
+    } else {
+      log(`Error crítico durante el escaneo: ${error.message}`, 'error');
+    }
   } finally {
     state.isScanning = false;
     startScanBtn.disabled = false;
     loadWantsBtn.disabled = false;
     const refreshWantsBtn = document.getElementById('refresh-wants-btn');
     if (refreshWantsBtn) refreshWantsBtn.disabled = false;
-    logoVinyl.classList.remove('spinning');
+    if (logoVinyl) logoVinyl.classList.remove('spinning');
     stopRadarShaderCanvas();
     if (window.Motion) {
       window.Motion.hideScanCard();
@@ -2299,7 +2986,7 @@ async function refreshWantlistIncremental() {
       startRadarShaderCanvas();
       const turntableVinyl = document.getElementById('turntable-vinyl');
       if (turntableVinyl) turntableVinyl.classList.add('spinning');
-      logoVinyl.classList.add('spinning');
+      if (logoVinyl) logoVinyl.classList.add('spinning');
       
       log(`Escaneando ${newlyAddedWants.length} nuevos discos en venta...`);
       
@@ -2363,7 +3050,7 @@ async function refreshWantlistIncremental() {
     alert(`Error al actualizar incrementalmente: ${error.message}`);
   } finally {
     state.isScanning = false;
-    logoVinyl.classList.remove('spinning');
+    if (logoVinyl) logoVinyl.classList.remove('spinning');
     statusCard.style.display = 'none';
     if (scanLoggerDock) scanLoggerDock.style.display = 'none';
     stopRadarShaderCanvas();
@@ -2609,7 +3296,8 @@ function parseReleaseHTML(html, releaseId) {
       if (!sellerName || sellerName.toLowerCase() === 'view seller profile' || sellerName.toLowerCase() === 'vendedor') return;
       
       // 2. Seller Rating and Ratings Count
-      const sellerInfoText = row.querySelector('.seller_info')?.textContent || '';
+      const sellerInfoEl = row.querySelector('.seller_info, [class*="seller_info"], [class*="seller-info"]');
+      const sellerInfoText = sellerInfoEl?.textContent || row.textContent || '';
       let rating = 100;
       let ratingCount = 0;
       
@@ -2618,12 +3306,31 @@ function parseReleaseHTML(html, releaseId) {
         rating = parseFloat(ratingMatch[1]);
       }
       
-      const countMatch = sellerInfoText.match(/\(([\d,]+)\s*(?:ratings|valoraciones)?\)/i);
-      if (countMatch) {
-        ratingCount = parseInt(countMatch[1].replace(/,/g, ''), 10);
-      } else {
-        const fallbackCount = sellerInfoText.match(/\(([\d,]+)\)/);
-        if (fallbackCount) ratingCount = parseInt(fallbackCount[1].replace(/,/g, ''), 10);
+      // Look for reviews count in explicit review/history/feedback links first
+      const reviewLink = row.querySelector('a[href*="/history"], a[href*="/reviews"], a[href*="/feedback"]');
+      if (reviewLink) {
+        const matchNum = reviewLink.textContent.match(/([\d.,]+)/);
+        if (matchNum) {
+          const cleanNum = matchNum[1].replace(/[.,]/g, '');
+          if (cleanNum && !isNaN(cleanNum)) ratingCount = parseInt(cleanNum, 10);
+        }
+      }
+      
+      if (!ratingCount) {
+        // Pattern 1: With parens, e.g. (5,420 ratings), (5.420 valoraciones), (120)
+        const countMatch = sellerInfoText.match(/\(([\d.,]+)\s*(?:ratings?|valoraciones|calificaciones|evaluaciones|bewertungen)?\)/i);
+        if (countMatch) {
+          const cleanNum = countMatch[1].replace(/[.,]/g, '');
+          if (cleanNum && !isNaN(cleanNum)) ratingCount = parseInt(cleanNum, 10);
+        } else {
+          // Pattern 2: Without parens, e.g. 99.5%, 1,234 ratings or 5.420 valoraciones
+          const altCount = sellerInfoText.match(/(?:%[,\s]+|ratings?|valoraciones|calificaciones|evaluaciones)[:\s]*([\d.,]+)/i)
+            || sellerInfoText.match(/([\d.,]+)\s*(?:ratings?|valoraciones|calificaciones|evaluaciones|bewertungen)/i);
+          if (altCount) {
+            const cleanNum = altCount[1].replace(/[.,]/g, '');
+            if (cleanNum && !isNaN(cleanNum)) ratingCount = parseInt(cleanNum, 10);
+          }
+        }
       }
       
       // 3. Ships From
@@ -2826,39 +3533,49 @@ function parseReleaseHTML(html, releaseId) {
   };
 }
 
-// Group all matching listings by Seller Name
+// Group all matching listings by Seller Name with defensive data normalization
 function groupListingsBySeller() {
   const sellersMap = {};
-  const buyerCountryVal = buyerCountry.value || 'Uruguay';
+  const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay') || 'Uruguay';
   
   // List of European countries to check EU-to-EU shipping
   const euroCountries = ['spain', 'germany', 'france', 'italy', 'united kingdom', 'uk', 'netherlands', 'belgium', 'austria', 'switzerland', 'sweden', 'norway', 'portugal', 'greece', 'poland', 'ireland', 'spain (es)', 'deutschland', 'de', 'es'];
   
-  const isCountryEU = (c) => euroCountries.some(eu => c.toLowerCase().includes(eu));
+  const isCountryEU = (c) => {
+    if (!c || typeof c !== 'string') return false;
+    const lower = c.toLowerCase();
+    return euroCountries.some(eu => lower.includes(eu));
+  };
   const isBuyerEU = isCountryEU(buyerCountryVal);
 
-  state.allListings.forEach(listing => {
-    const sName = listing.sellerName;
+  (state.allListings || []).forEach(listing => {
+    if (!listing) return;
+    const sName = (listing.sellerName || '').trim() || 'Vendedor Desconocido';
     
-    // Preserve the detected listing currency (detected from symbols $, €, £, ¥, etc. in parseReleaseHTML)
-    // For legacy caches, if JPY has an implausibly small value (< 100), treat as USD
+    // Normalize and sanitize price value
+    const rawPrice = typeof listing.priceVal === 'number' ? listing.priceVal : parseFloat(listing.priceVal);
+    listing.priceVal = (!isNaN(rawPrice) && isFinite(rawPrice) && rawPrice > 0) ? rawPrice : 0;
+
+    // Preserve the detected listing currency
     if (listing.currency === 'JPY' && listing.priceVal < 100) {
       listing.currency = 'USD';
     }
     
     if (!sellersMap[sName]) {
+      const rawRating = typeof listing.rating === 'number' ? listing.rating : parseFloat(listing.rating);
+      const rawRatingCount = typeof listing.ratingCount === 'number' ? listing.ratingCount : parseInt(listing.ratingCount, 10);
       sellersMap[sName] = {
         name: sName,
-        rating: listing.rating,
-        ratingCount: listing.ratingCount,
-        shipsFrom: listing.shipsFrom,
-        currency: listing.currency,
+        rating: (!isNaN(rawRating) && isFinite(rawRating)) ? rawRating : 100,
+        ratingCount: (!isNaN(rawRatingCount) && isFinite(rawRatingCount)) ? rawRatingCount : 0,
+        shipsFrom: (listing.shipsFrom || 'Internacional').trim(),
+        currency: listing.currency || 'USD',
         listings: []
       };
     }
     
     // Avoid double listings of same release by same seller (keep cheapest copy)
-    const existing = sellersMap[sName].listings.find(l => l.releaseId === listing.releaseId);
+    const existing = sellersMap[sName].listings.find(l => l && String(l.releaseId) === String(listing.releaseId));
     if (existing) {
       if (listing.priceVal < existing.priceVal) {
         const idx = sellersMap[sName].listings.indexOf(existing);
@@ -2871,12 +3588,12 @@ function groupListingsBySeller() {
   
   // Convert map to array and calculate metrics
   state.groupedSellers = Object.values(sellersMap).map(seller => {
-    const listCount = seller.listings.length;
-    const subtotal = seller.listings.reduce((sum, item) => sum + item.priceVal, 0);
+    const listCount = (seller.listings || []).length;
+    const subtotal = (seller.listings || []).reduce((sum, item) => sum + (item.priceVal || 0), 0);
     
-    // Determine location relationship
-    const shipsFromLower = seller.shipsFrom.toLowerCase();
-    const buyerLower = buyerCountryVal.toLowerCase();
+    // Determine location relationship defensively
+    const shipsFromLower = (seller.shipsFrom || '').toLowerCase();
+    const buyerLower = (buyerCountryVal || 'uruguay').toLowerCase();
     
     let isDomestic = shipsFromLower.includes(buyerLower) || buyerLower.includes(shipsFromLower);
     
@@ -2896,7 +3613,7 @@ function groupListingsBySeller() {
     seller.isDomestic = isDomestic;
     seller.isEUToEU = isEUToEU;
     
-    const estimatedShipping = calculateSellerShipping(seller, seller.listings);
+    const estimatedShipping = calculateSellerShipping(seller, seller.listings || []);
     const totalPrice = subtotal + estimatedShipping;
     
     return {
@@ -2907,7 +3624,7 @@ function groupListingsBySeller() {
       totalPrice: parseFloat(totalPrice.toFixed(2)),
       isDomestic,
       isEUToEU,
-      isShippingEstimated: seller.listings.some(l => l.isShippingEstimated)
+      isShippingEstimated: (seller.listings || []).some(l => l && l.isShippingEstimated)
     };
   });
   
@@ -3205,172 +3922,272 @@ function renderSmartPurchase(filteredSellers) {
     return;
   }
 
-  // Helper function to render a candidate row card inside the stack
-  function renderCandidateCard(seller, rankIndex, totalWantsCount, optionType) {
-    const rankIcons = ['🥇', '🥈', '🥉'];
-    const medal = rankIcons[rankIndex] || '•';
-    const totalCost = seller.totalPrice;
-    const subtotal = seller.listings.reduce((sum, l) => sum + l.priceVal, 0);
-    const shippingCost = totalCost - subtotal;
+  // Helper function to render Stitch Luxury Bento Grid (Option A and Option B)
+  const sellerA = topSellersA[0];
+  const subtotalA = sellerA.listings.reduce((sum, l) => sum + l.priceVal, 0);
+  const totalCostA = sellerA.totalPrice;
+  const shippingCostA = Math.max(totalCostA - subtotalA, 0);
+  const estSavingsA = Math.max((sellerA.listings.length - 1) * 18.50, 24);
+  const coveragePercentA = ((sellerA.listings.length / Math.max(state.wants.length, 1)) * 100).toFixed(2);
+
+  // 6 visual covers for Option A (up to 5 covers + 1 overflow tile if > 6)
+  let galleryAHtml = '';
+  const totalListingsA = sellerA.listings.length;
+  const showOverflowA = totalListingsA > 6;
+  const sliceCountA = showOverflowA ? 5 : Math.min(totalListingsA, 6);
+  const itemsToRenderA = sellerA.listings.slice(0, sliceCountA);
+
+  itemsToRenderA.forEach(l => {
+    const wantInfo = state.wants.find(w => String(w.id) === String(l.releaseId)) || {};
+    const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || l.image || '';
+    const coverImg = upgradeDiscogsImageUrl(coverRaw);
+    const condTag = (l.mediaCondition || 'VG+').toUpperCase();
+    const condColor = condTag.includes('M') && !condTag.includes('NM') 
+      ? 'bg-emerald-600' 
+      : (condTag.includes('NM') ? 'bg-blue-600' : 'bg-amber-600');
     
-    let albumsHtml = '';
-    seller.listings.forEach(l => {
-      const wantInfo = state.wants.find(w => String(w.id) === String(l.releaseId)) || {};
-      const albumTitle = wantInfo.title || l.releaseTitle || l.title || 'Disco';
-      const albumArtist = wantInfo.artist || l.releaseArtist || l.artist || '';
-      const fullLabel = albumArtist ? `${albumArtist} - ${albumTitle}` : albumTitle;
+    const imgHtml = coverImg 
+      ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/cover:scale-105 transition-transform duration-300" src="${escapeHTML(coverImg)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+         <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`
+      : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`;
+    
+    galleryAHtml += `
+      <div class="aspect-square bg-stone-100 border border-hairline-dark relative group/cover overflow-hidden hover:border-prada-red transition-all shadow-xs" title="${escapeHTML((wantInfo.artist ? wantInfo.artist + ' - ' : '') + (wantInfo.title || 'Vinilo'))}">
+        ${imgHtml}
+        <span class="absolute bottom-1 right-1 ${condColor} text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 shadow-sm">${escapeHTML(condTag)}</span>
+      </div>
+    `;
+  });
 
-      albumsHtml += `
-        <div class="smart-album-row" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; margin-bottom: 4px;">
-          <span class="smart-album-title" style="color: var(--on-surface, #1e1e1e); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;" title="${escapeHTML(fullLabel)}">💿 ${escapeHTML(fullLabel)}</span>
-          <span class="smart-album-price" style="color: var(--text-muted); white-space: nowrap; font-weight: 600; font-size: 11px;">${formatPrice(l.priceVal, l.currency)}</span>
-        </div>
-      `;
-    });
-
-    const isActiveClass = rankIndex === 0 ? 'active' : '';
-    const isTopRec = rankIndex === 0;
-    const sellerUrl = seller.listings[0]?.listingUrl || (seller.listings[0]?.listingId ? 'https://www.discogs.com/sell/item/' + seller.listings[0].listingId : 'https://www.discogs.com/release/' + seller.listings[0]?.releaseId);
-
-    return `
-      <div class="smart-candidate-card ${isActiveClass} ${isTopRec ? 'border-amber-500/50 bg-amber-500/5 ring-1 ring-amber-500/30' : ''}">
-        <div class="smart-candidate-header">
-          <div class="smart-candidate-info">
-            <div class="smart-candidate-seller-line">
-              <span class="smart-candidate-medal">${medal}</span>
-              <span class="smart-candidate-name" title="${escapeHTML(seller.name)}">${escapeHTML(seller.name)}</span>
-            </div>
-            <div class="smart-candidate-badges-line">
-              ${isTopRec ? `<span class="smart-candidate-badge-rec">Recomendado</span>` : ''}
-              <span class="smart-candidate-meta-badge">${seller.listings.length} discos</span>
-            </div>
-          </div>
-          <div class="smart-candidate-price-col">
-            <div class="smart-candidate-price">
-              ${formatPrice(totalCost, seller.currency)}
-            </div>
-            <span class="smart-candidate-chevron">▼</span>
-          </div>
-        </div>
-        
-        <div class="smart-candidate-body">
-          <div class="smart-candidate-body-inner">
-            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-              <span>📍 ${escapeHTML(seller.shipsFrom)} • ⭐ ${seller.rating}% pos.</span>
-              <a href="${sellerUrl}" target="_blank" style="color: var(--color-purple); text-decoration: none; font-weight: 600;">Ver en Discogs ↗</a>
-            </div>
-            
-            <div class="smart-option-albums-list" style="max-height: 120px;">
-              ${albumsHtml}
-            </div>
-            
-            <div style="border-top: 1px solid rgba(46, 46, 46, 0.10); padding-top: 10px; font-size: 11px; display: flex; flex-direction: column; gap: 4px;">
-              <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
-                <span>Subtotal discos:</span>
-                <span>${formatPrice(subtotal, seller.currency)}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; color:var(--text-muted);">
-                <span>Gastos de envío:</span>
-                <span>${formatPrice(shippingCost, seller.currency)}</span>
-              </div>
-              <div style="display:flex; justify-content:space-between; font-weight: 700; margin-top: 2px;">
-                <span style="color: var(--text-muted);">Promedio por disco:</span>
-                <span style="color: var(--color-amber);">${formatPrice(totalCost / seller.listings.length, seller.currency)}</span>
-              </div>
-              <a href="#" class="btn-scroll-to-seller" data-scroll-to="${escapeHTML(seller.name)}" style="margin-top: 10px; display: block; text-align: center; text-decoration: none; padding: 8px 12px; font-size: 11px; font-weight: 700; color: var(--color-purple); background: rgba(201, 111, 74, 0.08); border: 1px solid rgba(201, 111, 74, 0.30); border-radius: 8px; transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;">
-                Ver oferta y discos ↓
-              </a>
-            </div>
-          </div>
-        </div>
+  if (showOverflowA) {
+    const overflowCount = totalListingsA - 5;
+    galleryAHtml += `
+      <div class="aspect-square border-2 border-prada-red bg-prada-red-bg flex flex-col items-center justify-center text-prada-red font-mono hover:bg-prada-red hover:text-white transition-all cursor-pointer shadow-xs btn-scroll-to-seller group/more" data-scroll-to="${escapeHTML(sellerA.name)}" title="Ver todos los ${totalListingsA} discos de este vendedor">
+        <span class="font-extrabold text-lg leading-none group-hover/more:scale-110 transition-transform">+${overflowCount}</span>
+        <span class="text-[9px] uppercase tracking-wider font-bold mt-1">DISCOS</span>
       </div>
     `;
   }
 
-  let stackHtmlA = '';
-  topSellersA.forEach((seller, idx) => {
-    stackHtmlA += renderCandidateCard(seller, idx, state.wants.length, 'A');
+  // Option B setup
+  const sellerB = topSellersB[0] || topSellersA[1] || topSellersA[0];
+  const subtotalB = sellerB.listings.reduce((sum, l) => sum + l.priceVal, 0);
+  const totalCostB = sellerB.totalPrice;
+  const shippingCostB = Math.max(totalCostB - subtotalB, 0);
+  const avgCostPerPieceB = totalCostB / Math.max(sellerB.listings.length, 1);
+
+  // 6 visual covers for Option B (up to 5 covers + 1 overflow tile if > 6)
+  let galleryBHtml = '';
+  const totalListingsB = sellerB.listings.length;
+  const showOverflowB = totalListingsB > 6;
+  const sliceCountB = showOverflowB ? 5 : Math.min(totalListingsB, 6);
+  const itemsToRenderB = sellerB.listings.slice(0, sliceCountB);
+
+  itemsToRenderB.forEach(l => {
+    const wantInfo = state.wants.find(w => String(w.id) === String(l.releaseId)) || {};
+    const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || l.image || '';
+    const coverImg = upgradeDiscogsImageUrl(coverRaw);
+    const condTag = (l.mediaCondition || 'VG+').toUpperCase();
+    const condColor = condTag.includes('M') && !condTag.includes('NM') 
+      ? 'bg-emerald-600' 
+      : (condTag.includes('NM') ? 'bg-blue-600' : 'bg-amber-600');
+    
+    const imgHtml = coverImg 
+      ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/cover:scale-105 transition-transform duration-300" src="${escapeHTML(coverImg)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+         <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`
+      : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`;
+    
+    galleryBHtml += `
+      <div class="aspect-square bg-stone-100 border border-hairline-dark relative group/cover overflow-hidden hover:border-prada-blue transition-all shadow-xs" title="${escapeHTML((wantInfo.artist ? wantInfo.artist + ' - ' : '') + (wantInfo.title || 'Vinilo'))}">
+        ${imgHtml}
+        <span class="absolute bottom-1 right-1 ${condColor} text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 shadow-sm">${escapeHTML(condTag)}</span>
+      </div>
+    `;
   });
 
-  let stackHtmlB = '';
-  topSellersB.forEach((seller, idx) => {
-    stackHtmlB += renderCandidateCard(seller, idx, state.wants.length, 'B');
-  });
+  if (showOverflowB) {
+    const overflowCountB = totalListingsB - 5;
+    galleryBHtml += `
+      <div class="aspect-square border-2 border-prada-blue bg-blue-50 flex flex-col items-center justify-center text-prada-blue font-mono hover:bg-prada-blue hover:text-white transition-all cursor-pointer shadow-xs btn-scroll-to-seller group/more" data-scroll-to="${escapeHTML(sellerB.name)}" title="Ver todos los ${totalListingsB} discos de este vendedor">
+        <span class="font-extrabold text-lg leading-none group-hover/more:scale-110 transition-transform">+${overflowCountB}</span>
+        <span class="text-[9px] uppercase tracking-wider font-bold mt-1">DISCOS</span>
+      </div>
+    `;
+  }
 
-  let wishlistHtml = '';
-  if (wishlistStats) {
-    wishlistHtml = `
-      <div class="smart-option-card" style="grid-column: 1 / -1; border-color: rgba(201, 111, 74, 0.30); margin-top: 16px; min-height: auto; padding: 18px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; width: 100%;">
-          <div style="flex: 1; min-width: 250px;">
-            <h3 style="margin: 0; font-family: var(--font-title); font-size: 15px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-              🌐 Cobertura Completa (Compra Multitienda)
-            </h3>
-            <p style="margin: 4px 0 0 0; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
-              El costo estimado para conseguir la mayor cantidad posible de tu wishlist seleccionando la copia más barata disponible en el marketplace para cada disco.
+  const bentoGridHtml = `
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+      <!-- CARD 01: MÁXIMO STOCK / CONSOLIDACIÓN (BORDE ROJO PRADA) -->
+      <article class="border-2 border-prada-red/70 bg-pure-white p-6 sm:p-7 flex flex-col justify-between relative group hover:border-prada-red transition-all shadow-[4px_4px_0px_rgba(224,43,32,0.08)]">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-prada-red"></div>
+        <div class="flex flex-col gap-5 pt-1">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <span class="w-10 h-10 border-2 border-pitch-black font-mono font-bold text-base flex items-center justify-center bg-ivory-warm text-pitch-black group-hover:bg-prada-red group-hover:text-pure-white transition-colors shrink-0 shadow-xs">
+                01
+              </span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[10px] font-mono tracking-wider uppercase bg-prada-red text-pure-white px-2.5 py-1 font-bold shadow-xs">
+                    OPCIÓN 1: MAYOR CATÁLOGO EN STOCK
+                  </span>
+                  <span class="text-[11px] font-mono uppercase text-prada-blue font-semibold border border-blue-200 bg-blue-50 px-2 py-0.5">${getCountryFlag(sellerA.shipsFrom)} ${escapeHTML(sellerA.shipsFrom)}</span>
+                </div>
+                <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
+                  ${escapeHTML(sellerA.name)}
+                  <span class="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 ml-2 align-middle inline-block">${sellerA.rating}% ${sellerA.ratingCount > 0 ? `(${sellerA.ratingCount.toLocaleString()} VOTOS)` : 'POSITIVO'}</span>
+                </h2>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="inline-block bg-prada-ochre-bg border border-prada-ochre text-amber-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">
+                ${sellerA.listings.length} DISCOS EN STOCK
+              </span>
+              <div class="font-mono text-[11px] text-prada-red font-bold uppercase tracking-wider mt-1.5">
+                ★ CONSOLIDA MÁS EN 1 ENVÍO (${coveragePercentA}%)
+              </div>
+            </div>
+          </div>
+
+          <!-- Wantlist Coverage Architectural Gauge -->
+          <div class="border border-hairline-light p-3.5 bg-ivory-warm">
+            <div class="flex justify-between items-center text-[11px] font-mono tracking-wider mb-2 uppercase">
+              <span class="text-muted-graphite font-semibold">RESOLUCIÓN DE ARCHIVO (${sellerA.listings.length} / ${state.wants.length} LANZAMIENTOS)</span>
+              <span class="text-prada-red font-bold">${coveragePercentA}% RESUELTO</span>
+            </div>
+            <div class="w-full h-2.5 bg-surface-low overflow-hidden border border-hairline-dark">
+              <div class="h-full bg-prada-red transition-all duration-500" style="width: ${Math.min(coveragePercentA, 100)}%;" title="${coveragePercentA}% de tu Wantlist resuelta (${sellerA.listings.length} de ${state.wants.length} discos en stock)"></div>
+            </div>
+          </div>
+
+          <!-- Covers Gallery -->
+          <div class="flex flex-col gap-2.5">
+            <div class="flex justify-between text-[11px] font-mono tracking-wider uppercase text-muted-graphite font-semibold">
+              <span>MUESTRA DE LOTE DISCOGRÁFICO</span>
+              <span class="text-prada-blue font-bold">STOCK CURADO DISPONIBLE</span>
+            </div>
+            <div class="grid grid-cols-6 gap-2 sm:gap-2.5">
+              ${galleryAHtml}
+            </div>
+          </div>
+
+          <!-- Financial Breakdown Tabular Receipt -->
+          <div class="grid grid-cols-3 border border-hairline-dark py-3 font-mono bg-ivory-warm px-3 shadow-xs">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">SUBTOTAL DISCOS</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(subtotalA, sellerA.currency)}</span>
+            </div>
+            <div class="border-l border-hairline-light pl-4">
+              <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">ENVÍO CONSOLIDADO</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostA, sellerA.currency)}</span>
+            </div>
+            <div class="border-l border-hairline-light pl-4 bg-prada-red-bg px-2 py-0.5">
+              <span class="text-[10px] uppercase tracking-wider text-prada-red font-bold block">AHORRO EN FLETE</span>
+              <span class="font-bold text-base sm:text-lg tracking-tight text-prada-red">-$${estSavingsA.toFixed(2)} <span class="text-[11px] font-normal">USD</span></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3 pt-5 mt-4">
+          <button class="btn-scroll-to-seller flex-1 bg-prada-red text-pure-white hover:bg-prada-red-dark text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerA.name)}" type="button">
+            <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+            <span>EXAMINAR LOTE (${sellerA.listings.length} DISCOS)</span>
+          </button>
+          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerA.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerA.name)} en Discogs">
+            <span>VER EN DISCOGS</span>
+            <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+          </a>
+        </div>
+      </article>
+
+      <!-- CARD 02: LOTE MÁS ECONÓMICO / MEJOR VALOR (BORDE AZUL PRADA) -->
+      <article class="border-2 border-prada-blue/70 bg-pure-white p-6 sm:p-7 flex flex-col justify-between relative group hover:border-prada-blue transition-all shadow-[4px_4px_0px_rgba(29,78,216,0.08)]">
+        <div class="absolute top-0 left-0 right-0 h-1.5 bg-prada-blue"></div>
+        <div class="flex flex-col gap-5 pt-1">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-start gap-3 sm:gap-4">
+              <span class="w-10 h-10 border-2 border-pitch-black font-mono font-bold text-base flex items-center justify-center bg-ivory-warm text-pitch-black group-hover:bg-prada-blue group-hover:text-pure-white transition-colors shrink-0 shadow-xs">
+                02
+              </span>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[10px] font-mono tracking-wider uppercase bg-prada-blue text-pure-white px-2.5 py-1 font-bold shadow-xs">
+                    OPCIÓN 2: LOTE MÁS ECONÓMICO
+                  </span>
+                  <span class="text-[11px] font-mono uppercase text-prada-blue font-semibold border border-blue-200 bg-blue-50 px-2 py-0.5">${getCountryFlag(sellerB.shipsFrom)} ${escapeHTML(sellerB.shipsFrom)}</span>
+                </div>
+                <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
+                  ${escapeHTML(sellerB.name)}
+                  <span class="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 ml-2 align-middle inline-block">${sellerB.rating}% ${sellerB.ratingCount > 0 ? `(${sellerB.ratingCount.toLocaleString()} VOTOS)` : 'POSITIVO'}</span>
+                </h2>
+              </div>
+            </div>
+            <div class="text-right shrink-0">
+              <span class="inline-block bg-emerald-50 border border-emerald-300 text-emerald-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">
+                ${formatPrice(avgCostPerPieceB, sellerB.currency)} / DISCO
+              </span>
+              <div class="font-mono text-[11px] text-emerald-800 font-bold uppercase tracking-wider mt-1.5 flex items-center justify-end gap-1">
+                <span>★</span> MENOR PRECIO PROMEDIO (${sellerB.listings.length} DISCOS)
+              </div>
+            </div>
+          </div>
+
+          <!-- Covers Gallery for Option B -->
+          <div class="flex flex-col gap-2.5">
+            <div class="flex justify-between text-[11px] font-mono tracking-wider uppercase text-muted-graphite font-semibold">
+              <span>MUESTRA DE LOTE DISCOGRÁFICO</span>
+              <span class="text-prada-blue font-bold">STOCK MÁS ECONÓMICO</span>
+            </div>
+            <div class="grid grid-cols-6 gap-2 sm:gap-2.5">
+              ${galleryBHtml}
+            </div>
+          </div>
+
+          <!-- Financial Metrics Grid -->
+          <div class="grid grid-cols-4 border border-hairline-dark py-3 font-mono bg-ivory-warm px-3 shadow-xs">
+            <div>
+              <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">MEDIA / PIEZA</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-emerald-800">${formatPrice(avgCostPerPieceB, sellerB.currency)}</span>
+            </div>
+            <div class="border-l border-hairline-light pl-3">
+              <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">SUBTOTAL</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(subtotalB, sellerB.currency)}</span>
+            </div>
+            <div class="border-l border-hairline-light pl-3">
+              <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">FLETE</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostB, sellerB.currency)}</span>
+            </div>
+            <div class="border-l border-hairline-light pl-3 bg-blue-50/60 px-2 py-0.5">
+              <span class="text-[10px] uppercase tracking-wider text-prada-blue font-bold block">TOTAL LOTE</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(totalCostB, sellerB.currency)}</span>
+            </div>
+          </div>
+
+          <!-- Museum Condition Guarantee Note -->
+          <div class="border border-emerald-300 bg-prada-emerald-bg p-3.5 flex items-start gap-2.5">
+            <span class="material-symbols-outlined text-[20px] text-prada-emerald shrink-0 mt-0.5">verified</span>
+            <p class="font-mono text-xs text-emerald-950 leading-relaxed font-medium">
+              ESTADO CERTIFICADO: VINILOS VERIFICADOS CON GARANTÍA DIRECTA Y PROTECCIÓN DE COMPRA EN DISCOGS MARKETPLACE.
             </p>
           </div>
-          <div style="display: flex; align-items: center; gap: 24px; text-align: right; flex-wrap: wrap;">
-            <div>
-              <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Discos Cubiertos</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--text-main); margin-top: 2px;">${wishlistStats.coveredCount} de ${wishlistStats.totalReleasesCount}</div>
-            </div>
-            <div>
-              <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Vendedores</div>
-              <div style="font-size: 16px; font-weight: 800; color: var(--color-green); margin-top: 2px;">${wishlistStats.sellersCount} tiendas</div>
-            </div>
-            <div>
-              <div style="font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Costo Total Estimado</div>
-              <div style="font-size: 20px; font-weight: 800; color: var(--color-amber); margin-top: 2px;">USD $${wishlistStats.totalCostUSD.toFixed(2)}</div>
-              <div style="font-size: 10px; color: var(--text-muted); margin-top: 1px;">Discos: $${wishlistStats.discsPriceUSD.toFixed(2)} | Envío: $${wishlistStats.shippingUSD.toFixed(2)}</div>
-            </div>
-          </div>
         </div>
-      </div>
-    `;
-  }
 
-  const cardsHtml = `
-    <div class="smart-options-container">
-      <div class="smart-option-card" style="padding: 16px; justify-content: flex-start; min-height: auto;">
-        <div class="smart-option-header" style="margin-bottom: 10px;">
-          <h3 style="display: flex; align-items: center; gap: 8px;">📦 Opción A: Compra Máxima</h3>
-          <p>Satisface la mayor cantidad de discos de tu Wantlist en una sola compra.</p>
+        <div class="flex items-center gap-3 pt-5 mt-4">
+          <button class="btn-scroll-to-seller flex-1 bg-prada-blue-night hover:bg-prada-blue text-pure-white text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerB.name)}" type="button">
+            <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+            <span>EXAMINAR LOTE (${sellerB.listings.length} DISCOS)</span>
+          </button>
+          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerB.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerB.name)} en Discogs">
+            <span>VER EN DISCOGS</span>
+            <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+          </a>
         </div>
-        <div class="smart-candidates-stack">
-          ${stackHtmlA}
-        </div>
-      </div>
-      
-      <div class="smart-option-card" style="padding: 16px; justify-content: flex-start; min-height: auto;">
-        <div class="smart-option-header" style="margin-bottom: 10px;">
-          <h3 style="display: flex; align-items: center; gap: 8px;">💰 Opción B: Compra Eficiente</h3>
-          <p>Prioriza los vendedores con el menor precio promedio por vinilo (mín. 3 discos).</p>
-        </div>
-        <div class="smart-candidates-stack">
-          ${stackHtmlB}
-        </div>
-      </div>
-      
-      ${wishlistHtml}
+      </article>
     </div>
   `;
 
-  smartPurchaseCard.className = 'smart-purchase-card bento-card-morph mb-8';
-  smartPurchaseCard.innerHTML = `
-    <div class="smart-purchase-header" style="margin-bottom: 16px;">
-      <div class="smart-purchase-title-area" style="display: flex; align-items: center; gap: 12px;">
-        <span class="smart-purchase-icon" style="font-size: 24px;">🏆</span>
-        <div>
-          <h2 style="margin: 0; font-family: var(--font-title); font-size: 18px; color: var(--text-main);">Compra Inteligente Consolidada</h2>
-          <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Las mejores opciones de vendedor único para consolidar tu compra sin multiplicar gastos de envío.</p>
-        </div>
-      </div>
-    </div>
-    <div class="smart-purchase-content">
-      ${cardsHtml}
-    </div>
-  `;
+  smartPurchaseCard.className = 'smart-purchase-card w-full mb-8';
+  smartPurchaseCard.innerHTML = bentoGridHtml;
 
   smartPurchaseCard.style.display = 'block';
 
@@ -3390,20 +4207,21 @@ function renderSmartPurchase(filteredSellers) {
     });
   }
 
-  // Attach event listeners for scrolling to seller cards
+  // Attach event listeners for scrolling to and auto-expanding seller cards
   smartPurchaseCard.querySelectorAll('[data-scroll-to]').forEach(link => {
     link.addEventListener('click', (e) => {
       e.preventDefault();
       const sellerName = link.getAttribute('data-scroll-to');
+      if (!sellerName) return;
+
+      // Auto-expand seller listings accordion
+      if (typeof expandSellerCard === 'function') {
+        expandSellerCard(sellerName);
+      }
+
       const targetCard = document.getElementById('seller-card-' + sellerName);
       if (targetCard) {
         targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        targetCard.style.borderColor = 'var(--color-purple)';
-        targetCard.style.boxShadow = '0 0 25px var(--color-purple)';
-        setTimeout(() => {
-          targetCard.style.borderColor = '';
-          targetCard.style.boxShadow = '';
-        }, 1500);
       }
     });
   });
@@ -3549,8 +4367,12 @@ function renderResults() {
     noResultsState.style.display = 'block';
     const smartCard = document.getElementById('smart-purchase-card');
     if (smartCard) smartCard.style.display = 'none';
+    const headerNavRow = document.getElementById('header-nav-row');
+    if (headerNavRow) headerNavRow.style.display = 'flex';
     const tabNavigation = document.getElementById('tab-navigation');
     if (tabNavigation) tabNavigation.style.display = 'flex';
+    const filterToolbar = document.getElementById('filter-toolbar');
+    if (filterToolbar) filterToolbar.style.display = 'block';
     const statsView = document.getElementById('stats-view');
     if (statsView) statsView.style.display = 'none';
     currentAppView = 'results-no-results';
@@ -3572,8 +4394,12 @@ function renderResults() {
   
   emptyState.style.display = 'none';
   noResultsState.style.display = 'none';
+  const headerNavRow = document.getElementById('header-nav-row');
+  if (headerNavRow) headerNavRow.style.display = 'flex';
   const tabNavigation = document.getElementById('tab-navigation');
   if (tabNavigation) tabNavigation.style.display = 'flex';
+  const filterToolbar = document.getElementById('filter-toolbar');
+  if (filterToolbar) filterToolbar.style.display = 'block';
   const refreshWantsBtn = document.getElementById('refresh-wants-btn');
   if (refreshWantsBtn) {
     refreshWantsBtn.style.display = 'flex';
@@ -3596,174 +4422,383 @@ function renderResults() {
   }
   resultsGrid.innerHTML = '';
   
-  // Render cards
+  // Render cards with isolated Error Boundary per seller
   filtered.forEach((seller, idx) => {
-    const card = document.createElement('div');
-    card.className = 'seller-card seller-card-enter seller-card-reveal';
-    card.style.animationDelay = `${Math.min(idx * 0.06, 1.5)}s`;
-    card.id = 'seller-card-' + seller.name;
-    
-    // Generate shipping type badge
-    const shippingTypeBadge = seller.isDomestic 
-      ? `<span class="badge-shipping domestic">Nacional</span>` 
-      : (seller.isEUToEU ? `<span class="badge-shipping eu">UE a UE</span>` : `<span class="badge-shipping international">Internacional</span>`);
-    
-    const activeListings = seller.displayListings || seller.listings;
-    const activeSubtotal = activeListings.reduce((sum, item) => sum + item.priceVal, 0);
-    const activeShipping = calculateSellerShipping(seller, activeListings);
-    const activeTotalPrice = activeSubtotal + activeShipping;
+    try {
+      if (!seller || !seller.name) return;
+      const card = document.createElement('div');
+      card.className = 'seller-card';
+      card.id = 'seller-card-' + seller.name;
+      
+      const activeListings = seller.displayListings || seller.listings || [];
+      const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
+      const activeShipping = calculateSellerShipping(seller, activeListings);
+      const activeTotalPrice = activeSubtotal + activeShipping;
+      const bundleItemShipping = activeShipping / Math.max(activeListings.length, 1);
+      const rankNumber = String(idx + 1).padStart(2, '0');
+      const matchPct = ((activeListings.length / Math.max(state.wants.length, 1)) * 100).toFixed(1);
 
-    // Generate inner listing table
-    let listingsHtml = '';
-    activeListings.forEach(list => {
-      // Find wants info
-      const wantInfo = state.wants.find(w => w.id === list.releaseId) || { title: 'Unknown Title', artist: 'Unknown Artist' };
-      const isPriority = priorityIds.includes(list.releaseId);
-      const starHtml = isPriority ? `<span class="priority-star-badge" title="Disco prioritario">★</span>` : '';
-      const listShippingWarning = list.isShippingEstimated 
-        ? `<span style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío no especificado por el vendedor. Tarifa de seguridad aplicada.">⚠️</span>` 
+      // Generate deep-dive catalog rows
+      let listingsHtml = '';
+      const totalPages = Math.ceil(activeListings.length / 10);
+
+      activeListings.forEach((list, rowIdx) => {
+        const pageNumber = Math.floor(rowIdx / 10) + 1;
+        const isHiddenStyle = pageNumber > 1 ? 'display: none;' : '';
+        const wantInfo = state.wants.find(w => String(w.id) === String(list.releaseId)) || { title: 'Unknown Title', artist: 'Unknown Artist' };
+        const isPriority = priorityIds.some(pid => String(pid) === String(list.releaseId));
+        const starHtml = isPriority ? `<span class="text-prada-red mr-1" title="Disco prioritario">★</span>` : '';
+        const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || list.image || '';
+        const coverThumb = upgradeDiscogsImageUrl(coverRaw);
+        const imgHtml = coverThumb
+          ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/img:scale-110 transition-transform duration-300" src="${escapeHTML(coverThumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+             <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`
+          : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`;
+
+        const artistLabel = wantInfo.artist || list.releaseArtist || list.artist || 'Unknown Artist';
+        const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
+        const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
+
+        listingsHtml += `
+          <div class="seller-listing-row grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
+            <div class="col-span-5 flex items-center gap-3">
+              <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0" type="checkbox"/>
+              <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img">
+                ${imgHtml}
+              </div>
+              <div class="flex flex-col min-w-0 font-mono">
+                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors">
+                  ${starHtml}${escapeHTML(artistLabel)} — ${escapeHTML(titleLabel)}
+                </a>
+                <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
+              </div>
+            </div>
+            <div class="col-span-2 flex justify-center items-center gap-1.5 font-mono text-[10px]">
+              ${renderGoldmineTag(list.mediaCondition, false)}
+              ${renderGoldmineTag(list.sleeveCondition || 'Generic', true)}
+            </div>
+            <div class="col-span-2 text-right font-mono">
+              <span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>
+            </div>
+            <div class="col-span-2 text-right font-mono text-[11px]">
+              <span class="text-muted-graphite line-through text-[10px] block">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
+              <span class="font-bold text-prada-emerald block">LOTE: ${formatPrice(bundleItemShipping, seller.currency)}</span>
+            </div>
+            <div class="col-span-1 flex justify-center">
+              <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="w-7 h-7 border border-hairline-light hover:border-prada-blue hover:text-prada-blue flex items-center justify-center text-pitch-black transition-colors" title="Ver Oferta">
+                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+              </a>
+            </div>
+          </div>
+        `;
+      });
+      
+      const sellerShippingWarning = seller.isShippingEstimated 
+        ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío estimado por seguridad.">⚠️</span>` 
         : '';
       
-      const conditionTitles = {
-        'M': 'Mint (Nuevo / Impecable)',
-        'NM': 'Near Mint (Casi nuevo sin marcas)',
-        'VG+': 'Very Good Plus (Excelente estado con uso mínimo)',
-        'VG': 'Very Good (Buen estado con marcas ligeras)',
-        'G+': 'Good Plus (Estado aceptable con uso visible)',
-        'G': 'Good (Usado con marcas evidentes)',
-        'F': 'Fair (Muy usado)',
-        'P': 'Poor (Dañado)'
-      };
-      const condClassMap = {
-        'M': 'M cond-m',
-        'NM': 'NM cond-nm',
-        'VG+': 'VGplus cond-vgplus',
-        'VG': 'VG cond-vg',
-        'G+': 'Gplus cond-gplus',
-        'G': 'cond-g',
-        'F': 'cond-f',
-        'P': 'cond-p'
-      };
-      const badgeCondClass = condClassMap[list.mediaCondition] || list.mediaCondClass || 'cond-vg';
-      const condTooltip = conditionTitles[list.mediaCondition] || 'Estado del vinilo';
-      
-      listingsHtml += `
-        <tr>
-          <td class="listing-title-cell">
-            <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="listing-title-link">
-              ${starHtml}${escapeHTML(wantInfo.title)}
+      card.innerHTML = `
+        <!-- Linea Rossa Strip Indicator (visible when expanded) -->
+        <div class="h-1 bg-prada-red w-full hidden" id="strip-indicator-${seller.name}"></div>
+
+        <!-- Collapsed Header Strip -->
+        <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
+          <div class="flex items-center gap-6 min-w-[320px]">
+            <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30">#${rankNumber}</span>
+            <div class="flex flex-col">
+              <div class="flex items-center gap-3">
+                <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black">${escapeHTML(seller.name)}</span>
+                <span class="border border-emerald-300 bg-prada-emerald-bg px-1.5 py-0.5 text-[9px] font-mono uppercase text-emerald-900 font-bold">${seller.rating}%</span>
+                <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
+              </div>
+              <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-wider mt-0.5">${seller.ratingCount > 0 ? `${seller.ratingCount.toLocaleString()} CALIFICACIONES • ` : ''}${seller.isDomestic ? 'ENVÍO AUTOMATIZADO (NACIONAL)' : (seller.isEUToEU ? 'ENVÍO INTRA-UE' : 'TIENDA VERIFICADA DISCOGS')}</span>
+            </div>
+          </div>
+          <!-- Architectural Commercial Metrics Pod -->
+          <div class="flex items-center divide-x divide-hairline-light border border-hairline-light bg-ivory-warm/50 px-2 py-2 font-mono shadow-2xs">
+            <div class="px-5 text-right">
+              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">COINCIDENCIAS</span>
+              <span class="font-bold text-prada-red text-xs sm:text-[13px] whitespace-nowrap block">
+                ${activeListings.length} DE ${state.wants.length} <span class="text-muted-graphite font-normal text-[10px]">(${matchPct}%)</span>
+              </span>
+            </div>
+            <div class="px-5 text-right">
+              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">SUBTOTAL</span>
+              <span class="font-bold text-pitch-black text-xs sm:text-[13px] whitespace-nowrap block">
+                ${formatPrice(activeSubtotal, seller.currency)}
+              </span>
+            </div>
+            <div class="px-5 text-right">
+              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">ENVÍO A UY</span>
+              <span class="font-bold text-prada-blue text-xs sm:text-[13px] whitespace-nowrap block">
+                ${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}
+              </span>
+            </div>
+            <div class="pl-5 pr-4 text-right min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light">
+              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">TOTAL EST.</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black whitespace-nowrap block">
+                ${formatPrice(activeTotalPrice, seller.currency)}
+              </span>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 font-mono">
+            <a class="border border-hairline-light hover:border-prada-blue px-4 py-2 text-[10px] uppercase tracking-widest text-pitch-black hover:text-prada-blue transition-colors flex items-center gap-1 font-semibold" href="https://www.discogs.com/seller/${encodeURIComponent(seller.name)}/mywants" target="_blank" rel="noreferrer">
+              <span>DISCOGS</span>
+              <span class="material-symbols-outlined text-[13px]">open_in_new</span>
             </a>
-            <span class="listing-artist">${escapeHTML(wantInfo.artist)}</span>
-          </td>
-          <td>
-            <span class="badge-condition ${badgeCondClass}" title="${condTooltip}">${escapeHTML(list.mediaCondition)}</span>
-          </td>
-          <td class="listing-price-cell">${formatPrice(list.priceVal, list.currency)}</td>
-          <td class="listing-shipping-cell">+ ${formatPrice(list.shippingVal, list.currency)}${listShippingWarning} envío</td>
-          <td>
-            <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="btn-listing-link">Ver Oferta</a>
-          </td>
-        </tr>
-      `;
-    });
-    
-    const sellerShippingWarning = seller.isShippingEstimated 
-      ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío no especificado por el vendedor para tu ubicación. Se aplicó tarifa internacional estimada de seguridad de $35 USD.">⚠️</span>` 
-      : '';
-    
-    card.innerHTML = `
-      <div class="seller-info-row">
-        <div class="seller-meta">
-          <div class="seller-name-container">
-            <a href="https://www.discogs.com/seller/${escapeHTML(seller.name)}/profile" target="_blank" class="seller-name">${escapeHTML(seller.name)}</a>
-            <span class="rating-badge">${seller.rating}%</span>
-          </div>
-          <div class="seller-location-rating">
-            <span>📍 ${escapeHTML(seller.shipsFrom)}</span>
-            ${shippingTypeBadge}
-            <span>⭐ ${seller.ratingCount.toLocaleString()} calificaciones</span>
-            <a href="https://www.discogs.com/seller/${encodeURIComponent(seller.name)}/shipping" target="_blank" class="btn-search-discogs-sm" style="font-size: 10px; padding: 2px 8px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px; background: rgba(245, 197, 24, 0.1); border-color: rgba(245, 197, 24, 0.3); color: var(--color-amber); font-weight: 600;" title="Ver política y condiciones de envío oficiales del vendedor en Discogs">📜 Política de envío</a>
+            <button aria-label="Expandir" class="btn-collapse w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer" data-seller="${seller.name}" type="button">
+              <span class="material-symbols-outlined text-[16px] pointer-events-none">expand_more</span>
+            </button>
           </div>
         </div>
         
-        <div class="seller-totals">
-          <div class="total-group">
-            <span class="total-label">Coincidencias</span>
-            <span class="total-value-normal">${activeListings.length} de ${state.wants.length}</span>
+        <!-- Expanded Inventory Details Panel -->
+        <div class="listings-details border-t border-hairline-dark bg-pure-white flex flex-col" id="details-${seller.name}" style="display: none;">
+          <!-- Table Header -->
+          <div class="grid grid-cols-12 gap-4 px-4 py-2.5 bg-ivory-warm border-b border-hairline-light font-mono text-[9px] uppercase tracking-widest text-muted-graphite font-bold">
+            <div class="col-span-5">DISCO / EDICIÓN</div>
+            <div class="col-span-2 text-center">ESTADO (VINILO / TAPA)</div>
+            <div class="col-span-2 text-right">PRECIO ÍTEM</div>
+            <div class="col-span-2 text-right">ENVÍO APROX / LOTE</div>
+            <div class="col-span-1 text-center">ENLACE</div>
           </div>
           
-          <div class="total-group">
-            <span class="total-label">Subtotal</span>
-            <span class="total-value-normal">${formatPrice(activeSubtotal, seller.currency)}</span>
-          </div>
-          
-          <div class="total-group" title="Envío estimado según ubicación (${seller.isDomestic ? 'Nacional' : (seller.isEUToEU ? 'UE a UE' : 'Internacional')})">
-            <span class="total-label">Envío (${seller.isDomestic ? 'Nac.' : (seller.isEUToEU ? 'UE' : 'Int.')})</span>
-            <span class="total-value-normal" style="color: var(--text-muted); font-weight: 500;">${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}</span>
-          </div>
-          
-          <div class="total-group">
-            <span class="total-label">Total Estimado</span>
-            <span class="total-value-highlight">${formatPrice(activeTotalPrice, seller.currency)}${sellerShippingWarning}</span>
-          </div>
-        </div>
-        
-        <div class="seller-actions">
-          <a href="https://www.discogs.com/seller/${seller.name}/mywants" target="_blank" class="btn-action-sm">Ver en Discogs</a>
-          <button class="btn-collapse" data-seller="${seller.name}">▼</button>
-        </div>
-      </div>
-      
-      <div class="listings-details" id="details-${seller.name}">
-        <table class="listings-table">
-          <thead>
-            <tr>
-              <th>Álbum / Artista</th>
-              <th>Estado</th>
-              <th>Precio</th>
-              <th>Envío Individual</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-          <tbody>
+          <!-- Rows container -->
+          <div class="divide-y divide-hairline-light">
             ${listingsHtml}
-          </tbody>
-        </table>
+          </div>
+
+          <!-- Pagination Bar (if totalPages > 1) -->
+          ${totalPages > 1 ? `
+            <div class="seller-pagination px-4 py-3 bg-ivory-warm/60 border-t border-hairline-light flex flex-wrap items-center justify-between gap-3 font-mono text-xs" data-seller="${escapeHTML(seller.name)}" data-current-page="1" data-total-pages="${totalPages}">
+              <div class="text-[11px] text-muted-graphite">
+                MOSTRANDO <span class="seller-page-range font-bold text-pitch-black">1–${Math.min(10, activeListings.length)}</span> DE <span class="font-bold text-pitch-black">${activeListings.length}</span> DISCOS
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button type="button" class="btn-seller-prev w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" disabled title="Página anterior">
+                  <span class="material-symbols-outlined text-[14px]">chevron_left</span>
+                </button>
+                <div class="seller-page-btn-group flex items-center gap-1">
+                  ${buildSellerPageButtonsHtml(seller.name, 1, totalPages)}
+                </div>
+                <button type="button" class="btn-seller-next w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" ${totalPages <= 1 ? 'disabled' : ''} title="Página siguiente">
+                  <span class="material-symbols-outlined text-[14px]">chevron_right</span>
+                </button>
+              </div>
+            </div>
+          ` : ''}
+        </div>
       </div>
     `;
     
     resultsGrid.appendChild(card);
+    } catch (cardErr) {
+      console.error('Error rendering seller card for:', seller?.name, cardErr);
+    }
   });
 
-  // Animate metric counters
+  // Animate metric counters & sync top luxury ticker
+  const tickerWants = document.getElementById('ticker-wants-count');
+  if (tickerWants) tickerWants.textContent = `${state.wants.length} DISCOS`;
+  const tickerSellers = document.getElementById('ticker-sellers-count');
+  if (tickerSellers) tickerSellers.textContent = `${filtered.length}`;
+  const tickerMatches = document.getElementById('ticker-matches-count');
+  const totalOffersCount = filtered.reduce((s, sel) => s + (sel.listings?.length || 0), 0);
+  if (tickerMatches) tickerMatches.textContent = `${totalOffersCount.toLocaleString()}`;
+  const selectionSummary = document.getElementById('selection-sellers-summary');
+  if (selectionSummary) selectionSummary.textContent = `// ${filtered.length} TIENDAS EVALUADAS CON ALGORITMO LOGÍSTICO`;
+
   if (window.Motion) {
     const wantsCount   = parseInt(document.getElementById('metric-wants-count')?.textContent || '0');
     const sellersCount = filtered.length;
-    const matchesCount = filtered.reduce((s, sel) => s + (sel.listings?.length || 0), 0);
+    const matchesCount = totalOffersCount;
     window.Motion.animateMetrics(wantsCount, sellersCount, matchesCount);
 
-    // Scroll reveal re-init for new elements
     requestAnimationFrame(() => {
       const resultsEl = document.getElementById('results-grid');
       if (resultsEl) resultsEl.classList.add('visible');
     });
   }
 
-  // Attach expand / collapse event listeners to cards
+  // Attach expand / collapse event listeners to cards with Prada styling
   document.querySelectorAll('.btn-collapse').forEach(btn => {
     btn.addEventListener('click', (e) => {
       const sName = e.currentTarget.getAttribute('data-seller');
       const detailsDiv = document.getElementById(`details-${sName}`);
-      
-      if (detailsDiv.classList.contains('expanded')) {
-        detailsDiv.classList.remove('expanded');
-        e.currentTarget.textContent = '▼';
+      const isExpanded = detailsDiv && detailsDiv.style.display !== 'none';
+      if (isExpanded) {
+        collapseSellerCard(sName);
       } else {
-        detailsDiv.classList.add('expanded');
-        e.currentTarget.textContent = '▲';
+        expandSellerCard(sName);
       }
     });
   });
+
+  // Attach pagination event listeners inside seller cards
+  document.querySelectorAll('.seller-pagination').forEach(paginationEl => {
+    const sName = paginationEl.getAttribute('data-seller');
+    const prevBtn = paginationEl.querySelector('.btn-seller-prev');
+    const nextBtn = paginationEl.querySelector('.btn-seller-next');
+    const btnGroup = paginationEl.querySelector('.seller-page-btn-group');
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const curPage = parseInt(paginationEl.getAttribute('data-current-page'), 10) || 1;
+        goToSellerPage(sName, curPage - 1);
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const curPage = parseInt(paginationEl.getAttribute('data-current-page'), 10) || 1;
+        goToSellerPage(sName, curPage + 1);
+      });
+    }
+
+    if (btnGroup) {
+      btnGroup.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pageBtn = e.target.closest('.btn-seller-page');
+        if (pageBtn) {
+          const page = parseInt(pageBtn.getAttribute('data-page'), 10);
+          if (page) goToSellerPage(sName, page);
+        }
+      });
+    }
+  });
+}
+
+// Build pagination number buttons for seller crate table
+function buildSellerPageButtonsHtml(sellerName, currentPage, totalPages) {
+  let pages = [];
+  if (totalPages <= 5) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    if (currentPage <= 3) {
+      pages = [1, 2, 3, 4, '...', totalPages];
+    } else if (currentPage >= totalPages - 2) {
+      pages = [1, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+    }
+  }
+
+  return pages.map(p => {
+    if (p === '...') {
+      return `<span class="w-5 text-center text-muted-graphite text-[10px] font-mono select-none">…</span>`;
+    }
+    const isActive = p === currentPage;
+    return `<button type="button" class="btn-seller-page w-7 h-7 flex items-center justify-center border text-[10px] font-mono font-bold transition-colors cursor-pointer ${isActive ? 'bg-prada-red text-pure-white border-prada-red shadow-xs' : 'bg-pure-white text-pitch-black border-hairline-light hover:border-pitch-black'}" data-seller="${escapeHTML(sellerName)}" data-page="${p}">${p}</button>`;
+  }).join('');
+}
+
+// Navigate to specific page inside a seller card
+function goToSellerPage(sellerName, newPage) {
+  const card = document.getElementById(`seller-card-${sellerName}`);
+  if (!card) return;
+  const paginationEl = card.querySelector(`.seller-pagination[data-seller="${CSS.escape(sellerName)}"]`);
+  if (!paginationEl) return;
+
+  const totalPages = parseInt(paginationEl.getAttribute('data-total-pages'), 10) || 1;
+  const targetPage = Math.max(1, Math.min(newPage, totalPages));
+  paginationEl.setAttribute('data-current-page', targetPage);
+
+  // Update visible rows
+  const allRows = card.querySelectorAll(`.seller-listing-row[data-seller="${CSS.escape(sellerName)}"]`);
+  allRows.forEach(row => {
+    const rowPage = parseInt(row.getAttribute('data-page'), 10);
+    if (rowPage === targetPage) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  // Update range and current indicator text
+  const totalListings = allRows.length;
+  const startIdx = (targetPage - 1) * 10 + 1;
+  const endIdx = Math.min(targetPage * 10, totalListings);
+
+  const rangeEl = paginationEl.querySelector('.seller-page-range');
+  if (rangeEl) rangeEl.textContent = `${startIdx}–${endIdx}`;
+
+  const currentEl = paginationEl.querySelector('.seller-page-current');
+  if (currentEl) currentEl.textContent = `${targetPage}`;
+
+  // Update prev / next buttons
+  const prevBtn = paginationEl.querySelector('.btn-seller-prev');
+  if (prevBtn) prevBtn.disabled = targetPage <= 1;
+
+  const nextBtn = paginationEl.querySelector('.btn-seller-next');
+  if (nextBtn) nextBtn.disabled = targetPage >= totalPages;
+
+  // Update page number buttons
+  const btnGroup = paginationEl.querySelector('.seller-page-btn-group');
+  if (btnGroup) {
+    btnGroup.innerHTML = buildSellerPageButtonsHtml(sellerName, targetPage, totalPages);
+  }
+
+  // Smooth scroll up to header strip if user scrolled down
+  const headerStrip = document.getElementById(`header-strip-${sellerName}`);
+  if (headerStrip) {
+    const rect = headerStrip.getBoundingClientRect();
+    if (rect.top < 70) {
+      headerStrip.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+}
+
+// Function to expand a seller card and reveal its vinyl inventory
+function expandSellerCard(sName) {
+  const detailsDiv = document.getElementById(`details-${sName}`);
+  const parentCard = document.getElementById(`seller-card-${sName}`);
+  const stripIndicator = document.getElementById(`strip-indicator-${sName}`);
+  const headerStrip = document.getElementById(`header-strip-${sName}`);
+  const collapseBtn = document.querySelector(`.btn-collapse[data-seller="${CSS.escape(sName)}"]`);
+
+  if (detailsDiv) {
+    detailsDiv.style.display = 'flex';
+  }
+  if (parentCard) {
+    parentCard.classList.add('is-expanded');
+    parentCard.style.borderColor = '#E02B20';
+    parentCard.style.boxShadow = '0 6px 20px rgba(224, 43, 32, 0.2)';
+    setTimeout(() => {
+      if (parentCard.classList.contains('is-expanded')) {
+        parentCard.style.boxShadow = '0 4px 14px rgba(224, 43, 32, 0.1)';
+      }
+    }, 2000);
+  }
+  if (stripIndicator) stripIndicator.classList.remove('hidden');
+  if (headerStrip) headerStrip.style.backgroundColor = '#FDF2F1';
+  if (collapseBtn) {
+    collapseBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] pointer-events-none">expand_less</span>';
+  }
+}
+
+// Function to collapse a seller card
+function collapseSellerCard(sName) {
+  const detailsDiv = document.getElementById(`details-${sName}`);
+  const parentCard = document.getElementById(`seller-card-${sName}`);
+  const stripIndicator = document.getElementById(`strip-indicator-${sName}`);
+  const headerStrip = document.getElementById(`header-strip-${sName}`);
+  const collapseBtn = document.querySelector(`.btn-collapse[data-seller="${CSS.escape(sName)}"]`);
+
+  if (detailsDiv) {
+    detailsDiv.style.display = 'none';
+  }
+  if (parentCard) {
+    parentCard.classList.remove('is-expanded');
+    parentCard.style.borderColor = '#E5E3DC';
+    parentCard.style.boxShadow = '';
+  }
+  if (stripIndicator) stripIndicator.classList.add('hidden');
+  if (headerStrip) headerStrip.style.backgroundColor = '#FFFFFF';
+  if (collapseBtn) {
+    collapseBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] pointer-events-none">expand_more</span>';
+  }
 }
 
 // Wantlist Manager UI functions
@@ -3808,24 +4843,12 @@ function toggleWantPriority(id, cardEl) {
   }
 }
 
-function filterWantsInManager() {
-  const query = wantsSearchInput.value.toLowerCase().trim();
-  const cards = wantsListGrid.querySelectorAll('.want-card');
-  
-  cards.forEach(card => {
-    const title = card.querySelector('.want-card-title').textContent.toLowerCase();
-    const artist = card.querySelector('.want-card-artist').textContent.toLowerCase();
-    
-    if (title.includes(query) || artist.includes(query)) {
-      card.style.display = 'flex';
-    } else {
-      card.style.display = 'none';
-    }
-  });
-}
 
 // Onboarding Wizard step navigation
 function goToWizardStep(stepNum) {
+  const panes = document.querySelectorAll('.wizard-step-pane');
+  if (!panes || panes.length === 0) return;
+
   // Find current visible pane
   let currentStep = 1;
   for (let i = 1; i <= 3; i++) {
@@ -3841,7 +4864,7 @@ function goToWizardStep(stepNum) {
     window.Motion.goToStep(currentStep, stepNum);
   } else {
     // Fallback: hide all, show target
-    document.querySelectorAll('.wizard-step-pane').forEach(pane => {
+    panes.forEach(pane => {
       pane.classList.remove('active');
       pane.style.display = 'none';
     });
@@ -3884,8 +4907,8 @@ function saveWizardManualUsername() {
   if (username) {
     localStorage.setItem('discogs_username', username);
     setLoggedInUser(username);
-    log(`Usuario '${username}' configurado manualmente desde el onboarding.`, 'success');
-    goToWizardStep(2); // Auto advance to Step 2
+    log(`Usuario '${username}' configurado manualmente.`, 'success');
+    showToast(`Usuario '${username}' guardado con éxito`, 'success');
   } else {
     alert('Por favor ingresa un nombre de usuario de Discogs válido.');
   }
@@ -4064,35 +5087,35 @@ function calculateAndRenderStats() {
       const worldCount = getWorldCount(w);
       const locations = w.unshippableLocations || [];
       const locationsText = locations.length > 0
-        ? `<span class="badge-seller-countries" title="Vendedores ubicados en: ${escapeHTML(locations.join(', '))}">📍 ${escapeHTML(locations.slice(0, 3).join(', '))}${locations.length > 3 ? ' +' + (locations.length - 3) : ''}</span>`
+        ? `<span class="badge-seller-countries font-mono text-[9px] text-muted-graphite uppercase" title="Vendedores ubicados en: ${escapeHTML(locations.join(', '))}">📍 ${escapeHTML(locations.slice(0, 3).join(', '))}${locations.length > 3 ? ' +' + (locations.length - 3) : ''}</span>`
         : '';
       
       const badgeHtml = isBlocked
-        ? `<div style="display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
-             <span class="badge-shipping-blocked">🌍 ${worldCount > 0 ? worldCount + ' en venta' : 'En venta'} · No envía a ${escapeHTML(buyerCountryVal)}</span>
+        ? `<div class="flex items-center flex-wrap gap-1.5 mt-1">
+             <span class="badge-shipping-blocked font-mono text-[9px] font-bold uppercase bg-amber-50 text-amber-800 border border-amber-300 px-1.5 py-0.5">🌍 ${worldCount > 0 ? worldCount + ' en venta' : 'En venta'} · Sin envío a ${escapeHTML(buyerCountryVal)}</span>
              ${locationsText}
            </div>`
-        : `<div style="display: flex; align-items: center; gap: 4px; margin-top: 4px;">
-             <span class="badge-truly-unavailable">🚫 0 en venta en todo Discogs</span>
+        : `<div class="flex items-center gap-1.5 mt-1">
+             <span class="badge-truly-unavailable font-mono text-[9px] font-bold uppercase bg-prada-red-bg text-prada-red border border-prada-red/40 px-1.5 py-0.5">🚫 0 en venta en Discogs</span>
            </div>`;
 
       const discogsBtn = isBlocked
-        ? `<a href="https://www.discogs.com/sell/release/${w ? w.id : ''}?limit=100" target="_blank" class="btn-search-discogs-sm" style="background: rgba(245, 158, 11, 0.12); border-color: rgba(245, 158, 11, 0.35); color: #d97706; white-space: nowrap;" title="Ver copias en venta en otros países">Ver Ofertas (${worldCount || '↗'})</a>`
-        : `<a href="https://www.discogs.com/release/${w ? w.id : ''}" target="_blank" class="btn-search-discogs-sm" style="white-space: nowrap;" title="Ver ficha técnica en Discogs">Ficha Discogs ↗</a>`;
+        ? `<a href="https://www.discogs.com/sell/release/${w ? w.id : ''}?limit=100" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver copias en venta en otros países"><span>OFERTAS (${worldCount || '↗'})</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`
+        : `<a href="https://www.discogs.com/release/${w ? w.id : ''}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver ficha técnica en Discogs"><span>FICHA DISCOGS</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`;
 
       return `
-        <div class="not-for-sale-row" data-category="${isBlocked ? 'blocked' : 'zero'}">
-          <div class="not-for-sale-info">
-            <div class="not-for-sale-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; border-radius: 6px; flex-shrink: 0; background-size: cover; background-position: center; border: 1px solid var(--outline-variant, rgba(0,0,0,0.08));">
-              ${(!w || !w.image) ? `<span style="font-size: 16px; display: flex; align-items: center; justify-content: center; height: 100%;">💿</span>` : ''}
+        <div class="not-for-sale-row flex items-center justify-between p-3 border border-hairline-light bg-pure-white hover:border-pitch-black transition-all shadow-2xs font-mono" data-category="${isBlocked ? 'blocked' : 'zero'}">
+          <div class="not-for-sale-info flex items-center gap-3 min-w-0 flex-1">
+            <div class="not-for-sale-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 overflow-hidden relative shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;">
+              ${(!w || !w.image) ? `<span class="flex items-center justify-center h-full text-muted-graphite"><span class="material-symbols-outlined text-lg">album</span></span>` : ''}
             </div>
-            <div class="not-for-sale-text" style="text-align: left; min-width: 0; flex: 1;">
-              <span class="not-for-sale-title" title="${escapeHTML(w ? w.title : '')}" style="font-size: 13px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(w ? w.title : 'Desconocido')}</span>
-              <span class="not-for-sale-artist" title="${escapeHTML(w ? w.artist : '')}" style="font-size: 11px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+            <div class="not-for-sale-text text-left min-w-0 flex-1">
+              <span class="not-for-sale-title font-sans font-extrabold text-xs uppercase tracking-tight text-pitch-black block truncate" title="${escapeHTML(w ? w.title : '')}">${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span class="not-for-sale-artist text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
               ${badgeHtml}
             </div>
           </div>
-          <div style="flex-shrink: 0; margin-left: 8px;">
+          <div class="shrink-0 ml-2">
             ${discogsBtn}
           </div>
         </div>
@@ -4188,22 +5211,22 @@ function calculateAndRenderStats() {
         const l = x.listing;
         const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
         cheapestListHtml += `
-          <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
-            <div class="stats-album-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
-            <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
-              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
-              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
-                <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: var(--color-green, #10b981);">${formatPrice(l.priceVal, l.currency)}</span>
-                <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (📍 ${escapeHTML(l.shipsFrom || 'N/A')})</span>
-                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center;">Ver Oferta</a>
+          <div class="stats-album-layout flex items-center justify-between py-2.5 border-b border-hairline-light font-mono">
+            <div class="stats-album-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;"></div>
+            <div class="stats-album-info ml-3 flex-1 min-w-0 text-left">
+              <span class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              <div class="flex items-center justify-between mt-1.5 flex-wrap gap-2">
+                <span class="font-mono font-bold text-xs text-emerald-700">${formatPrice(l.priceVal, l.currency)}</span>
+                <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs">Ver Oferta ↗</a>
               </div>
             </div>
           </div>
         `;
       });
     } else {
-      cheapestListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
+      cheapestListHtml = `<p class="font-mono text-xs text-muted-graphite py-4">No se encontraron ofertas para calcular precios.</p>`;
     }
 
     // Render Expensive html list
@@ -4213,22 +5236,22 @@ function calculateAndRenderStats() {
         const l = x.listing;
         const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
         expensiveListHtml += `
-          <div class="stats-album-layout" style="margin-bottom: 12px; border-bottom: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); padding-bottom: 10px; min-height: auto; display: flex; align-items: center; justify-content: space-between;">
-            <div class="stats-album-cover" style="background-image: url('${(w && w.image) ? w.image : ''}'); width: 44px; height: 44px; flex-shrink: 0; background-size: cover; border-radius: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.1));"></div>
-            <div class="stats-album-info" style="margin-left: 12px; flex: 1; min-width: 0; text-align: left;">
-              <span style="font-size: 12px; font-weight: 700; color: var(--on-surface, #1e1e1e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
-              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 3px; flex-wrap: wrap; gap: 4px;">
-                <span class="stats-price-highlight" style="font-size: 11px; font-weight: 800; color: #9333ea;">${formatPrice(l.priceVal, l.currency)}</span>
-                <span style="font-size: 9px; color: var(--tertiary, #5f5e5e);">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (📍 ${escapeHTML(l.shipsFrom || 'N/A')})</span>
-                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="btn-search-discogs-sm" style="font-size: 9px; padding: 2px 6px; margin: 0; width: fit-content; text-align: center; background: rgba(147, 51, 234, 0.1); border-color: rgba(147, 51, 234, 0.3); color: #9333ea;">Ver Oferta</a>
+          <div class="stats-album-layout flex items-center justify-between py-2.5 border-b border-hairline-light font-mono">
+            <div class="stats-album-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;"></div>
+            <div class="stats-album-info ml-3 flex-1 min-w-0 text-left">
+              <span class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              <div class="flex items-center justify-between mt-1.5 flex-wrap gap-2">
+                <span class="font-mono font-bold text-xs text-prada-blue">${formatPrice(l.priceVal, l.currency)}</span>
+                <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs">Ver Oferta ↗</a>
               </div>
             </div>
           </div>
         `;
       });
     } else {
-      expensiveListHtml = `<p style="font-size: 12px; color: var(--tertiary, #5f5e5e); padding: 10px 0;">No se encontraron ofertas para calcular precios.</p>`;
+      expensiveListHtml = `<p class="font-mono text-xs text-muted-graphite py-4">No se encontraron ofertas para calcular precios.</p>`;
     }
 
     // Render Popularity html list
@@ -4237,15 +5260,15 @@ function calculateAndRenderStats() {
       let mostWantedHtml = '';
       top5MostWanted.forEach((w, idx) => {
         mostWantedHtml += `
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
-            <div style="min-width: 0; flex: 1; margin-right: 8px;">
-              <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
-                ${idx + 1}. ${escapeHTML(w.title)} 🔗
+          <div class="flex items-center justify-between text-xs p-2.5 bg-ivory-warm border border-hairline-light mb-1.5 font-mono">
+            <div class="min-w-0 flex-1 mr-2">
+              <a href="https://www.discogs.com/release/${w.id}" target="_blank" class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate hover:text-prada-red transition-colors" title="Abrir edición en Discogs (ID: ${w.id})">
+                ${idx + 1}. ${escapeHTML(w.title)}
               </a>
-              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
+              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
             </div>
-            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
-              <strong style="color: var(--primary, #835500); font-size: 11px; flex-shrink: 0; cursor: pointer;">${getWantCount(w).toLocaleString()} wants ↗</strong>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" class="shrink-0" title="Ver en Discogs">
+              <strong class="text-prada-red text-xs font-mono font-bold">${getWantCount(w).toLocaleString()} wants ↗</strong>
             </a>
           </div>
         `;
@@ -4254,37 +5277,36 @@ function calculateAndRenderStats() {
       let leastWantedHtml = '';
       top5LeastWanted.forEach((w, idx) => {
         leastWantedHtml += `
-          <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 8px 10px; background: var(--surface-container-low, #f5f3ee); border-radius: 6px; margin-bottom: 6px; border: 1px solid var(--outline-variant, rgba(0,0,0,0.06)); text-align: left;">
-            <div style="min-width: 0; flex: 1; margin-right: 8px;">
-              <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="color: var(--on-surface, #1e1e1e); font-size: 12px; font-weight: 700; text-decoration: underline; text-decoration-color: rgba(0,0,0,0.3); text-underline-offset: 2px; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer;" title="Abrir edición en Discogs (ID: ${w.id})">
-                ${idx + 1}. ${escapeHTML(w.title)} 🔗
+          <div class="flex items-center justify-between text-xs p-2.5 bg-ivory-warm border border-hairline-light mb-1.5 font-mono">
+            <div class="min-w-0 flex-1 mr-2">
+              <a href="https://www.discogs.com/release/${w.id}" target="_blank" class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate hover:text-prada-blue transition-colors" title="Abrir edición en Discogs (ID: ${w.id})">
+                ${idx + 1}. ${escapeHTML(w.title)}
               </a>
-              <span style="font-size: 10px; color: var(--tertiary, #5f5e5e); display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
+              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w.artist)}">${escapeHTML(w.artist)}</span>
             </div>
-            <a href="https://www.discogs.com/release/${w.id}" target="_blank" style="text-decoration: none;" title="Ver en Discogs">
-              <strong style="color: #9333ea; font-size: 11px; flex-shrink: 0; cursor: pointer;">${getWantCount(w).toLocaleString()} wants ↗</strong>
+            <a href="https://www.discogs.com/release/${w.id}" target="_blank" class="shrink-0" title="Ver en Discogs">
+              <strong class="text-prada-blue text-xs font-mono font-bold">${getWantCount(w).toLocaleString()} wants ↗</strong>
             </a>
           </div>
         `;
       });
 
       popularityListHtml = `
-        <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="flex flex-col gap-4 font-mono">
           <div>
-            <span style="font-size: 10px; color: var(--primary, #835500); font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">🔥 EL TOP 5 MÁS DESEADO DE TU LISTA</span>
+            <span class="text-[10px] text-prada-red font-bold uppercase tracking-wider block mb-2">[ TOP 5 MÁS DESEADO DE TU LISTA ]</span>
             ${mostWantedHtml}
           </div>
           
           <div>
-            <span style="font-size: 10px; color: #9333ea; font-weight: 700; text-transform: uppercase; display: block; margin-bottom: 6px; text-align: left;">❄️ EL TOP 5 MENOS QUERIDO / RAREZA OSCURA</span>
+            <span class="text-[10px] text-prada-blue font-bold uppercase tracking-wider block mb-2">[ TOP 5 RAREZA / MENOS QUERIDO ]</span>
             ${leastWantedHtml}
           </div>
         </div>
       `;
     } else {
       popularityListHtml = `
-        <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 10px 0; line-height: 1.4; text-align: left;">
-          ℹ️ <strong>Datos de popularidad de comunidad:</strong><br>
+        <p class="font-mono text-xs text-muted-graphite py-2 leading-relaxed">
           Los contadores de <em>wants/haves</em> se completan automáticamente al analizar los discos o con sesión iniciada en Discogs.
         </p>
       `;
@@ -4293,98 +5315,104 @@ function calculateAndRenderStats() {
     // Render layout
     let html = `
       <!-- Top Sub-View Header & Navigation Bar -->
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-        <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-          <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
-          <span>Volver a Vendedores Marketplace</span>
+      <div class="flex items-center justify-between mb-6 pb-3 border-b border-hairline-light flex-wrap gap-3 font-mono">
+        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+          <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+          <span>VOLVER A VENDEDORES MARKETPLACE</span>
         </button>
-        <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Estadísticas de tu lista de deseos</span>
+        <span class="text-[10px] text-muted-graphite uppercase tracking-widest">[ ANÁLISIS DE CATÁLOGO / MÉTRICAS ]</span>
       </div>
 
       <!-- Top metrics bar -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 16px;">
-        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Disponibles para ti</span>
-          <span style="font-size: 24px; font-weight: 800; color: var(--color-green, #10b981); margin-top: 4px; display: block;">${wantsForSale.length} / ${totalWantsCount}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Envían a ${escapeHTML(buyerCountryVal)}</span>
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 font-mono">
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-emerald"></div>
+          <span class="text-[10px] text-muted-graphite uppercase tracking-widest font-bold block mb-1">DISPONIBLES PARA TI</span>
+          <span class="font-sans font-black text-2xl text-prada-emerald block">${wantsForSale.length} / ${totalWantsCount}</span>
+          <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">ENVÍAN A ${escapeHTML(buyerCountryVal)}</span>
         </div>
         
-        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
-          <span style="font-size: 11px; color: #d97706; font-weight: 600; text-transform: uppercase;">🌍 En venta (Sin envío a ti)</span>
-          <span style="font-size: 24px; font-weight: 800; color: #f59e0b; margin-top: 4px; display: block;">${wantsBlockedByShipping.length}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Hay copias en otros países</span>
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+          <span class="text-[10px] text-amber-700 uppercase tracking-widest font-bold block mb-1">🌍 EN VENTA (SIN ENVÍO A TI)</span>
+          <span class="font-sans font-black text-2xl text-amber-600 block">${wantsBlockedByShipping.length}</span>
+          <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">HAY COPIAS EN OTROS PAÍSES</span>
         </div>
 
-        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
-          <span style="font-size: 11px; color: #ef4444; font-weight: 600; text-transform: uppercase;">🚫 Realmente Agotados</span>
-          <span style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px; display: block;">${wantsTrulyUnavailable.length}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">0 copias en todo Discogs</span>
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+          <span class="text-[10px] text-prada-red uppercase tracking-widest font-bold block mb-1">🚫 TOTALMENTE AGOTADOS</span>
+          <span class="font-sans font-black text-2xl text-prada-red block">${wantsTrulyUnavailable.length}</span>
+          <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">0 COPIAS EN TODO DISCOGS</span>
         </div>
         
-        <div class="stats-card-rich" style="padding: 14px; min-height: auto;">
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); font-weight: 600; text-transform: uppercase;">Total de ofertas</span>
-          <span style="font-size: 24px; font-weight: 800; color: #8b5cf6; margin-top: 4px; display: block;">${allListings.length}</span>
-          <span style="font-size: 11px; color: var(--tertiary, #5f5e5e); margin-top: 2px; display: block;">Copias aptas para compra</span>
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-blue"></div>
+          <span class="text-[10px] text-prada-blue uppercase tracking-widest font-bold block mb-1">TOTAL DE OFERTAS</span>
+          <span class="font-sans font-black text-2xl text-prada-blue block">${allListings.length}</span>
+          <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">COPIAS APTAS PARA COMPRA</span>
         </div>
       </div>
       
-      <div class="stats-grid">
+      <div class="stats-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
         <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
-        <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="flex flex-col gap-6">
           
           <!-- CHEAPEST VINYL -->
-          <div class="stats-card-rich">
-            <div class="stats-card-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--color-green, #10b981);">El más barato</div>
-            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💰 Más Económico (Top 5)</h3>
+          <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-prada-emerald"></div>
+            <div class="stats-card-badge text-prada-emerald bg-emerald-50 border-prada-emerald/30">[ MÁS ECONÓMICO ]</div>
+            <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black mb-4">💰 TOP 5 MÁS ACCESIBLES</h3>
             ${cheapestListHtml}
           </div>
           
           <!-- MOST EXPENSIVE VINYL -->
-          <div class="stats-card-rich">
-            <div class="stats-card-badge" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;">El más costoso</div>
-            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">💎 Objeto de Lujo (Top 5)</h3>
+          <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-prada-blue"></div>
+            <div class="stats-card-badge text-prada-blue bg-blue-50 border-prada-blue/30">[ OBJETO DE COLECCIÓN ]</div>
+            <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black mb-4">💎 TOP 5 OBJETOS DE LUJO</h3>
             ${expensiveListHtml}
           </div>
           
           <!-- COMMUNITY POPULARITY -->
-          <div class="stats-card-rich">
-            <h3 style="text-align: left; margin-bottom: 16px; font-weight: 700; color: var(--on-surface, #1e1e1e);">📈 Preferencias de Diggers</h3>
+          <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+            <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black mb-4">📈 PREFERENCIAS DE DIGGERS (COMUNIDAD)</h3>
             ${popularityListHtml}
           </div>
         </div>
         
         <!-- COLUMN 2: NOT FOR SALE / RESTRICTED SHIPPING -->
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <div class="stats-card-rich" style="flex-grow: 1;">
-            <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-bottom: 6px;">
-              <div>
-                <h3 style="text-align: left; font-weight: 700; color: var(--on-surface, #1e1e1e); margin: 0;">⚠️ Discos sin stock directo (${wantsNotForSale.length})</h3>
-                <p style="font-size: 12px; color: var(--tertiary, #5f5e5e); margin: 4px 0 0 0; line-height: 1.4; text-align: left;">
-                  Filtra entre vinilos con <strong>stock existente sin envío</strong> a ${escapeHTML(buyerCountryVal)} y vinilos <strong>agotados a nivel mundial</strong>.
-                </p>
-              </div>
+        <div class="flex flex-col gap-6">
+          <div class="stats-card-rich flex-grow relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+            <div class="mb-4">
+              <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black">⚠️ DISCOS SIN STOCK DIRECTO (${wantsNotForSale.length})</h3>
+              <p class="font-mono text-xs text-muted-graphite mt-1 leading-relaxed">
+                Filtra entre vinilos con <strong>stock existente sin envío</strong> a ${escapeHTML(buyerCountryVal)} y vinilos <strong>agotados a nivel mundial</strong>.
+              </p>
             </div>
 
             <!-- Filter tabs -->
-            <div class="not-for-sale-tabs" style="display: flex; gap: 8px; margin: 14px 0 12px 0; flex-wrap: wrap;">
+            <div class="not-for-sale-tabs flex gap-2 mb-3 flex-wrap font-mono">
               <button type="button" class="not-for-sale-tab-btn active" data-filter="all">
-                Todos (${wantsNotForSale.length})
+                TODOS (${wantsNotForSale.length})
               </button>
-              <button type="button" class="not-for-sale-tab-btn" data-filter="blocked" style="border-color: rgba(245, 158, 11, 0.4);">
-                <span style="color: #f59e0b;">🌍</span> No envían a ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
+              <button type="button" class="not-for-sale-tab-btn" data-filter="blocked">
+                🌍 NO ENVÍAN A ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
               </button>
-              <button type="button" class="not-for-sale-tab-btn" data-filter="zero" style="border-color: rgba(239, 68, 68, 0.4);">
-                <span style="color: #ef4444;">🚫</span> Totalmente Agotados (${wantsTrulyUnavailable.length})
+              <button type="button" class="not-for-sale-tab-btn" data-filter="zero">
+                🚫 AGOTADOS MUNDIALMENTE (${wantsTrulyUnavailable.length})
               </button>
             </div>
             
-            <div class="not-for-sale-list" style="max-height: 560px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <div class="not-for-sale-list max-h-[560px] overflow-y-auto flex flex-col gap-2">
               ${wantsNotForSale.length > 0 ? (
                 [...wantsBlockedByShipping.map(w => renderNotForSaleItem(w, true)),
                  ...wantsTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
               ) : `
-                <p style="font-size: 13px; color: var(--tertiary, #5f5e5e); padding: 30px; text-align: center;">
-                  🎉 ¡Excelente! Todos los discos de tu lista tienen al menos una copia disponible para comprar hoy.
+                <p class="font-mono text-xs text-muted-graphite p-8 text-center bg-ivory-warm border border-hairline-dark">
+                  ✓ ¡Excelente! Todos los discos de tu lista tienen al menos una copia disponible para comprar hoy.
                 </p>
               `}
             </div>
@@ -4394,6 +5422,26 @@ function calculateAndRenderStats() {
     `;
     
     statsView.innerHTML = html;
+
+    // Attach navigation & filter listeners
+    statsView.querySelectorAll('.btn-back-to-sellers').forEach(btn => {
+      btn.addEventListener('click', () => switchTab('sellers'));
+    });
+
+    statsView.querySelectorAll('.not-for-sale-tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        statsView.querySelectorAll('.not-for-sale-tab-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const filter = btn.dataset.filter;
+        statsView.querySelectorAll('.not-for-sale-row').forEach(row => {
+          if (filter === 'all' || row.dataset.category === filter) {
+            row.style.display = 'flex';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    });
   } catch (err) {
     console.error('[calculateAndRenderStats Error]', err);
     statsView.innerHTML = `
@@ -4442,11 +5490,15 @@ function openExportSheetsModal() {
   if (toastMsg) toastMsg.style.display = 'none';
   
   exportSheetsModal.style.display = 'flex';
+  exportSheetsModal.classList.add('open');
 }
 
 function closeExportSheetsModal() {
   const exportSheetsModal = document.getElementById('export-sheets-modal');
-  if (exportSheetsModal) exportSheetsModal.style.display = 'none';
+  if (exportSheetsModal) {
+    exportSheetsModal.classList.remove('open');
+    exportSheetsModal.style.display = 'none';
+  }
 }
 
 function escapeCSVCell(val) {
@@ -4616,13 +5668,14 @@ function handleDownloadCsvAction() {
 // TAB SWITCHING FUNCTION
 // ===============================================
 
-function switchTab(tabName) {
+function switchTab(tabName, pushHistory = false) {
   state.currentTab = tabName;
   currentAppView = `results-${tabName}`;
   updateForwardAndBackButtons();
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
+  const btnBackToWants = document.getElementById('btn-back-to-wants');
   const resultsGrid = document.getElementById('results-grid');
   const statsView = document.getElementById('stats-view');
   const localView = document.getElementById('local-view');
@@ -4635,18 +5688,35 @@ function switchTab(tabName) {
     { name: 'stats', el: tabBtnStats }
   ];
 
+  let activeBtnEl = null;
+
   buttons.forEach(({ name, el }) => {
     if (!el) return;
     const isActive = tabName === name;
     el.classList.toggle('active', isActive);
     if (isActive) {
-      el.classList.add('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
-      el.classList.remove('text-tertiary', 'font-medium');
+      activeBtnEl = el;
+      el.className = 'bg-prada-blue-night text-pure-white px-4 py-1.5 font-semibold border-b-2 border-prada-red tracking-wider cursor-pointer';
     } else {
-      el.classList.remove('text-primary', 'border-b-2', 'border-primary', 'font-semibold');
-      el.classList.add('text-tertiary', 'font-medium');
+      el.className = 'px-4 py-1.5 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-medium cursor-pointer';
     }
   });
+
+  if (btnBackToWants) {
+    btnBackToWants.className = 'px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer';
+    btnBackToWants.classList.remove('active');
+  }
+
+  // Update animated motion indicator position immediately
+  if (activeBtnEl) {
+    requestAnimationFrame(() => {
+      if (typeof motionMoveTabIndicator === 'function') {
+        motionMoveTabIndicator(activeBtnEl);
+      } else if (window.Motion && typeof window.Motion.moveTabIndicator === 'function') {
+        window.Motion.moveTabIndicator(activeBtnEl);
+      }
+    });
+  }
 
   if (resultsGrid) {
     resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
@@ -4684,16 +5754,109 @@ function switchTab(tabName) {
   if (tabName === 'local' && typeof renderLocalMatches === 'function') {
     renderLocalMatches();
   }
+
+  if (pushHistory) {
+    try {
+      window.history.pushState({ view: `results-${tabName}` }, '', '');
+    } catch (e) {}
+  }
 }
 
 // ===============================================
 // LOCAL SELLER SHEET IMPORT & MATCHING FUNCTIONS
 // ===============================================
 
-function openLocalSheetModal() {
+function openWishlistSheetModal(matrix = null) {
+  currentSheetTarget = 'wishlist';
   const localSheetModal = document.getElementById('local-sheet-modal');
   if (!localSheetModal) return;
+
+  const badge = document.getElementById('local-modal-badge');
+  const title = document.getElementById('local-modal-title');
+  const desc = document.getElementById('local-modal-desc');
+  const runBtn = document.getElementById('btn-run-local-match');
+
+  if (badge) badge.textContent = '[ IMPORTACIÓN DE WISHLIST / PLANILLA ]';
+  if (title) title.textContent = 'Mapear Columnas de tu Lista de Deseos';
+  if (desc) desc.textContent = 'Asigna las columnas de Artista y Título para importar tus discos y chequear vendedores al instante.';
+  if (runBtn) runBtn.innerHTML = '🚀 IMPORTAR DISCOS Y CHEQUEAR VENDEDORES';
+
   localSheetModal.style.display = 'flex';
+  localSheetModal.classList.add('open');
+
+  if (matrix && matrix.length > 0) {
+    processParsedLocalMatrix(matrix);
+  } else {
+    const step1 = document.getElementById('local-step-1');
+    const step2 = document.getElementById('local-step-2');
+    if (step1) step1.style.display = 'block';
+    if (step2) step2.style.display = 'none';
+  }
+}
+
+function handleAnalyzeOnboardSheet() {
+  const pasteArea = document.getElementById('onboard-sheet-paste-area');
+  const fileInput = document.getElementById('onboard-sheet-file-input');
+  
+  let rawText = pasteArea ? pasteArea.value : '';
+  
+  if (!rawText.trim() && fileInput && fileInput.files && fileInput.files[0]) {
+    const file = fileInput.files[0];
+    const filename = file.name.toLowerCase();
+    const isExcelBinary = filename.endsWith('.xlsx') || filename.endsWith('.xls');
+    
+    const reader = new FileReader();
+    
+    if (isExcelBinary && typeof XLSX !== 'undefined') {
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const matrix = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          openWishlistSheetModal(matrix);
+        } catch (err) {
+          console.error('Error al parsear Excel XLSX:', err);
+          alert('No se pudo leer el archivo Excel (.xlsx).');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = (e) => {
+        openWishlistSheetModal(parseSheetText(e.target.result));
+      };
+      reader.readAsText(file);
+    }
+    return;
+  }
+  
+  if (rawText.trim()) {
+    openWishlistSheetModal(parseSheetText(rawText));
+    return;
+  }
+  
+  // If nothing pasted, open step 1 for user to paste or select file
+  openWishlistSheetModal();
+}
+
+function openLocalSheetModal() {
+  currentSheetTarget = 'local_catalog';
+  const localSheetModal = document.getElementById('local-sheet-modal');
+  if (!localSheetModal) return;
+
+  const badge = document.getElementById('local-modal-badge');
+  const title = document.getElementById('local-modal-title');
+  const desc = document.getElementById('local-modal-desc');
+  const runBtn = document.getElementById('btn-run-local-match');
+
+  if (badge) badge.textContent = '[ CATÁLOGO LOCAL / SHEETS ]';
+  if (title) title.textContent = 'Cruzar Planilla Local (Drive / Excel)';
+  if (desc) desc.textContent = 'Copia el stock de disquerías locales uruguayas para encontrar coincidencias inmediatas con tu Wantlist.';
+  if (runBtn) runBtn.innerHTML = '🔍 Cruzar con mi Wantlist';
+
+  localSheetModal.style.display = 'flex';
+  localSheetModal.classList.add('open');
   const step1 = document.getElementById('local-step-1');
   const step2 = document.getElementById('local-step-2');
   if (step1) step1.style.display = 'block';
@@ -4702,7 +5865,10 @@ function openLocalSheetModal() {
 
 function closeLocalSheetModal() {
   const localSheetModal = document.getElementById('local-sheet-modal');
-  if (localSheetModal) localSheetModal.style.display = 'none';
+  if (localSheetModal) {
+    localSheetModal.classList.remove('open');
+    localSheetModal.style.display = 'none';
+  }
 }
 
 function parseSheetText(text) {
@@ -4770,10 +5936,63 @@ function handleAnalyzeLocalSheet() {
   processParsedLocalMatrix(parseSheetText(rawText));
 }
 
-function processParsedLocalMatrix(matrix) {
-  if (!matrix || matrix.length === 0) {
+// Filter out trailing completely empty columns produced by copying empty cells in Google Sheets/Excel
+function trimEmptyColumns(matrix) {
+  if (!matrix || matrix.length === 0) return matrix;
+  let maxCol = -1;
+  const sampleRows = matrix.slice(0, 100);
+  for (const row of sampleRows) {
+    for (let c = row.length - 1; c >= 0; c--) {
+      if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') {
+        if (c > maxCol) maxCol = c;
+        break;
+      }
+    }
+  }
+  if (maxCol === -1) return matrix;
+  return matrix.map(row => row.slice(0, maxCol + 1));
+}
+
+// Detect whether Row 0 or Row 1 is the actual table header
+function detectHeaderRowOffset(matrix) {
+  if (!matrix || matrix.length < 2) return 0;
+  const headerKeywords = ['titulo', 'title', 'artist', 'artista', 'link', 'genero', 'genre', 'estado', 'condition', 'precio', 'price', 'año', 'year', 'detalles', 'url', 'discogs', 'formato', 'format', '$', 'u$d', 'usd'];
+  
+  const scoreRow = (row) => {
+    if (!row || !row.length) return 0;
+    let matches = 0;
+    row.forEach(cell => {
+      const lower = String(cell || '').toLowerCase().trim();
+      if (headerKeywords.some(kw => lower === kw || (kw.length > 2 && lower.includes(kw)))) {
+        matches++;
+      }
+    });
+    return matches;
+  };
+
+  const score0 = scoreRow(matrix[0]);
+  const score1 = scoreRow(matrix[1]);
+  
+  // If row 1 has 2+ keywords and clearly outscores row 0, row 1 is the real header
+  if (score1 >= 2 && score1 > score0) {
+    return 1;
+  }
+  return 0;
+}
+
+function processParsedLocalMatrix(rawMatrix) {
+  if (!rawMatrix || rawMatrix.length === 0) {
     alert('No se pudieron detectar filas válidas en el texto proporcionado.');
     return;
+  }
+  
+  // 1. Trim trailing phantom empty columns
+  let matrix = trimEmptyColumns(rawMatrix);
+  
+  // 2. Detect if row 0 was junk/single-cell metadata and row 1 is the real header
+  const headerOffset = detectHeaderRowOffset(matrix);
+  if (headerOffset > 0) {
+    matrix = matrix.slice(headerOffset);
   }
   
   state.localSheetRows = matrix;
@@ -4783,7 +6002,8 @@ function processParsedLocalMatrix(matrix) {
   const detectedRowsCount = document.getElementById('local-detected-rows-count');
   
   if (detectedRowsCount) {
-    detectedRowsCount.textContent = `${matrix.length} filas detectadas`;
+    const dataRowCount = Math.max(0, matrix.length - 1);
+    detectedRowsCount.textContent = `${dataRowCount} vinilos / ${matrix[0].length} columnas detectadas`;
   }
   
   renderLocalMappingTable(matrix);
@@ -4805,51 +6025,83 @@ function renderLocalMappingTable(matrix) {
   for (let c = 0; c < colCount; c++) {
     const headerName = firstRow[c] || `Columna ${c + 1}`;
     const selectedType = candidateMappings[c] || 'ignore';
+    const isAssigned = selectedType !== 'ignore';
     
     html += `
-      <th style="padding: 8px; border-bottom: 1px solid var(--border-glow); background: rgba(0,0,0,0.3);">
-        <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px; font-size: 11px;">${escapeHTML(headerName)}</div>
-        <select class="col-mapper-select" data-col="${c}" style="width: 100%; background: var(--bg-darkest); border: 1px solid var(--border-glow); color: #fff; border-radius: 6px; padding: 4px; font-size: 10px;">
+      <th class="p-3 border-b-2 border-hairline-dark bg-surface-low text-left font-mono" style="min-width: 175px; width: 175px; max-width: 175px; vertical-align: top;">
+        <div class="flex items-center justify-between gap-1 mb-1">
+          <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite">COLUMNA ${c + 1}</span>
+          ${isAssigned ? '<span class="text-[8.5px] font-bold px-1 bg-prada-red text-pure-white shadow-xs">ACTIVA</span>' : ''}
+        </div>
+        <div class="font-sans font-bold text-xs uppercase text-pitch-black truncate mb-2" title="${escapeHTML(headerName)}">${escapeHTML(headerName)}</div>
+        <select class="col-mapper-select w-full ${isAssigned ? 'border-2 border-prada-red bg-prada-red-bg text-prada-red font-extrabold' : 'border border-hairline-dark bg-pure-white text-pitch-black font-bold'} font-mono text-[10.5px] uppercase py-1.5 pl-2 pr-6 focus:outline-none cursor-pointer shadow-xs transition-colors" data-col="${c}" style="appearance: none; background-image: url('data:image/svg+xml,%3Csvg xmlns=\\'http://www.w3.org/2000/svg\\' fill=\\'none\\' viewBox=\\'0 0 24 24\\' stroke=\\'%231a1a1a\\'%3E%3Cpath stroke-linecap=\\'round\\' stroke-linejoin=\\'round\\' stroke-width=\\'2\\' d=\\'M19 9l-7 7-7-7\\'%3E%3C/path%3E%3C/svg%3E'); background-repeat: no-repeat; background-position: right 6px center; background-size: 11px;">
           <option value="ignore" ${selectedType === 'ignore' ? 'selected' : ''}>-- Ignorar --</option>
           <option value="artist" ${selectedType === 'artist' ? 'selected' : ''}>🎤 Artista</option>
-          <option value="title" ${selectedType === 'title' ? 'selected' : ''}>🎵 Título</option>
+          <option value="title" ${selectedType === 'title' ? 'selected' : ''}>🎵 Título / Álbum</option>
           <option value="price" ${selectedType === 'price' ? 'selected' : ''}>💰 Precio</option>
+          <option value="discogs_id" ${selectedType === 'discogs_id' ? 'selected' : ''}>🆔 ID / Link Discogs</option>
+          <option value="condition" ${selectedType === 'condition' ? 'selected' : ''}>⭐ Estado / Grado</option>
           <option value="format" ${selectedType === 'format' ? 'selected' : ''}>💿 Formato</option>
-          <option value="condition" ${selectedType === 'condition' ? 'selected' : ''}>⭐ Estado / Condición</option>
-          <option value="discogs_id" ${selectedType === 'discogs_id' ? 'selected' : ''}>🆔 Discogs ID / Link</option>
         </select>
       </th>
     `;
   }
   html += '</tr></thead><tbody>';
   
-  const previewRows = matrix.slice(0, 6);
+  // Preview up to 6 rows of actual vinyl data (starting from row 1)
+  const previewRows = matrix.slice(1, 7);
   previewRows.forEach((row, idx) => {
-    html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.03); background: ${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.01)'};">`;
+    html += `<tr class="border-b border-hairline-light ${idx % 2 === 0 ? 'bg-pure-white' : 'bg-ivory-warm/40'} hover:bg-surface-low transition-colors">`;
     for (let c = 0; c < colCount; c++) {
-      html += `<td style="padding: 6px 8px; color: var(--text-muted); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 150px;">${escapeHTML(row[c] || '')}</td>`;
+      const cellText = row[c] !== undefined && row[c] !== null ? String(row[c]) : '';
+      html += `
+        <td class="p-2.5 font-mono text-[11px] text-pitch-black truncate border-r border-hairline-light/40" style="min-width: 175px; width: 175px; max-width: 175px;" title="${escapeHTML(cellText)}">
+          ${cellText ? escapeHTML(cellText) : '<span class="text-muted-graphite/50">—</span>'}
+        </td>
+      `;
     }
     html += '</tr>';
   });
   
   html += '</tbody>';
   table.innerHTML = html;
+
+  // Add reactive style updates when the user switches any dropdown
+  table.querySelectorAll('.col-mapper-select').forEach(select => {
+    select.addEventListener('change', () => {
+      const isAct = select.value !== 'ignore';
+      if (isAct) {
+        select.className = 'col-mapper-select w-full border-2 border-prada-red bg-prada-red-bg text-prada-red font-extrabold font-mono text-[10.5px] uppercase py-1.5 pl-2 pr-6 focus:outline-none cursor-pointer shadow-xs transition-colors';
+      } else {
+        select.className = 'col-mapper-select w-full border border-hairline-dark bg-pure-white text-pitch-black font-bold font-mono text-[10.5px] uppercase py-1.5 pl-2 pr-6 focus:outline-none cursor-pointer shadow-xs transition-colors';
+      }
+    });
+  });
 }
 
 function autoDetectColumnTypes(matrix) {
   if (!matrix || matrix.length === 0) return {};
-  const header = matrix[0].map(h => (h || '').toLowerCase().trim());
+  const header = matrix[0].map(h => String(h || '').toLowerCase().trim());
   const colCount = Math.max(...matrix.slice(0, 5).map(r => r.length));
   const mapping = {};
   
+  const sampleData = matrix.slice(1, 6);
+  
   for (let c = 0; c < colCount; c++) {
     const h = header[c] || '';
+    const hasDiscogsLink = sampleData.some(r => String(r[c] || '').includes('discogs.com/release/'));
+    const hasUrl = sampleData.some(r => String(r[c] || '').startsWith('http'));
+    
     if (h.includes('artist') || h.includes('banda') || h.includes('autor') || h.includes('interprete')) {
       mapping[c] = 'artist';
     } else if (h.includes('title') || h.includes('titulo') || h.includes('album') || h.includes('disco')) {
       mapping[c] = 'title';
-    } else if (h.includes('precio') || h.includes('price') || h.includes('costo') || h.includes('$') || h.includes('uyu')) {
-      mapping[c] = 'price';
+    } else if (h.includes('link') || h.includes('url') || hasDiscogsLink) {
+      mapping[c] = 'discogs_id';
+    } else if (h.includes('precio') || h.includes('price') || h.includes('costo') || h === '$' || h.includes('usd') || h.includes('u$d') || h.includes('uyu')) {
+      if (!Object.values(mapping).includes('price')) {
+        mapping[c] = 'price';
+      }
     } else if (h.includes('format') || h.includes('formato') || h.includes('tipo')) {
       mapping[c] = 'format';
     } else if (h.includes('estado') || h.includes('condic') || h.includes('grade') || h.includes('media')) {
@@ -4859,9 +6111,10 @@ function autoDetectColumnTypes(matrix) {
     }
   }
   
-  if (!Object.values(mapping).includes('artist') && colCount >= 2) mapping[0] = 'artist';
-  if (!Object.values(mapping).includes('title') && colCount >= 2) mapping[1] = 'title';
-  if (!Object.values(mapping).includes('price') && colCount >= 3) mapping[2] = 'price';
+  if (!Object.values(mapping).includes('artist') && !Object.values(mapping).includes('title')) {
+    if (colCount >= 1) mapping[0] = 'artist';
+    if (colCount >= 2) mapping[1] = 'title';
+  }
   
   return mapping;
 }
@@ -4892,6 +6145,77 @@ function handleRunLocalMatch() {
     return;
   }
   
+  // IF USER IS IMPORTING THEIR WISHLIST FROM SPREADSHEET:
+  if (currentSheetTarget === 'wishlist') {
+    const rows = state.localSheetRows;
+    const startIndex = rows.length > 1 ? 1 : 0;
+    const importedWants = [];
+    
+    for (let r = startIndex; r < rows.length; r++) {
+      const row = rows[r];
+      let artist = '';
+      let title = '';
+      let price = '';
+      let format = '';
+      let condition = '';
+      let discogsId = null;
+      
+      Object.keys(mapping).forEach(colIdx => {
+        const idx = parseInt(colIdx, 10);
+        const val = (row[idx] !== undefined && row[idx] !== null) ? String(row[idx]).trim() : '';
+        const field = mapping[colIdx];
+        if (field === 'artist') artist = val;
+        else if (field === 'title') title = val;
+        else if (field === 'price') price = val;
+        else if (field === 'format') format = val;
+        else if (field === 'condition') condition = val;
+        else if (field === 'discogs_id') {
+          const idMatch = val.match(/\d{4,9}/);
+          if (idMatch) discogsId = parseInt(idMatch[0], 10);
+        }
+      });
+      
+      if (!artist && !title && !discogsId) continue;
+      
+      importedWants.push({
+        id: discogsId || (Date.now() + r),
+        artist: artist || 'Desconocido',
+        title: title || (discogsId ? `Disco #${discogsId}` : `Vinilo #${r}`),
+        year: '',
+        format: format || 'Vinyl',
+        condition: condition || '',
+        priceLimit: price || '',
+        notes: 'Importado de planilla',
+        isPriority: false,
+        thumb: '',
+        forSaleCount: 0
+      });
+    }
+
+    if (importedWants.length === 0) {
+      alert('No se encontraron filas con datos de vinilos válidos.');
+      return;
+    }
+
+    state.wants = importedWants;
+    localStorage.setItem('discogs_wants', JSON.stringify(importedWants));
+    if (metricWantsCount) metricWantsCount.textContent = state.wants.length;
+    
+    closeLocalSheetModal();
+    if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
+    if (typeof enrichWantlistStats === 'function') enrichWantlistStats();
+    showWantlistManager();
+    
+    showToast(`¡${importedWants.length} vinilos importados a tu lista de deseos!`, 'success');
+    log(`Wishlist importada desde planilla: ${importedWants.length} vinilos cargados.`, 'success');
+
+    // Automatically prompt to scan/check sellers without split screen
+    setTimeout(() => {
+      openScanCacheModal();
+    }, 450);
+    return;
+  }
+
   if (!state.wants || state.wants.length === 0) {
     alert('Primero debes cargar tu Lista de Deseos (Wantlist) de Discogs.');
     return;
@@ -4901,7 +6225,7 @@ function handleRunLocalMatch() {
   const wants = state.wants;
   const rows = state.localSheetRows;
   
-  const startIndex = (rows.length > 1 && (rows[0].some(cell => ['artist', 'artista', 'titulo', 'title', 'precio'].includes(cell.toLowerCase().trim())))) ? 1 : 0;
+  const startIndex = rows.length > 1 ? 1 : 0;
   
   for (let r = startIndex; r < rows.length; r++) {
     const row = rows[r];
@@ -5021,91 +6345,139 @@ function renderLocalMatches() {
   
   if (matches.length === 0) {
     localView.innerHTML = `
-      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-        <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-          <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
-          <span>Volver a Vendedores Marketplace</span>
+      <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
+        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+          <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+          <span>VOLVER A VENDEDORES MARKETPLACE</span>
         </button>
-        <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Coincidencias con catálogo local</span>
+        <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-widest">COINCIDENCIAS CON CATÁLOGO LOCAL</span>
       </div>
-      <div style="text-align: center; padding: 60px 20px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-glow); border-radius: 16px;">
-        <div style="font-size: 42px; margin-bottom: 14px;">🇺🇾</div>
-        <h3 style="margin: 0 0 8px 0; color: #fff;">Sin coincidencias locales cargadas</h3>
-        <p style="color: var(--text-muted); font-size: 13px; max-width: 440px; margin: 0 auto 20px auto; line-height: 1.5;">
-          Pegá las celdas o subí el archivo del catálogo de cualquier disquería montevideana para cruzarlo automáticamente con tu Wantlist.
+      <div class="border-2 border-dashed border-hairline-dark bg-pure-white p-10 sm:p-14 text-center max-w-xl mx-auto my-8 shadow-xs">
+        <div class="text-4xl mb-3">🇺🇾</div>
+        <h3 class="font-sans font-extrabold text-lg uppercase tracking-tight text-pitch-black mb-2">SIN COINCIDENCIAS LOCALES CARGADAS</h3>
+        <p class="font-mono text-xs text-muted-graphite max-w-md mx-auto mb-6 leading-relaxed">
+          Pegá las celdas o subí el archivo del catálogo de cualquier disquería local (Google Sheets o Excel) para cruzarlo automáticamente con tu Wantlist.
         </p>
-        <button id="btn-open-local-modal-empty" class="btn-primary" style="background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%); color: #fff; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;">
-          📥 Cargar Planilla Local
+        <button id="btn-open-local-modal-empty" class="bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-6 py-3 transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2">
+          <span class="material-symbols-outlined text-[16px]">cloud_download</span>
+          <span>CARGAR PLANILLA LOCAL</span>
         </button>
       </div>
     `;
     const btnEmpty = document.getElementById('btn-open-local-modal-empty');
     if (btnEmpty) btnEmpty.addEventListener('click', openLocalSheetModal);
+    
+    localView.querySelectorAll('.btn-back-to-sellers').forEach(btn => {
+      btn.addEventListener('click', () => switchTab('sellers'));
+    });
     return;
   }
   
-  const priorityMatchesCount = matches.filter(m => m.wantItem.isPriority).length;
+  const priorityMatchesCount = matches.filter(m => m.wantItem && m.wantItem.isPriority).length;
   
   let html = `
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--outline-variant); flex-wrap: wrap; gap: 10px;">
-      <button type="button" class="btn-back-to-sellers" style="display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: 8px; border: 1px solid var(--outline-variant); background: var(--surface-container); color: var(--on-surface); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-        <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">arrow_back</span>
-        <span>Volver a Vendedores Marketplace</span>
+    <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
+      <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+        <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+        <span>VOLVER A VENDEDORES MARKETPLACE</span>
       </button>
-      <span style="font-size: 12px; color: var(--tertiary); font-weight: 500;">Coincidencias con catálogo local</span>
+      <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-widest">COINCIDENCIAS CON CATÁLOGO LOCAL</span>
     </div>
-    <div style="margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; background: rgba(56, 189, 248, 0.05); border: 1px solid rgba(56, 189, 248, 0.2); padding: 16px 20px; border-radius: 14px;">
-      <div>
-        <h2 style="margin: 0; font-size: 20px; color: #fff;">🇺🇾 Coincidencias en Disquería Local</h2>
-        <p style="margin: 4px 0 0 0; font-size: 13px; color: var(--text-muted);">
-          Se encontraron <strong style="color: #38bdf8;">${matches.length} vinilos</strong> de tu Wantlist en la planilla local (${priorityMatchesCount} marcados con estrella ★).
+
+    <!-- Editorial Hero Strip -->
+    <div class="border-2 border-hairline-dark bg-pure-white p-6 mb-6 relative shadow-[4px_4px_0px_rgba(0,0,0,0.06)] flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+      <div class="flex flex-col gap-1 pt-1">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="text-[10px] font-mono tracking-wider uppercase bg-prada-red text-pure-white px-2 py-0.5 font-bold shadow-xs">
+            CATÁLOGO LOCAL
+          </span>
+          <span class="text-[11px] font-mono uppercase text-prada-blue font-semibold border border-blue-200 bg-blue-50 px-2 py-0.5">
+            🇺🇾 URUGUAY / DRIVE
+          </span>
+        </div>
+        <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1 text-pitch-black">
+          COINCIDENCIAS EN DISQUERÍA LOCAL
+        </h2>
+        <p class="font-mono text-xs text-muted-graphite mt-0.5">
+          SE ENCONTRARON <span class="font-bold text-prada-red">${matches.length} VINILOS</span> DE TU WANTLIST EN LA PLANILLA (${priorityMatchesCount} MARCADOS COMO FAVORITOS ★).
         </p>
       </div>
-      <div style="display: flex; gap: 10px;">
-        <button id="btn-reopen-local-modal" class="btn-secondary" style="font-size: 12px; font-weight: 600; border-color: rgba(56, 189, 248, 0.4); color: #38bdf8;">
-          🔄 Cargar otra Planilla
+      <div class="flex items-center gap-3 shrink-0 flex-wrap">
+        <button id="btn-reopen-local-modal" class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs">
+          <span class="material-symbols-outlined text-[15px]">sync</span>
+          <span>CARGAR OTRA PLANILLA</span>
         </button>
-        <button id="btn-copy-local-matches" class="btn-primary" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: #fff; font-weight: 700; font-size: 12px; padding: 8px 14px;">
-          📋 Copiar Lista de Pedido
+        <button id="btn-copy-local-matches" class="bg-emerald-700 hover:bg-emerald-800 text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs">
+          <span class="material-symbols-outlined text-[15px]">content_copy</span>
+          <span>COPIAR LISTA DE PEDIDO</span>
         </button>
       </div>
     </div>
     
-    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px;">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
   `;
   
   matches.forEach(m => {
-    const item = m.wantItem;
+    const item = m.wantItem || {};
+    const hasImage = !!item.image;
+    const isPri = !!item.isPriority;
+    
     html += `
-      <div style="background: var(--bg-card); border: 1px solid ${item.isPriority ? 'rgba(245, 197, 24, 0.4)' : 'var(--border-glow)'}; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; position: relative;">
-        ${item.isPriority ? `<span style="position: absolute; top: 12px; right: 12px; background: rgba(245, 197, 24, 0.2); color: #f5c518; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(245, 197, 24, 0.4);">★ Prioritario</span>` : ''}
+      <div class="border-2 ${isPri ? 'border-prada-red shadow-[4px_4px_0px_rgba(224,43,32,0.1)]' : 'border-hairline-dark hover:border-pitch-black shadow-[4px_4px_0px_rgba(0,0,0,0.04)]'} bg-pure-white p-5 flex flex-col justify-between relative transition-all group">
+        ${isPri ? `
+          <span class="absolute top-3 right-3 text-[9px] font-mono font-bold uppercase tracking-wider bg-prada-red text-pure-white px-2 py-0.5 shadow-xs">
+            ★ FAVORITO
+          </span>
+        ` : ''}
         
-        <div style="display: flex; gap: 14px; margin-bottom: 12px;">
-          <div style="width: 54px; height: 54px; border-radius: 8px; overflow: hidden; background: #1a2035; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-            ${item.image ? `<img src="${item.image}" referrerpolicy="no-referrer" style="width: 100%; height: 100%; object-fit: cover;">` : '💿'}
-          </div>
-          <div style="min-width: 0; flex-grow: 1; padding-right: ${item.isPriority ? '80px' : '0'};">
-            <p style="font-weight: 700; color: #fff; font-size: 14px; margin: 0 0 2px 0; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${escapeHTML(item.title)}</p>
-            <p style="font-size: 12px; color: var(--color-purple); margin: 0 0 6px 0; font-weight: 600;">${escapeHTML(item.artist)}</p>
-            <span style="font-size: 10px; color: #34d399; background: rgba(16, 185, 129, 0.1); padding: 2px 6px; border-radius: 4px;">${escapeHTML(m.matchReason)}</span>
-          </div>
-        </div>
-        
-        <div style="background: rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; font-size: 12px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-            <span style="color: var(--text-muted);">Dato Planilla:</span>
-            <span style="color: #fff; font-weight: 600; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 180px;">${escapeHTML(m.sellerArtist)} - ${escapeHTML(m.sellerTitle)}</span>
-          </div>
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <span style="color: var(--text-muted);">Precio Local:</span>
-            <span style="color: #38bdf8; font-weight: 800; font-size: 14px;">${escapeHTML(m.sellerPrice || 'Consultar')}</span>
-          </div>
-          ${m.sellerFormat || m.sellerCondition ? `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px; font-size: 11px; color: var(--text-dim);">
-              <span>${escapeHTML(m.sellerFormat || '')}</span>
-              <span>${escapeHTML(m.sellerCondition || '')}</span>
+        <div>
+          <div class="flex gap-3.5 mb-4">
+            <div class="w-14 h-14 border border-hairline-dark bg-stone-100 shrink-0 overflow-hidden relative shadow-xs">
+              ${hasImage ? `
+                <img src="${item.image}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400">
+                  <span class="material-symbols-outlined text-lg">album</span>
+                </div>
+              ` : `
+                <div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400">
+                  <span class="material-symbols-outlined text-xl">album</span>
+                </div>
+              `}
             </div>
-          ` : ''}
+            <div class="min-w-0 flex-1 ${isPri ? 'pr-20' : ''}">
+              <p class="font-sans font-extrabold text-sm uppercase tracking-tight text-pitch-black truncate" title="${escapeHTML(item.title || '')}">
+                ${escapeHTML(item.title || 'Desconocido')}
+              </p>
+              <p class="font-mono text-xs text-prada-blue font-bold uppercase tracking-wider truncate mb-1.5" title="${escapeHTML(item.artist || '')}">
+                ${escapeHTML(item.artist || 'Varios Artistas')}
+              </p>
+              <span class="inline-block text-[9px] font-mono uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-200 px-2 py-0.5 font-bold">
+                ${escapeHTML(m.matchReason || 'Coincidencia')}
+              </span>
+            </div>
+          </div>
+          
+          <div class="border border-hairline-dark bg-ivory-warm p-3 flex flex-col gap-2 font-mono text-xs shadow-xs">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[9px] uppercase tracking-wider text-muted-graphite font-semibold shrink-0">PLANILLA:</span>
+              <span class="font-bold text-pitch-black truncate text-right text-[11px]" title="${escapeHTML(m.sellerArtist || '')} - ${escapeHTML(m.sellerTitle || '')}">
+                ${escapeHTML(m.sellerArtist || '')} - ${escapeHTML(m.sellerTitle || '')}
+              </span>
+            </div>
+            <div class="flex items-center justify-between border-t border-hairline-light pt-2">
+              <span class="text-[9px] uppercase tracking-wider text-muted-graphite font-semibold">PRECIO LOCAL:</span>
+              <span class="font-extrabold text-prada-red text-sm">
+                ${escapeHTML(m.sellerPrice || 'CONSULTAR')}
+              </span>
+            </div>
+            ${m.sellerFormat || m.sellerCondition ? `
+              <div class="flex items-center justify-between border-t border-hairline-light pt-1.5 text-[10px] text-muted-graphite">
+                <span>${escapeHTML(m.sellerFormat || '')}</span>
+                <span class="font-bold text-pitch-black">${escapeHTML(m.sellerCondition || '')}</span>
+              </div>
+            ` : ''}
+          </div>
         </div>
       </div>
     `;
@@ -5118,6 +6490,10 @@ function renderLocalMatches() {
   const btnCopyMatches = document.getElementById('btn-copy-local-matches');
   if (btnReopen) btnReopen.addEventListener('click', openLocalSheetModal);
   if (btnCopyMatches) btnCopyMatches.addEventListener('click', copyLocalMatchesToClipboard);
+  
+  localView.querySelectorAll('.btn-back-to-sellers').forEach(btn => {
+    btn.addEventListener('click', () => switchTab('sellers'));
+  });
 }
 
 async function copyLocalMatchesToClipboard() {
@@ -5137,4 +6513,60 @@ async function copyLocalMatchesToClipboard() {
   }
 }
 
+// Hash routing handler for quick popup actions
+function checkUrlHashAction() {
+  const hash = (window.location.hash || '').toLowerCase();
+  if (hash === '#local') {
+    switchTab('local');
+  } else if (hash === '#stats') {
+    switchTab('stats');
+  }
+}
+window.addEventListener('hashchange', checkUrlHashAction);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', checkUrlHashAction);
+} else {
+  setTimeout(checkUrlHashAction, 200);
+}
 
+// Position the account dropdown using fixed coordinates computed from the user card's
+// bounding rect. This ensures the panel is never clipped by any parent overflow
+// or stacking context (e.g. sticky navbar with backdrop-blur).
+function positionUserDropdown() {
+  if (!userCard || !inputFallback) return;
+
+  const rect = userCard.getBoundingClientRect();
+  const dropdownWidth = 320;
+  const margin = 8; // gap between card bottom and dropdown top
+  const edgePadding = 14; // min distance from viewport edges
+
+  const top = rect.bottom + margin;
+
+  // Prefer right-aligned (right edge of dropdown = right edge of card),
+  // but clamp so dropdown never overflows the left viewport edge.
+  let right = window.innerWidth - rect.right;
+  const leftIfRightAligned = window.innerWidth - right - dropdownWidth;
+  if (leftIfRightAligned < edgePadding) {
+    // Shift right value so left edge stays within viewport
+    right = window.innerWidth - dropdownWidth - edgePadding;
+  }
+  // Clamp right so dropdown doesn't overflow right edge either
+  right = Math.max(edgePadding, right);
+
+  inputFallback.style.top = top + 'px';
+  inputFallback.style.right = right + 'px';
+  inputFallback.style.left = 'auto';
+
+  // Re-trigger the open animation
+  inputFallback.style.animation = 'none';
+  // Force reflow
+  void inputFallback.offsetHeight;
+  inputFallback.style.animation = '';
+}
+
+// Re-position on window resize if dropdown is open
+window.addEventListener('resize', () => {
+  if (inputFallback && inputFallback.style.display === 'block') {
+    positionUserDropdown();
+  }
+});

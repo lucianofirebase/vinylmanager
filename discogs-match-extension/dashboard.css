@@ -1,42 +1,64 @@
 :root {
-  --background: #fbf9f4;
-  --on-background: #1b1c19;
-  --surface: #fbf9f4;
-  --on-surface: #1b1c19;
-  --surface-container-lowest: #ffffff;
-  --surface-container-low: #f5f3ee;
-  --surface-container: #f0eee9;
-  --surface-container-high: #eae8e3;
-  --surface-container-highest: #e4e2dd;
-  --primary: #835500;
-  --primary-container: #f5a623;
-  --on-primary: #ffffff;
-  --tertiary: #5f5e5e;
-  --outline: #857462;
-  --outline-variant: #d7c3ae;
-  --color-green: #10b981;
-  --color-amber: #d97706;
-  --color-purple: #9333ea;
-  --color-purple-dark: #6b21a8;
-  --text-main: #1b1c19;
-  --text-muted: #5f5e5e;
+  --bone: #F8F7F4;
+  --ivory-warm: #FAF9F5;
+  --prada-red: #E02B20;
+  --prada-red-dark: #C01F15;
+  --prada-red-bg: #FDF2F1;
+  --prada-blue: #0F4C81;
+  --prada-cerulean: #1A56DB;
+  --prada-blue-night: #0B1D3A;
+  --prada-emerald: #1B5E3C;
+  --prada-emerald-bg: #EDF7F1;
+  --prada-ochre: #C28B14;
+  --prada-ochre-bg: #FEF8E7;
+  --hairline-dark: #1A1A1A;
+  --hairline-light: #E5E3DC;
+  --hairline-subtle: #ECEAE4;
+  --pitch-black: #0B0B0C;
+  --pure-white: #FFFFFF;
+  --muted-graphite: #5D5C58;
+  --soft-stone: #7A7975;
+  --surface-low: #F2F0E8;
+  --surface-mid: #ECE8DF;
+
+  --background: #F8F7F4;
+  --on-background: #0B0B0C;
+  --surface: #FFFFFF;
+  --on-surface: #0B0B0C;
+  --surface-container-lowest: #FFFFFF;
+  --surface-container-low: #FAF9F5;
+  --surface-container: #F2F0E8;
+  --surface-container-high: #ECE8DF;
+  --surface-container-highest: #E5E3DC;
+  --primary: #E02B20;
+  --primary-container: #FDF2F1;
+  --on-primary: #FFFFFF;
+  --tertiary: #5D5C58;
+  --outline: #1A1A1A;
+  --outline-variant: #E5E3DC;
+  --color-green: #1B5E3C;
+  --color-amber: #C28B14;
+  --color-purple: #0F4C81;
+  --color-purple-dark: #0B1D3A;
+  --text-main: #0B0B0C;
+  --text-muted: #5D5C58;
 }
 
 .dark {
-  --background: #121212;
-  --on-background: #e4e2dd;
-  --surface: #121212;
-  --on-surface: #f5f3ee;
-  --surface-container-lowest: #1e1e1e;
-  --surface-container-low: #242424;
-  --surface-container: #2c2c2c;
-  --surface-container-high: #333333;
-  --surface-container-highest: #3d3d3d;
-  --primary: #ffb955;
-  --tertiary: #a0aec0;
-  --outline-variant: #444444;
-  --text-main: #f5f3ee;
-  --text-muted: #a0aec0;
+  --background: #0B0B0C;
+  --on-background: #F8F7F4;
+  --surface: #111317;
+  --on-surface: #FAF9F5;
+  --surface-container-lowest: #181A20;
+  --surface-container-low: #111317;
+  --surface-container: #181A20;
+  --surface-container-high: #20242B;
+  --surface-container-highest: #282C35;
+  --primary: #E02B20;
+  --tertiary: #7A7975;
+  --outline-variant: #282C35;
+  --text-main: #FAF9F5;
+  --text-muted: #7A7975;
 }
 
 *, ::before, ::after {
@@ -717,6 +739,10 @@ video {
   left: 0.75rem;
 }
 
+.right-0 {
+  right: 0px;
+}
+
 .right-2 {
   right: 0.5rem;
 }
@@ -725,12 +751,20 @@ video {
   top: 0px;
 }
 
+.top-full {
+  top: 100%;
+}
+
 .top-1\/2 {
   top: 50%;
 }
 
 .top-2 {
   top: 0.5rem;
+}
+
+.w-80 {
+  width: 20rem;
 }
 
 .z-0 {
@@ -2660,187 +2694,212 @@ body.dark .smart-candidate-badge-rec {
 }
 
 .stats-card-rich {
-  background: var(--surface-container-lowest, #ffffff);
-  border: 1px solid var(--outline-variant, #d7c3ae);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
-  position: relative;
+  background: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  border-radius: 0px !important;
+  padding: 20px !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.05) !important;
+  position: relative !important;
 }
 
 .stats-card-badge {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 6px;
+  position: absolute !important;
+  top: 16px !important;
+  right: 16px !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 2px 8px !important;
+  border-radius: 0px !important;
+  border: 1px solid currentColor !important;
 }
 
 .stats-album-layout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--surface-container, #f0eee9);
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 8px 0 !important;
+  border-bottom: 1px solid #E5E5E5 !important;
 }
 
 .stats-album-cover {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  background-size: cover;
-  background-position: center;
-  background-color: var(--surface-container, #f0eee9);
-  flex-shrink: 0;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 0px !important;
+  border: 1px solid #1A1A1A !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-color: #F8F8F7 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.05) !important;
 }
 
 .stats-album-info {
-  margin-left: 12px;
-  flex: 1;
-  min-width: 0;
+  margin-left: 12px !important;
+  flex: 1 !important;
+  min-width: 0 !important;
 }
 
 .stats-price-highlight {
-  font-weight: 800;
-  font-size: 13px;
+  font-family: "JetBrains Mono", monospace !important;
+  font-weight: 800 !important;
+  font-size: 13px !important;
 }
 
 .not-for-sale-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
+  display: flex !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+  flex-wrap: wrap !important;
 }
 
 .not-for-sale-tab-btn {
-  padding: 6px 14px;
-  border-radius: 20px;
-  border: 1px solid var(--outline-variant, #e4e2dd);
-  background: var(--surface-container-low, #f5f3ee);
-  color: var(--on-surface-variant, #5f5e5e);
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  padding: 6px 14px !important;
+  border-radius: 0px !important;
+  border: 1px solid #1A1A1A !important;
+  background: #FFFFFF !important;
+  color: #1A1A1A !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
 }
 
 .not-for-sale-tab-btn:hover {
-  background: var(--surface-container-high, #e8e6e1);
-  color: var(--on-surface, #1e1e1e);
+  background: #F4F4F5 !important;
+  border-color: #E02B20 !important;
+  color: #E02B20 !important;
 }
 
 .not-for-sale-tab-btn.active {
-  background: var(--primary, #835500);
-  color: #ffffff !important;
-  border-color: var(--primary, #835500);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  background: #111111 !important;
+  color: #FFFFFF !important;
+  border-color: #111111 !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.15) !important;
 }
 
 .badge-shipping-blocked {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #b45309;
-  background: rgba(245, 158, 11, 0.12);
-  border: 1px solid rgba(245, 158, 11, 0.25);
-  border-radius: 4px;
-  padding: 2px 6px;
-  margin-top: 3px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  color: #b45309 !important;
+  background: #fef3c7 !important;
+  border: 1px solid #f59e0b !important;
+  border-radius: 0px !important;
+  padding: 2px 6px !important;
+  margin-top: 3px !important;
 }
 
 .badge-truly-unavailable {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10px;
-  font-weight: 700;
-  color: #dc2626;
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  border-radius: 4px;
-  padding: 2px 6px;
-  margin-top: 3px;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase !important;
+  color: #E02B20 !important;
+  background: #fee2e2 !important;
+  border: 1px solid #E02B20 !important;
+  border-radius: 0px !important;
+  padding: 2px 6px !important;
+  margin-top: 3px !important;
 }
 
 .badge-seller-countries {
-  display: inline-flex;
-  align-items: center;
-  font-size: 9.5px;
-  color: var(--tertiary, #5f5e5e);
-  opacity: 0.9;
+  display: inline-flex !important;
+  align-items: center !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 9.5px !important;
+  color: #52525b !important;
+  text-transform: uppercase !important;
 }
 
 .not-for-sale-list {
-  max-height: 400px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  max-height: 480px !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
 }
 
 .not-for-sale-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px;
-  background: var(--surface-container-low, #f5f3ee);
-  border-radius: 8px;
-  border: 1px solid var(--surface-variant, #e4e2dd);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 12px !important;
+  background: #FFFFFF !important;
+  border-radius: 0px !important;
+  border: 1px solid #E5E5E5 !important;
+  transition: all 0.2s ease !important;
+  cursor: default !important;
 }
 
 .not-for-sale-row:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  border-color: #1A1A1A !important;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.06) !important;
+  background: #FAFAFA !important;
 }
 
 .not-for-sale-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-width: 0;
-  flex: 1;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-width: 0 !important;
+  flex: 1 !important;
 }
 
 .not-for-sale-cover {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  background-size: cover;
-  background-position: center;
-  background-color: var(--surface-container, #f0eee9);
-  flex-shrink: 0;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 0px !important;
+  border: 1px solid #1A1A1A !important;
+  background-size: cover !important;
+  background-position: center !important;
+  background-color: #F8F8F7 !important;
+  flex-shrink: 0 !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.05) !important;
 }
 
 .not-for-sale-text {
-  min-width: 0;
-  flex: 1;
+  min-width: 0 !important;
+  flex: 1 !important;
 }
 
 .not-for-sale-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--on-surface, #1b1c19);
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: "Hanken Grotesk", sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  text-transform: uppercase !important;
+  letter-spacing: -0.01em !important;
+  color: #111111 !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .not-for-sale-artist {
-  font-size: 11px;
-  color: var(--tertiary, #5f5e5e);
-  display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 11px !important;
+  color: #71717a !important;
+  text-transform: uppercase !important;
+  display: block !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
 }
 
 .placeholder\:text-on-surface-variant\/50::-moz-placeholder {
@@ -3062,25 +3121,25 @@ body.dark .smart-candidate-badge-rec {
   justify-content: center !important;
 }
 
-/* Vinyl Sleeve (Cover Art: 240px x 240px) */
+/* Vinyl Sleeve (Cover Art: 240px x 240px) - Prada Linea Rossa Brutalist Archetype */
 .scan-sleeve {
   position: relative !important;
   width: 240px !important;
   height: 240px !important;
   min-width: 240px !important;
   min-height: 240px !important;
-  border-radius: 18px !important;
+  border-radius: 0px !important;
   overflow: hidden !important;
   z-index: 10 !important;
-  background: #18181b !important;
-  border: 1px solid rgba(255, 255, 255, 0.16) !important;
-  box-shadow: 0 20px 45px -8px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.2) !important;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease !important;
+  background: #111111 !important;
+  border: 2px solid #1A1A1A !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
 }
 
 .scan-sleeve:hover {
   transform: translateY(-2px);
-  box-shadow: 0 24px 50px -8px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.3) !important;
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.2) !important;
 }
 
 .scan-cover-image {
@@ -3220,18 +3279,16 @@ body.dark .smart-candidate-badge-rec {
   box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
 }
 
-/* Docked Bottom Footer Logger / Console */
+/* Docked Bottom Footer Logger / Console - Prada Linea Rossa Archetype */
 .scan-bottom-dock {
   position: fixed !important;
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
   z-index: 60 !important;
-  background: rgba(18, 17, 16, 0.95) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-top: 1px solid rgba(245, 158, 11, 0.3) !important;
-  box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.6) !important;
+  background: #111111 !important;
+  border-top: 2px solid #E02B20 !important;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4) !important;
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
@@ -3240,51 +3297,51 @@ body.dark .smart-candidate-badge-rec {
   align-items: center !important;
   justify-content: space-between !important;
   padding: 8px 14px !important;
-  border-radius: 10px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0px !important;
+  background: #18181b !important;
+  border: 1px solid #27272a !important;
   transition: all 0.2s ease !important;
   cursor: pointer !important;
   text-align: left !important;
 }
 
 .scan-logger-toggle:hover {
-  background: rgba(255, 255, 255, 0.09) !important;
-  border-color: rgba(245, 158, 11, 0.4) !important;
+  background: #27272a !important;
+  border-color: #E02B20 !important;
 }
 
 .scan-logs-console {
   background: #09090b !important;
   color: #34d399 !important;
-  border-radius: 10px !important;
+  border-radius: 0px !important;
   padding: 12px 14px !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
   font-size: 11px !important;
   line-height: 1.6 !important;
-  max-height: 180px !important; /* Strictly bounded: will never take over the screen */
-  overflow-y: auto !important; /* Clean internal scrollbar */
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  max-height: 180px !important; /* Strictly bounded */
+  overflow-y: auto !important;
+  border: 1px solid #27272a !important;
   box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5) !important;
   scrollbar-width: thin !important;
-  scrollbar-color: rgba(245, 158, 11, 0.45) rgba(20, 20, 20, 0.8) !important;
+  scrollbar-color: #E02B20 #18181b !important;
 }
 
 .scan-logs-console::-webkit-scrollbar {
-  width: 7px;
+  width: 6px;
 }
 
 .scan-logs-console::-webkit-scrollbar-track {
-  background: rgba(20, 20, 20, 0.8);
-  border-radius: 4px;
+  background: #18181b;
+  border-radius: 0px;
 }
 
 .scan-logs-console::-webkit-scrollbar-thumb {
-  background: rgba(245, 158, 11, 0.4);
-  border-radius: 4px;
+  background: #E02B20;
+  border-radius: 0px;
 }
 
 .scan-logs-console::-webkit-scrollbar-thumb:hover {
-  background: rgba(245, 158, 11, 0.7);
+  background: #B81810;
 }
 
 /* ==========================================================================
@@ -3621,94 +3678,98 @@ body.dark .smart-candidate-badge-rec {
   border-color: rgba(245, 158, 11, 0.3) !important;
 }
 
-/* Record Card & Floating Star Button Enhancements */
+/* ==========================================================================
+   PRADA ARCHIVAL RECORD CARD & FAVORITE STAR SYSTEM
+   ========================================================================== */
 .record-card {
-  border-radius: 12px !important;
-  border: 1px solid var(--outline-variant, #e4e2dd) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
+  border-radius: 0px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.04) !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease !important;
+  position: relative !important;
 }
 
 .record-card:hover {
-  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
-  transform: translateY(-2px);
-  border-color: rgba(131, 85, 0, 0.35) !important;
+  transform: translateY(-2px) !important;
+  border-color: #0B0B0C !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.12) !important;
 }
 
+/* Active Priority: Prada Linea Rossa Red Top Stripe & Sharp Accent */
 .record-card.active-priority {
-  border-color: #f59e0b !important;
-  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.6), 0 4px 14px rgba(245, 158, 11, 0.18) !important;
-  background-color: rgba(245, 158, 11, 0.04) !important;
+  border-color: #0B0B0C !important;
+  border-top: 3px solid #E02B20 !important;
+  box-shadow: 3px 3px 0px rgba(224, 43, 32, 0.14), 0 2px 8px rgba(0, 0, 0, 0.05) !important;
+  background-color: #FFFFFF !important;
 }
 
 .record-cover-wrapper {
-  border-radius: 8px !important;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  border-radius: 0px !important;
+  border: 1px solid #E5E5E5 !important;
+  background-color: #F8F8F7 !important;
+  overflow: hidden !important;
 }
 
-/* Floating Circular Star Badge */
+/* Prada Linea Rossa Star Button */
 .record-star-btn {
   position: absolute !important;
-  top: 8px !important;
-  right: 8px !important;
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 9999px !important;
-  background: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(6px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
+  top: 6px !important;
+  right: 6px !important;
+  width: 26px !important;
+  height: 26px !important;
+  border-radius: 0px !important;
+  background: rgba(11, 11, 12, 0.85) !important;
+  backdrop-filter: blur(4px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
   cursor: pointer !important;
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.18s ease, border-color 0.18s ease !important;
   z-index: 20 !important;
   padding: 0 !important;
-  line-height: 1 !important;
   outline: none !important;
 }
 
 .record-star-btn .star-icon {
-  font-size: 16px !important;
-  color: rgba(255, 255, 255, 0.7) !important;
-  transition: all 0.2s ease !important;
+  font-size: 15px !important;
+  color: #D4D4D8 !important;
+  transition: all 0.18s ease !important;
   user-select: none !important;
   pointer-events: none !important;
 }
 
 .record-star-btn:hover {
-  transform: scale(1.12) !important;
-  background: rgba(0, 0, 0, 0.85) !important;
-  border-color: rgba(255, 255, 255, 0.7) !important;
+  transform: scale(1.1) !important;
+  background: #0B0B0C !important;
+  border-color: #E02B20 !important;
 }
 
 .record-star-btn:hover .star-icon {
-  color: #ffffff !important;
+  color: #FFFFFF !important;
 }
 
 .record-star-btn.active {
-  background: #f59e0b !important;
-  border-color: #fbbf24 !important;
-  box-shadow: 0 0 10px rgba(245, 158, 11, 0.55), 0 2px 5px rgba(0, 0, 0, 0.2) !important;
+  background: #E02B20 !important;
+  border-color: #B81B12 !important;
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.3) !important;
 }
 
 .record-star-btn.active .star-icon {
-  color: #ffffff !important;
+  color: #FFFFFF !important;
   font-variation-settings: 'FILL' 1 !important;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3)) !important;
 }
 
 @keyframes starButtonPop {
   0% { transform: scale(0.85) rotate(-10deg); }
-  50% { transform: scale(1.28) rotate(12deg); }
-  75% { transform: scale(0.95) rotate(-4deg); }
+  50% { transform: scale(1.25) rotate(10deg); }
+  75% { transform: scale(0.95) rotate(-3deg); }
   100% { transform: scale(1) rotate(0deg); }
 }
 
 .star-pop-anim {
-  animation: starButtonPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+  animation: starButtonPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
 }
 
 /* Star Burst Particle Effects */
@@ -3773,4 +3834,818 @@ body.dark .smart-candidate-badge-rec {
 .record-card:hover .record-hover-tooltip {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
+}
+
+/* Suppress record title tooltip when mouse is hovering the favorite star button to prevent overlap */
+.record-card:has(.record-star-btn:hover) .record-hover-tooltip,
+.record-star-btn:hover ~ .record-hover-tooltip {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateX(-50%) translateY(4px) !important;
+}
+
+/* ==========================================================================
+   STITCH ARCHIVAL LUXURY / PRADA LINEA ROSSA DESIGN SYSTEM
+   ========================================================================== */
+
+/* Typography Tokens */
+body, .font-sans {
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.font-serif {
+  font-family: "Domine", Georgia, serif !important;
+}
+
+.font-mono {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+  font-feature-settings: "zero" 1;
+}
+
+.tracking-widest {
+  letter-spacing: 0.1em !important;
+}
+
+.tracking-ultra {
+  letter-spacing: 0.14em !important;
+}
+
+/* Base Body Luxury Palette */
+html, body {
+  background-color: #F8F7F4 !important;
+  color: #0B0B0C !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Color Utilities matching Stitch Mockup */
+.bg-bone { background-color: #F8F7F4 !important; }
+.bg-ivory-warm { background-color: #FAF9F5 !important; }
+.bg-pure-white { background-color: #FFFFFF !important; }
+.bg-pitch-black { background-color: #0B0B0C !important; }
+.text-pitch-black { color: #0B0B0C !important; }
+.text-pure-white { color: #FFFFFF !important; }
+
+.bg-prada-red { background-color: #E02B20 !important; }
+.hover\:bg-prada-red-dark:hover { background-color: #C01F15 !important; }
+.text-prada-red { color: #E02B20 !important; }
+.text-prada-red-dark { color: #C01F15 !important; }
+.bg-prada-red-bg { background-color: #FDF2F1 !important; }
+.border-prada-red { border-color: #E02B20 !important; }
+
+.bg-prada-blue { background-color: #0F4C81 !important; }
+.text-prada-blue { color: #0F4C81 !important; }
+.bg-prada-cerulean { background-color: #1A56DB !important; }
+.text-prada-cerulean { color: #1A56DB !important; }
+.border-prada-cerulean { border-color: #1A56DB !important; }
+
+.bg-prada-blue-night { background-color: #0B1D3A !important; }
+.text-prada-blue-night { color: #0B1D3A !important; }
+.border-prada-blue-night { border-color: #0B1D3A !important; }
+
+.bg-prada-emerald { background-color: #1B5E3C !important; }
+.text-prada-emerald { color: #1B5E3C !important; }
+.border-prada-emerald { border-color: #1B5E3C !important; }
+.bg-prada-emerald-bg { background-color: #EDF7F1 !important; }
+
+.bg-prada-ochre { background-color: #C28B14 !important; }
+.text-prada-ochre { color: #C28B14 !important; }
+.bg-prada-ochre-bg { background-color: #FEF8E7 !important; }
+.border-prada-ochre { border-color: #C28B14 !important; }
+
+.border-hairline-dark { border-color: #1A1A1A !important; }
+.border-hairline-light { border-color: #E5E3DC !important; }
+.border-hairline-subtle { border-color: #ECEAE4 !important; }
+
+.text-muted-graphite { color: #5D5C58 !important; }
+.text-soft-stone { color: #7A7975 !important; }
+.bg-surface-low { background-color: #F2F0E8 !important; }
+.bg-surface-mid { background-color: #ECE8DF !important; }
+
+/* Selection & Checkboxes */
+::selection {
+  background-color: #E02B20 !important;
+  color: #FFFFFF !important;
+}
+
+input[type="checkbox"] {
+  accent-color: #E02B20 !important;
+  border-radius: 0px !important;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F8F7F4;
+}
+::-webkit-scrollbar-thumb {
+  background: #E5E3DC;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #E02B20;
+}
+
+/* Two-column layout upgrade to Stitch Full-Width Runway */
+.results-two-col-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 32px !important;
+  width: 100% !important;
+}
+
+.results-col-sidebar,
+.results-col-main {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* Bento Cards (Selection 01) */
+.stitch-bento-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 24px;
+  width: 100%;
+}
+
+.stitch-bento-card {
+  border: 1px solid #1A1A1A;
+  background-color: #FFFFFF;
+  padding: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  box-shadow: 3px 3px 0px rgba(0,0,0,0.04);
+  transition: all 0.2s ease;
+}
+
+.stitch-bento-card:hover {
+  border-color: #E02B20;
+}
+
+/* Seller Card Strips (Selection 02) */
+.seller-card {
+  border: 1px solid #E5E3DC !important;
+  background-color: #FFFFFF !important;
+  border-radius: 0px !important;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+  margin-bottom: 12px !important;
+  overflow: hidden !important;
+}
+
+.seller-card:hover {
+  border-color: #E02B20 !important;
+}
+
+.seller-card.is-expanded {
+  border: 2px solid #E02B20 !important;
+  box-shadow: 0 4px 14px rgba(224, 43, 32, 0.1) !important;
+}
+
+/* Crate Catalog Table inside Expanded Seller Strip */
+.listings-details {
+  border-top: 1px solid #E5E3DC !important;
+  background-color: #FFFFFF !important;
+  padding: 20px 24px !important;
+  margin-top: 0 !important;
+}
+
+.listings-table th {
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.15em !important;
+  color: #5D5C58 !important;
+  background-color: #FAF9F5 !important;
+  padding: 10px 14px !important;
+  border-bottom: 1px solid #E5E3DC !important;
+}
+
+.listings-table td {
+  padding: 12px 14px !important;
+  border-bottom: 1px solid #ECEAE4 !important;
+  font-family: "Hanken Grotesk", sans-serif !important;
+  color: #0B0B0C !important;
+}
+
+/* Wantlist Manager Tiles */
+.want-card {
+  background-color: #FFFFFF !important;
+  border: 1px solid #E5E3DC !important;
+  border-radius: 0px !important;
+  transition: all 0.2s ease !important;
+}
+
+.want-card:hover {
+  border-color: #E02B20 !important;
+  box-shadow: 3px 3px 0px rgba(0,0,0,0.04) !important;
+}
+
+.want-card.priority {
+  border-color: #E02B20 !important;
+  background-color: #FDF2F1 !important;
+}
+
+.want-star {
+  color: #E5E3DC !important;
+  transition: color 0.15s ease !important;
+}
+
+.want-star.active,
+.want-card.priority .want-star {
+  color: #E02B20 !important;
+}
+
+/* Luxury Architectural Station & Wizard Overrides */
+.scan-station-card {
+  border-radius: 0px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  border-top: 3px solid #E02B20 !important;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.05) !important;
+}
+
+.empty-state {
+  border-radius: 0px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  border-top: 3px solid #E02B20 !important;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.05) !important;
+}
+
+.modal-content {
+  border-radius: 0px !important;
+  background: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  box-shadow: 6px 6px 0px rgba(0,0,0,0.12) !important;
+}
+
+/* Wizard Stepper Dots (Stitch Architectural Spec) */
+#dot-1, #dot-2, #dot-3 {
+  border-radius: 0px !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+#dot-1.active, #dot-2.active, #dot-3.active {
+  background-color: #E02B20 !important;
+  color: #FFFFFF !important;
+  border-color: #0B0B0C !important;
+}
+
+#dot-1.completed, #dot-2.completed, #dot-3.completed {
+  background-color: #0B0B0C !important;
+  color: #FFFFFF !important;
+  border-color: #0B0B0C !important;
+}
+
+/* Wantlist Manager & States Styling */
+.wantlist-manager {
+  border-radius: 0px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  border-top: 3px solid #E02B20 !important;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.05) !important;
+}
+
+.no-results-state {
+  border-radius: 0px !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.05) !important;
+}
+
+/* ==========================================================================
+   ARCHIVAL LUXURY MICRO-TOOLTIP SYSTEM (PRADA SPECIFICATION)
+   Appears after a brief pause ("un ratito") on hover
+   ========================================================================== */
+[data-tooltip] {
+  position: relative;
+}
+
+/* Tooltip Bubble */
+[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background-color: #0B0B0C;
+  color: #FFFFFF !important;
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  line-height: 1.3 !important;
+  padding: 5px 9px;
+  white-space: nowrap;
+  display: block;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 9999;
+  border: 1px solid #2B2B2C;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s;
+}
+
+/* Tooltip Arrow */
+[data-tooltip]::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% + 3px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  border-width: 4px 4px 0 4px;
+  border-style: solid;
+  border-color: #0B0B0C transparent transparent transparent;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 10000;
+  transition: opacity 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              transform 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s,
+              visibility 0.18s cubic-bezier(0.16, 1, 0.3, 1) 0s;
+}
+
+/* Pause on hover (0.32s delay) before showing tooltip */
+[data-tooltip]:hover::after,
+[data-tooltip]:hover::before {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+  transition-delay: 0.32s;
+}
+
+/* Bottom Position */
+[data-tooltip-pos="bottom"]::after {
+  bottom: auto;
+  top: calc(100% + 7px);
+  transform: translateX(-50%) translateY(-4px);
+}
+[data-tooltip-pos="bottom"]::before {
+  bottom: auto;
+  top: calc(100% + 3px);
+  border-width: 0 4px 4px 4px;
+  border-color: transparent transparent #0B0B0C transparent;
+  transform: translateX(-50%) translateY(-4px);
+}
+[data-tooltip-pos="bottom"]:hover::after,
+[data-tooltip-pos="bottom"]:hover::before {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Left Position */
+[data-tooltip-pos="left"]::after {
+  bottom: auto;
+  top: 50%;
+  left: auto;
+  right: calc(100% + 7px);
+  transform: translateY(-50%) translateX(4px);
+}
+[data-tooltip-pos="left"]::before {
+  bottom: auto;
+  top: 50%;
+  left: auto;
+  right: calc(100% + 3px);
+  border-width: 4px 0 4px 4px;
+  border-color: transparent transparent transparent #0B0B0C;
+  transform: translateY(-50%) translateX(4px);
+}
+[data-tooltip-pos="left"]:hover::after,
+[data-tooltip-pos="left"]:hover::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* Right Position */
+[data-tooltip-pos="right"]::after {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 7px);
+  right: auto;
+  transform: translateY(-50%) translateX(-4px);
+}
+[data-tooltip-pos="right"]::before {
+  bottom: auto;
+  top: 50%;
+  left: calc(100% + 3px);
+  right: auto;
+  border-width: 4px 4px 4px 0;
+  border-color: transparent #0B0B0C transparent transparent;
+  transform: translateY(-50%) translateX(-4px);
+}
+[data-tooltip-pos="right"]:hover::after,
+[data-tooltip-pos="right"]:hover::before {
+  transform: translateY(-50%) translateX(0);
+}
+
+/* ==========================================================================
+   WANTLIST MANAGER TOOLBAR & FULLSCREEN RESPONSIVE LAYOUT
+   Ensures Search input and Action Buttons stay 100% contained within the card div
+   ========================================================================== */
+.wantlist-manager {
+  box-sizing: border-box !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.wantlist-toolbar {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 14px !important;
+  padding-top: 8px !important;
+  padding-bottom: 20px !important;
+  border-bottom: 1px solid #EBEAEA !important;
+  margin-bottom: 24px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.wantlist-search-wrapper {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  border: 1px solid #1A1A1A !important;
+  background-color: #FFFFFF !important;
+  padding: 0 14px !important;
+  height: 40px !important;
+  flex: 1 1 280px !important;
+  max-width: 440px !important;
+  min-width: 240px !important;
+  box-sizing: border-box !important;
+  box-shadow: 2px 2px 0px rgba(0,0,0,0.03) !important;
+  transition: border-color 0.15s ease !important;
+}
+
+.wantlist-search-wrapper:focus-within {
+  border-color: #E02B20 !important;
+}
+
+.wantlist-actions-group {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  margin-left: auto !important;
+  box-sizing: border-box !important;
+  flex-shrink: 0 !important;
+}
+
+/* Bottom Sticky Floating Action Bar */
+.wantlist-sticky-bar {
+  position: sticky !important;
+  bottom: 16px !important;
+  z-index: 40 !important;
+  background: rgba(255, 255, 255, 0.97) !important;
+  backdrop-filter: blur(10px) !important;
+  -webkit-backdrop-filter: blur(10px) !important;
+  border: 1px solid #1A1A1A !important;
+  padding: 12px 18px !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08) !important;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  margin-top: 32px !important;
+  box-sizing: border-box !important;
+  width: 100% !important;
+}
+
+/* Rock-solid Modal Overlay System */
+.modal-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 10000 !important;
+  background-color: rgba(11, 11, 12, 0.75) !important;
+  backdrop-filter: blur(6px) !important;
+  -webkit-backdrop-filter: blur(6px) !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.modal-overlay[style*="display: flex"],
+.modal-overlay.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+
+.modal-overlay[style*="display: flex"] .modal-content,
+.modal-overlay.open .modal-content {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) scale(1) !important;
+}
+
+/* Ensure scan buttons have clean, uninhibited pointer cursors across 100% of their area */
+#manager-start-scan-top-btn,
+#manager-start-scan-btn,
+#export-wants-manager-btn,
+#import-local-sheet-manager-btn {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+#manager-start-scan-top-btn::after,
+#manager-start-scan-btn::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* ==========================================================================
+   ESSENTIAL GRID SYSTEM & RESPONSIVE BREAKPOINTS FOR MARKETPLACE & BENTO
+   Ensures cards, cover galleries, tabular receipts and listing rows align cleanly
+   ========================================================================== */
+.grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+.grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+.grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+.grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+.grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; }
+.grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+.grid-cols-12 { grid-template-columns: repeat(12, minmax(0, 1fr)) !important; }
+
+@media (min-width: 640px) {
+  .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .sm\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+@media (min-width: 768px) {
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .md\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .lg\:grid-cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)) !important; }
+}
+
+@media (min-width: 1280px) {
+  .xl\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .xl\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+}
+
+.col-span-1 { grid-column: span 1 / span 1 !important; }
+.col-span-2 { grid-column: span 2 / span 2 !important; }
+.col-span-3 { grid-column: span 3 / span 3 !important; }
+.col-span-4 { grid-column: span 4 / span 4 !important; }
+.col-span-5 { grid-column: span 5 / span 5 !important; }
+.col-span-6 { grid-column: span 6 / span 6 !important; }
+.col-span-7 { grid-column: span 7 / span 7 !important; }
+.col-span-8 { grid-column: span 8 / span 8 !important; }
+.col-span-12 { grid-column: span 12 / span 12 !important; }
+
+/* Filter Bar Form Controls & Native Select Overrides */
+#filter-toolbar select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: transparent !important;
+  color: inherit !important;
+}
+
+#filter-toolbar select option {
+  background-color: #FFFFFF !important;
+  color: #0B0B0C !important;
+  padding: 6px 10px !important;
+}
+
+#sort-by {
+  color: #0B0B0C !important;
+  font-weight: 700 !important;
+}
+
+/* Compra Inteligente Bento Container Spacing */
+.smart-purchase-card {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.smart-purchase-card article {
+  min-height: 380px !important;
+}
+
+/* Results Runway & Sellers Grid */
+#results-view-wrapper {
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+#results-grid {
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Onboarding Wizard Step 2 Controls */
+#wizard-buyer-country {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-color: transparent !important;
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: none !important;
+  letter-spacing: 0.04em !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  line-height: 1.25 !important;
+}
+
+#wizard-buyer-country option {
+  background-color: #FFFFFF !important;
+  color: #0B0B0C !important;
+  font-family: "Hanken Grotesk", -apple-system, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  padding: 8px 12px !important;
+}
+
+/* Universal Select Controls Normalization (Immunity to DirectWrite / Chromium Glyph Glitches) */
+select {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  font-feature-settings: normal !important;
+  font-variant-ligatures: none !important;
+}
+
+select option {
+  font-family: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background-color: #FFFFFF !important;
+  color: #0B0B0C !important;
+}
+
+#buyer-country,
+#display-currency {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  font-family: "Hanken Grotesk", -apple-system, sans-serif !important;
+  font-feature-settings: normal !important;
+  letter-spacing: 0.03em !important;
+}
+
+/* ========================================================
+   ONBOARDING CHOICE CARDS (LUXURY PRADA INTERACTION HOVER)
+   ======================================================== */
+.choice-card {
+  position: relative !important;
+  background-color: #FFFFFF !important;
+  border: 2px solid #D1D1D6 !important;
+  border-radius: 0px !important;
+  cursor: pointer !important;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  box-shadow: 3px 3px 0px rgba(26, 26, 26, 0.05) !important;
+  user-select: none !important;
+  outline: none !important;
+}
+
+.choice-card:hover {
+  transform: translateY(-5px) !important;
+}
+
+/* Choice Card Discogs Hover */
+.choice-card-discogs:hover {
+  border-color: #E02B20 !important;
+  box-shadow: 0 16px 32px -6px rgba(224, 43, 32, 0.22), 4px 4px 0px rgba(224, 43, 32, 0.15) !important;
+  background-color: #FFFDFD !important;
+}
+
+.choice-card-discogs:hover .choice-stripe {
+  background-color: #E02B20 !important;
+  opacity: 1 !important;
+}
+
+.choice-card-discogs:hover .choice-badge {
+  background-color: #FDEDED !important;
+  border-color: rgba(224, 43, 32, 0.5) !important;
+  color: #E02B20 !important;
+}
+
+.choice-card-discogs:hover .choice-title {
+  color: #E02B20 !important;
+}
+
+.choice-card-discogs:hover .choice-icon-box {
+  transform: scale(1.1) rotate(-3deg) !important;
+  box-shadow: 0 8px 20px rgba(224, 43, 32, 0.3) !important;
+  border-color: #E02B20 !important;
+}
+
+.choice-card-discogs:hover .choice-cta {
+  background-color: #E02B20 !important;
+  color: #FFFFFF !important;
+  border-color: #E02B20 !important;
+  box-shadow: 0 4px 12px rgba(224, 43, 32, 0.35) !important;
+}
+
+.choice-card-discogs:hover .choice-cta .material-symbols-outlined {
+  transform: translateX(5px) !important;
+}
+
+/* Choice Card Sheet Hover */
+.choice-card-sheet:hover {
+  border-color: #0066CC !important;
+  box-shadow: 0 16px 32px -6px rgba(0, 102, 204, 0.22), 4px 4px 0px rgba(0, 102, 204, 0.15) !important;
+  background-color: #F8FAFD !important;
+}
+
+.choice-card-sheet:hover .choice-stripe {
+  background-color: #0066CC !important;
+  opacity: 1 !important;
+}
+
+.choice-card-sheet:hover .choice-badge {
+  background-color: #EBF3FC !important;
+  border-color: rgba(0, 102, 204, 0.5) !important;
+  color: #0066CC !important;
+}
+
+.choice-card-sheet:hover .choice-title {
+  color: #0066CC !important;
+}
+
+.choice-card-sheet:hover .choice-icon-box {
+  transform: scale(1.1) rotate(3deg) !important;
+  border-color: #0066CC !important;
+  box-shadow: 0 8px 20px rgba(0, 102, 204, 0.25) !important;
+}
+
+.choice-card-sheet:hover .choice-cta {
+  background-color: #0066CC !important;
+  color: #FFFFFF !important;
+  border-color: #0066CC !important;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.35) !important;
+}
+
+.choice-card-sheet:hover .choice-cta .material-symbols-outlined {
+  transform: translateX(5px) !important;
+}
+
+/* Micro transitions for sub-elements */
+.choice-stripe,
+.choice-badge,
+.choice-title,
+.choice-icon-box,
+.choice-cta,
+.choice-cta .material-symbols-outlined {
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* ==========================================================================
+   ACCOUNT & TESTING DROPDOWN POPOVER
+   Fixed positioning so it escapes any parent overflow/stacking context
+   (sticky navbar + backdrop-blur creates a new stacking context that clips
+   absolute children). JS sets top/right at open time via positionUserDropdown().
+   ========================================================================== */
+.input-fallback,
+#input-fallback {
+  position: fixed !important;
+  width: 320px !important;
+  max-width: calc(100vw - 28px) !important;
+  background-color: #FFFFFF !important;
+  border: 1px solid #1A1A1A !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.2), 4px 4px 0px rgba(0, 0, 0, 0.08) !important;
+  z-index: 9999 !important;
+  box-sizing: border-box !important;
+  /* Smooth open animation */
+  transform-origin: top right;
+  animation: dropdownOpen 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes dropdownOpen {
+  from {
+    opacity: 0;
+    transform: scaleY(0.92) translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1) translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .input-fallback,
+  #input-fallback {
+    left: 14px !important;
+    right: 14px !important;
+    width: auto !important;
+    max-width: calc(100vw - 28px) !important;
+  }
 }

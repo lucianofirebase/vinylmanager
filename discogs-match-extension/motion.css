@@ -184,6 +184,7 @@ label:active .material-symbols-outlined {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
   transform: translateX(-100%);
   transition: transform 0.6s ease;
+  pointer-events: none !important;
 }
 
 .scan-btn-idle:hover::before {
@@ -414,21 +415,27 @@ label:active .material-symbols-outlined {
   backdrop-filter: blur(0px);
 }
 
-.modal-overlay.open {
-  opacity: 1;
-  backdrop-filter: blur(4px);
+.modal-overlay.open,
+.modal-overlay[style*="display: flex"],
+.modal-overlay[style*="display: block"] {
+  opacity: 1 !important;
+  visibility: visible !important;
+  backdrop-filter: blur(6px) !important;
 }
 
 .modal-content {
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-              opacity 0.35s ease;
-  transform: translateY(40px) scale(0.92);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+              opacity 0.25s ease;
+  transform: translateY(20px) scale(0.96);
   opacity: 0;
 }
 
-.modal-overlay.open .modal-content {
-  transform: translateY(0) scale(1);
-  opacity: 1;
+.modal-overlay.open .modal-content,
+.modal-overlay[style*="display: flex"] .modal-content,
+.modal-overlay[style*="display: block"] .modal-content {
+  transform: translateY(0) scale(1) !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .modal-overlay.closing {
@@ -620,37 +627,19 @@ label:active .material-symbols-outlined {
   pointer-events: none;
 }
 
-/* ── 23. Scan button shimmer (wave effect) ── */
+/* ── 23. Scan button shimmer & clean borders ── */
 #start-scan-btn,
 #manager-start-scan-btn,
 #manager-start-scan-top-btn {
   position: relative;
   overflow: hidden;
+  border: 1px solid #E02B20 !important;
 }
 
 #start-scan-btn::after,
 #manager-start-scan-btn::after,
 #manager-start-scan-top-btn::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.2),
-    transparent
-  );
-  transition: left 0s;
-}
-
-#start-scan-btn:hover::after,
-#manager-start-scan-btn:hover::after,
-#manager-start-scan-top-btn:hover::after {
-  left: 100%;
-  transition: left 0.5s ease;
+  display: none !important;
 }
 
 /* ── 24. Centered Vinyl Digging Station (Active Scan Hero) ── */

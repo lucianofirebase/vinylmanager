@@ -1,289 +1,427 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="light">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="referrer" content="no-referrer">
-  <title>Discogs Matcher - Favorite Disks & Marketplace</title>
-  
+  <title>DISCOGS MATCHER - Crate Digging Inteligente</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700;800&family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  
+  <link
+    href="https://fonts.googleapis.com/css2?family=Domine:ital,wght@0,400;0,600;1,400&family=Hanken+Grotesk:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet">
+
   <link rel="stylesheet" href="dashboard.css">
   <link rel="stylesheet" href="motion.css">
 </head>
-<body class="bg-background text-on-background font-body-md antialiased min-h-screen">
 
-  <!-- TOP HEADER NAVIGATION (Modern Horizontal Menu) -->
-  <header id="top-navbar" class="w-full sticky top-0 z-50 bg-surface-container-lowest/95 backdrop-blur-md border-b border-outline-variant/30 shadow-sm transition-colors">
-    <div class="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-between gap-3 md:gap-6">
-      
-      <!-- Brand Logo -->
-      <div class="flex items-center gap-2.5 shrink-0">
-        <button id="nav-back-btn" class="items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-xs font-semibold text-zinc-600 dark:text-zinc-300 transition-all cursor-pointer shadow-xs" title="Ir a la pantalla anterior" style="display: none;">
-          <span class="material-symbols-outlined text-[16px] text-zinc-600 dark:text-zinc-300">arrow_back</span>
-          <span class="hidden sm:inline">Atrás</span>
+<body class="bg-bone text-pitch-black selection:bg-prada-red selection:text-white min-h-screen flex flex-col font-sans">
+
+  <!-- TOP LUXURY UTILITY TICKER (Archival Runway Style - Prada Linea Rossa Accent) -->
+  <aside
+    class="w-full bg-pitch-black text-pure-white text-[11px] tracking-wider uppercase border-b-2 border-prada-red px-6 py-2">
+    <div class="max-w-[1780px] mx-auto flex flex-wrap items-center justify-between gap-4 font-mono font-medium">
+      <div class="flex items-center gap-6">
+        <span class="flex items-center gap-2">
+          <span class="inline-block w-2 h-2 bg-prada-red shadow-sm shadow-prada-red/50"></span>
+          DISCOGS MATCHER / CATÁLOGO PRINCIPAL
+        </span>
+        <span class="text-neutral-600">|</span>
+        <span class="text-neutral-300">MOTOR DE MERCADO DISCOGS: <span class="text-prada-ochre font-semibold">33⅓ RPM
+            ALTA RESOLUCIÓN</span></span>
+        <span class="text-neutral-600 hidden md:inline">|</span>
+        <span class="text-neutral-400 hidden md:inline">RADAR SÓNICO: <span class="text-emerald-400 font-semibold"
+            id="ticker-radar-status">CACHÉ ACTIVO</span></span>
+      </div>
+      <div class="flex items-center gap-6 text-neutral-300">
+        <span>COLECCIÓN: <strong class="text-pure-white" id="ticker-wants-count">0 DISCOS</strong></span>
+        <span class="text-neutral-600">/</span>
+        <span>TIENDAS GLOBALES: <strong class="text-pure-white" id="ticker-sellers-count">0</strong></span>
+        <span class="text-neutral-600">/</span>
+        <span>COINCIDENCIAS: <strong
+            class="text-prada-ochre bg-prada-ochre/15 px-1.5 py-0.5 border border-prada-ochre/40"
+            id="ticker-matches-count">0</strong></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MASTER LUXURY HEADER (Prada Archetype) -->
+  <header id="top-navbar" class="sticky top-0 z-50 bg-ivory-warm/95 backdrop-blur-md border-b border-hairline-light">
+    <!-- Top row: Brand Monogram, Editorial Title & Global Controls -->
+    <div
+      class="max-w-[1780px] mx-auto px-6 pt-4 pb-3 flex flex-wrap items-center justify-between gap-4 border-b border-hairline-subtle">
+      <!-- Brand Logo / Wordmark -->
+      <div class="flex items-center gap-4">
+        <button id="nav-back-btn"
+          class="border border-hairline-dark px-2.5 py-1 hover:bg-surface-low text-pitch-black flex items-center gap-1 text-[11px] font-mono uppercase tracking-wider transition-colors cursor-pointer"
+          style="display: none;" data-tooltip="Volver a la vista anterior" data-tooltip-pos="bottom">
+          <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+          <span class="hidden sm:inline">ATRÁS</span>
         </button>
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 via-amber-500 to-primary text-neutral-950 flex items-center justify-center shadow-md border border-amber-400/40 shrink-0">
-          <span class="material-symbols-outlined text-2xl text-neutral-950" id="logo-vinyl" style="font-variation-settings: 'FILL' 1;">album</span>
-        </div>
-        <div class="flex flex-col">
-          <div class="flex items-center gap-1.5">
-            <span class="font-bold text-on-background tracking-tight text-base sm:text-lg leading-tight">Discogs Matcher</span>
-            <span class="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-primary/15 text-primary border border-primary/25">PRO</span>
+
+        <a class="group flex items-center gap-3 tracking-tighter" href="#">
+          <!-- Prada Linea Rossa Inspired Geometric Badge -->
+          <div id="logo-vinyl"
+            class="relative w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-mono font-extrabold text-sm tracking-normal shadow-sm overflow-hidden">
+            <div class="absolute left-0 top-0 bottom-0 w-1 bg-prada-red"></div>
+            D
           </div>
-          <span class="text-[11px] text-tertiary hidden sm:inline-block leading-none mt-0.5">Vinyl Smart Bundler</span>
-        </div>
+          <div class="flex flex-col">
+            <div class="flex items-center gap-2">
+              <span
+                class="font-extrabold text-base sm:text-lg tracking-widest uppercase font-sans text-pitch-black">DISCOGS
+                MATCHER</span>
+              <span class="h-1.5 w-5 bg-prada-red inline-block"></span>
+            </div>
+            <span class="font-mono text-[9px] tracking-widest text-muted-graphite uppercase -mt-0.5">CRATE DIGGING
+              INTELIGENTE</span>
+          </div>
+        </a>
+        <span class="hidden sm:inline-block border-l border-hairline-light h-6"></span>
+        <span
+          class="hidden sm:inline-block text-[10px] font-mono tracking-widest uppercase text-prada-blue font-semibold px-2.5 py-0.5 border border-prada-blue/30 bg-blue-50/60">
+          EDICIÓN PRO v2.4.1
+        </span>
       </div>
 
-      <!-- Action Buttons & Main Workflow (Desktop) -->
-      <div class="hidden lg:flex items-center gap-2.5 shrink-0">
-        <!-- Step 1: Cargar Deseos + Sync -->
-        <div class="flex items-center rounded-lg border border-primary/30 bg-surface-container-lowest shadow-xs overflow-hidden">
-          <button id="load-wants-btn" class="bg-primary text-on-primary px-3.5 py-1.5 text-xs font-semibold hover:opacity-95 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-            <span class="material-symbols-outlined text-[16px]">favorite</span>
-            <span>1. Cargar Deseos</span>
+      <!-- Main Workflow Triggers (Desktop) -->
+      <div class="hidden lg:flex items-center gap-2 font-mono text-xs">
+        <div class="flex items-center border border-hairline-dark bg-pure-white shadow-xs overflow-hidden">
+          <button id="load-wants-btn"
+            class="bg-pitch-black text-pure-white hover:bg-prada-red px-3.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+            data-tooltip="Descargar o sincronizar tu Wantlist de Discogs" data-tooltip-pos="bottom">
+            <span class="material-symbols-outlined text-[15px]">favorite</span>
+            <span>1. CARGAR DESEOS</span>
           </button>
-          <button id="refresh-wants-btn" class="px-2 py-1.5 bg-primary/10 text-primary hover:bg-primary/20 transition-colors border-l border-primary/20" title="Actualizar incrementalmente">
-            <span class="material-symbols-outlined text-[15px]">sync</span>
+          <button id="refresh-wants-btn"
+            class="px-2 py-1.5 bg-surface-low text-pitch-black hover:bg-prada-red hover:text-pure-white transition-colors border-l border-hairline-light cursor-pointer"
+            data-tooltip="Actualizar lista de deseos incrementalmente" data-tooltip-pos="bottom">
+            <span class="material-symbols-outlined text-[14px]">sync</span>
           </button>
         </div>
 
-        <!-- Step 2: Iniciar Análisis -->
-        <button id="start-scan-btn" class="bg-gradient-to-r from-amber-500 to-primary text-on-primary px-4 py-1.5 rounded-lg text-xs font-bold shadow-xs hover:shadow-sm hover:brightness-105 transition-all flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
-          <span class="material-symbols-outlined text-[16px]">radar</span>
-          <span>2. Iniciar Análisis</span>
+        <button id="start-scan-btn"
+          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
+          <span class="material-symbols-outlined text-[15px]">radar</span>
+          <span>2. INICIAR ANÁLISIS</span>
         </button>
 
-        <!-- Sheets Tools -->
-        <div class="flex items-center gap-1.5 ml-1 border-l border-outline-variant/30 pl-2.5">
-          <button id="export-sheets-sidebar-btn" class="px-2.5 py-1.5 rounded-lg border border-outline-variant/40 bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface flex items-center gap-1.5 transition-colors" title="Exportar a Google Sheets / Excel">
-            <span class="material-symbols-outlined text-[#0F9D58] text-[15px]">grid_on</span>
-            <span class="hidden xl:inline">Exportar</span>
+        <div class="flex items-center gap-1 ml-1 border-l border-hairline-light pl-2">
+          <button id="export-sheets-sidebar-btn"
+            class="px-2.5 py-1.5 border border-hairline-light bg-pure-white hover:border-hairline-dark text-[11px] font-medium text-pitch-black flex items-center gap-1 transition-colors cursor-pointer"
+            data-tooltip="Exportar tu Wantlist a Google Sheets / Excel" data-tooltip-pos="bottom">
+            <span class="material-symbols-outlined text-prada-emerald text-[14px]">grid_on</span>
+            <span class="hidden xl:inline">SHEETS</span>
           </button>
-          <button id="import-local-sheet-sidebar-btn" class="px-2.5 py-1.5 rounded-lg border border-outline-variant/40 bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface flex items-center gap-1.5 transition-colors" title="Cruzar con Planilla Local">
-            <span class="material-symbols-outlined text-[#4285F4] text-[15px]">cloud_download</span>
-            <span class="hidden xl:inline">Planilla Local</span>
+          <button id="import-local-sheet-sidebar-btn"
+            class="px-2.5 py-1.5 border border-hairline-light bg-pure-white hover:border-hairline-dark text-[11px] font-medium text-pitch-black flex items-center gap-1 transition-colors cursor-pointer"
+            data-tooltip="Comparar con catálogo de disquerías locales (Google Drive)" data-tooltip-pos="bottom">
+            <span class="material-symbols-outlined text-prada-blue text-[14px]">cloud_download</span>
+            <span class="hidden xl:inline">LOCAL</span>
           </button>
         </div>
 
-        <!-- Fast Cache Checkbox -->
-        <label class="flex items-center gap-1.5 px-2.5 py-1 text-xs text-on-surface font-semibold bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 cursor-pointer select-none" title="Usar datos de escaneo guardados localmente en las últimas 6 horas para acelerar la búsqueda">
-          <input type="checkbox" id="use-cache-checkbox" checked class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer">
-          <span class="inline-flex items-center gap-1">
-            <span class="material-symbols-outlined text-amber-500 text-[15px]">bolt</span>
-            <span class="hidden sm:inline">Caché</span>
-          </span>
-        </label>
+        <!-- Hidden cache checkbox kept for script compatibility -->
+        <input type="checkbox" id="use-cache-checkbox" checked class="hidden">
       </div>
 
-      <!-- Right Controls: Country, Currency & User Account -->
-      <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-        
-        <!-- Country Selector -->
-        <div class="header-select-wrapper">
-          <span class="material-symbols-outlined select-icon">location_on</span>
-          <select id="buyer-country" class="pl-7 pr-4 py-1.5 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
-            <option value="Uruguay" selected>Uruguay (UY)</option>
-            <option value="Spain">España (ES)</option>
-            <option value="United States">EE.UU. (US)</option>
-            <option value="Argentina">Argentina (AR)</option>
-            <option value="United Kingdom">Reino Unido (UK)</option>
-            <option value="Germany">Alemania (DE)</option>
-            <option value="Other">Otro (Internacional)</option>
-          </select>
+      <!-- User Locale & Profile Meta -->
+      <div class="flex items-center gap-3 text-xs font-mono">
+        <div
+          class="flex items-center border border-hairline-light bg-pure-white divide-x divide-hairline-light shadow-sm">
+          <div
+            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-pitch-black">
+            <span class="material-symbols-outlined text-[13px] text-prada-blue shrink-0">location_on</span>
+            <select id="buyer-country"
+              class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none appearance-none">
+              <option value="Uruguay" selected>Uruguay (UY)</option>
+              <option value="Spain">España (ES)</option>
+              <option value="United States">EE.UU. (US)</option>
+              <option value="Argentina">Argentina (AR)</option>
+              <option value="United Kingdom">Reino Unido (UK)</option>
+              <option value="Germany">Alemania (DE)</option>
+              <option value="Other">Otro (Internacional)</option>
+            </select>
+            <span class="material-symbols-outlined text-[12px] pointer-events-none text-muted-graphite shrink-0 ml-0.5">expand_more</span>
+          </div>
+          <div
+            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-prada-emerald font-bold bg-prada-emerald-bg">
+            <select id="display-currency"
+              class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none text-emerald-900 appearance-none">
+              <option value="USD" selected>$ USD</option>
+              <option value="UYU">UYU ($U)</option>
+              <option value="EUR">€ EUR</option>
+              <option value="GBP">£ GBP</option>
+              <option value="ARS">$ ARS</option>
+              <option value="BRL">R$ BRL</option>
+              <option value="original">ORIGINAL</option>
+            </select>
+            <span class="material-symbols-outlined text-[12px] pointer-events-none text-emerald-700 shrink-0 ml-0.5">expand_more</span>
+          </div>
         </div>
 
-        <!-- Currency Selector -->
-        <div class="header-select-wrapper">
-          <span class="material-symbols-outlined select-icon">payments</span>
-          <select id="display-currency" class="pl-7 pr-4 py-1.5 text-xs rounded-lg bg-surface-container border border-outline-variant/50 text-on-surface focus:border-primary outline-none cursor-pointer">
-            <option value="UYU" selected>UYU ($U)</option>
-            <option value="USD">USD ($)</option>
-            <option value="EUR">EUR (€)</option>
-            <option value="GBP">GBP (£)</option>
-            <option value="ARS">ARS ($)</option>
-            <option value="BRL">BRL (R$)</option>
-            <option value="original">Original</option>
-          </select>
-        </div>
-
-        <!-- User Account Chip -->
         <div class="relative">
-          <div class="user-card bg-surface-container hover:bg-surface-container-high rounded-full pl-1.5 pr-3 py-1 flex items-center gap-2 border border-outline-variant/40 cursor-pointer transition-colors" id="user-card" title="Cuenta de Discogs">
-            <div class="avatar w-6 h-6 rounded-full bg-primary flex items-center justify-center text-on-primary text-[11px] font-bold shadow-xs shrink-0" id="user-avatar">
-              ?
-            </div>
-            <div class="flex items-center gap-1.5">
-              <span class="w-2 h-2 rounded-full bg-green-500 inline-block shrink-0" id="connection-status-dot"></span>
-              <p class="text-xs font-semibold text-on-surface truncate max-w-[100px]" id="username-display">Buscando...</p>
-              <p class="hidden" id="connection-status">Detectando sesión...</p>
-            </div>
+          <div
+            class="flex items-center gap-2 border border-hairline-light bg-pure-white px-3 py-1 shadow-sm cursor-pointer hover:border-hairline-dark transition-colors"
+            id="user-card" title="Gestionar cuenta de Discogs (Testing y Sesión)">
+            <span class="w-1.5 h-1.5 bg-prada-red" id="connection-status-dot"></span>
+            <span class="text-[10px] tracking-widest uppercase font-semibold text-pitch-black truncate max-w-[95px]"
+              id="username-display">—</span>
+            <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium"
+              id="connection-status">ACTIVO</span>
+            <span class="material-symbols-outlined text-[12px] text-muted-graphite pointer-events-none">expand_more</span>
+            <div id="user-avatar" style="display: none;">?</div>
           </div>
 
-          <!-- Fallback Manual Login Popover (Shows if session detection fails) -->
-          <div class="input-fallback absolute right-0 top-full mt-2 w-72 p-3 bg-surface-container-lowest border border-outline-variant shadow-xl rounded-xl z-50" id="input-fallback" style="display: none;">
-            <p class="fallback-note text-xs text-error font-medium mb-2">Ingresa tu usuario de Discogs manualmente:</p>
-            <input type="text" id="manual-username" placeholder="Usuario de Discogs" class="w-full bg-surface border border-outline-variant rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none mb-2">
-            <button id="save-username-btn" class="w-full bg-primary text-on-primary py-1.5 rounded font-label-md text-xs font-semibold hover:opacity-90">Sincronizar</button>
-          </div>
+          <!-- Account Management / Testing Dropdown Popover -->
+          <div
+            class="input-fallback p-5 bg-pure-white border border-hairline-dark font-mono"
+            id="input-fallback" style="display: none;">
+            <!-- Prada Linea Rossa Accent Stripe -->
+            <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
 
-          <!-- Optional API Token Input -->
-          <div style="display: none;">
-            <input type="password" id="discogs-token-input" placeholder="Token API Discogs (opcional)">
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline-light">
+              <span class="text-[10px] font-bold tracking-widest text-prada-red uppercase">[ CUENTA &amp; SESIÓN ]</span>
+              <button id="btn-close-user-dropdown" type="button" class="w-5 h-5 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer text-sm font-bold">✕</button>
+            </div>
+
+            <!-- Current Session Info Card -->
+            <div class="bg-ivory-warm p-3 border border-hairline-light mb-3">
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold">ESTADO ACTUAL:</span>
+                <span id="user-dropdown-status-badge" class="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300">
+                  ACTIVO
+                </span>
+              </div>
+              <div class="flex items-center gap-2.5 mt-2">
+                <div class="w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs" id="user-dropdown-avatar">
+                  —
+                </div>
+                <div class="min-w-0 flex-1">
+                  <span id="user-dropdown-username" class="font-sans font-extrabold text-sm uppercase text-pitch-black block truncate">
+                    —
+                  </span>
+                  <span id="user-dropdown-subtext" class="text-[9px] text-muted-graphite block truncate">
+                    Sesión vinculada a Discogs
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Action: Enter / Switch Username -->
+            <div class="space-y-1.5 mb-3">
+              <label class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold block">
+                INGRESAR O CAMBIAR USUARIO:
+              </label>
+              <div class="flex gap-1.5">
+                <input type="text" id="manual-username" placeholder="OTRO USUARIO DISCOGS"
+                  class="flex-1 bg-pure-white border border-hairline-dark px-2.5 py-1.5 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red">
+                <button id="save-username-btn" type="button"
+                  class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0">
+                  GUARDAR
+                </button>
+              </div>
+            </div>
+
+            <!-- Actions: Disconnect (Testing) & Reconnect -->
+            <div class="pt-2 border-t border-hairline-light flex flex-col gap-2">
+              <button id="btn-disconnect-session" type="button"
+                class="w-full border border-prada-red/40 bg-prada-red-bg text-prada-red hover:bg-prada-red hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[14px]">logout</span>
+                <span>DESCONECTAR CUENTA (MODO TESTING)</span>
+              </button>
+
+              <button id="btn-reconnect-session" type="button"
+                class="w-full border border-hairline-light bg-surface-low hover:border-pitch-black text-pitch-black py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                style="display: none;">
+                <span class="material-symbols-outlined text-[14px]">autorenew</span>
+                <span>AUTODETECTAR SESIÓN DISCOGS</span>
+              </button>
+            </div>
           </div>
+          <div style="display: none;"><input type="password" id="discogs-token-input"></div>
         </div>
-
-        <!-- Mobile Menu Toggle Button (only on very small mobile) -->
-        <button id="mobile-menu-toggle-btn" class="hidden p-1.5 text-primary cursor-pointer hover:bg-surface-container rounded-lg">
-          <span class="material-symbols-outlined">menu</span>
-        </button>
       </div>
     </div>
 
-    <!-- Mobile Drawer for Action Buttons -->
-    <div id="sidebar" class="sidebar hidden border-t border-outline-variant/30 px-4 py-3 bg-surface-container-low flex flex-wrap gap-2 items-center justify-between">
-      <div class="flex flex-wrap gap-2 w-full">
-        <button id="mobile-load-wants-btn" type="button" class="flex-1 bg-primary text-on-primary rounded py-2 px-3 text-xs font-semibold">
-          1. Cargar Deseos
+    <!-- Second row: Navigation Runway & Curated Filters -->
+    <div id="header-nav-row"
+      class="max-w-[1780px] mx-auto px-6 py-2.5 flex flex-wrap items-center justify-between gap-4 text-xs uppercase tracking-wider font-mono"
+      style="display: none;">
+      <nav class="flex items-center gap-1.5" id="tab-navigation">
+        <button id="tab-btn-sellers"
+          class="bg-prada-blue-night text-pure-white px-4 py-2 font-bold border-b-2 border-prada-red tracking-wider cursor-pointer shadow-xs">
+          VENDEDORES MARKETPLACE
         </button>
-        <button id="mobile-start-scan-btn" type="button" class="flex-1 bg-surface-tint text-on-primary rounded py-2 px-3 text-xs font-bold">
-          2. Iniciar Análisis
+        <button id="tab-btn-local"
+          class="px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          COINCIDENCIAS LOCAL (SHEETS) <span id="badge-local-count"
+            class="ml-1.5 text-[9px] bg-prada-red text-pure-white font-mono font-bold px-1.5 py-0.5 shadow-xs"
+            style="display: none;">0</span>
         </button>
+        <button id="tab-btn-stats"
+          class="px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          ESTADÍSTICAS DE LISTA
+        </button>
+        <button id="btn-back-to-wants"
+          class="px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          LISTA DE DESEOS (CRATE)
+        </button>
+      </nav>
+
+      <div class="flex items-center gap-6 text-xs font-mono text-muted-graphite">
+        <label id="label-filter-priority" class="flex items-center gap-2 cursor-pointer hover:text-pitch-black transition-opacity"
+          data-tooltip="Mostrar únicamente tiendas con discos prioritarios ★" data-tooltip-pos="bottom">
+          <input id="filter-priority-only"
+            class="h-4 w-4 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer accent-prada-red" type="checkbox" />
+          <span class="font-semibold text-pitch-black">SOLO FAVORITOS</span>
+        </label>
+        <label class="flex items-center gap-2 cursor-pointer hover:text-pitch-black"
+          data-tooltip="Filtrar por tiendas con envío directo confirmado a tu país" data-tooltip-pos="bottom">
+          <input checked="" id="filter-has-shipping"
+            class="h-4 w-4 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer accent-prada-red" type="checkbox" />
+          <span class="font-semibold text-emerald-800">CON ENVÍO APROBADO</span>
+        </label>
+        <button id="clear-cache-btn"
+          class="text-prada-red hover:text-prada-red-dark underline uppercase font-bold cursor-pointer text-xs"
+          type="button" data-tooltip="Eliminar datos locales guardados y forzar recarga"
+          data-tooltip-pos="bottom">LIMPIAR CACHÉ</button>
       </div>
     </div>
-  </header>
 
-  <!-- HORIZONTAL FILTERS & SEARCH TOOLBAR (Hidden until marketplace analysis produces results) -->
-  <section id="filter-toolbar" class="w-full bg-surface-container-lowest/80 border-b border-outline-variant/20 px-6 py-2.5" style="display: none;">
-    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
-      
-      <!-- Search Input -->
-      <div class="filter-search-wrapper flex-1 min-w-[200px] max-w-sm">
-        <span class="material-symbols-outlined search-icon">search</span>
-        <input type="text" id="filter-search-release" placeholder="Buscar disco o artista..." class="w-full bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 text-xs py-1.5 pl-9 pr-3 text-on-surface placeholder:text-tertiary/70 focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-colors">
+    <!-- HARDWARE CRATE FILTERS (Architectural Line Bar) -->
+    <section id="filter-toolbar" class="border-t border-hairline-light bg-surface-low/95 px-6 py-2.5"
+      style="display: none;">
+    <div
+      class="max-w-[1780px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs font-mono uppercase tracking-wider">
+      <div class="flex flex-wrap items-center gap-2.5">
+        <span class="text-pitch-black font-bold mr-1 tracking-wider flex items-center gap-1.5 text-xs">
+          <span class="w-2 h-2 bg-prada-red inline-block shadow-xs"></span>
+          FILTRADO TÉCNICO:
+        </span>
+        <!-- Dropdown 1: Min Discs -->
+        <div class="border border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          <span class="text-muted-graphite font-semibold text-xs shrink-0">LOTE MÍN:</span>
+          <select id="filter-min-matches"
+            class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
+            <option value="1">1+ VINILOS</option>
+            <option value="2" selected>2+ VINILOS</option>
+            <option value="3">3+ VINILOS</option>
+            <option value="4">4+ VINILOS</option>
+            <option value="5">5+ VINILOS</option>
+            <option value="7">7+ VINILOS</option>
+            <option value="10">10+ VINILOS</option>
+          </select>
+          <span class="material-symbols-outlined text-[14px] pointer-events-none text-muted-graphite shrink-0 ml-0.5">expand_more</span>
+        </div>
+        <!-- Dropdown 2: Condition -->
+        <div
+          class="border border-emerald-600 bg-prada-emerald-bg px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          <span class="text-emerald-800 font-semibold text-xs shrink-0">ESTADO:</span>
+          <select id="filter-min-condition"
+            class="bg-transparent text-emerald-950 font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
+            <option value="any">CUALQUIER CONDICIÓN</option>
+            <option value="VG+" selected>VG+ O SUPERIOR</option>
+            <option value="NM">MINT / UNPLAYED ONLY</option>
+            <option value="M">MINT (NUEVO)</option>
+            <option value="VG">VG O SUPERIOR</option>
+          </select>
+          <span class="material-symbols-outlined text-[14px] pointer-events-none text-emerald-700 shrink-0 ml-0.5">expand_more</span>
+        </div>
+        <!-- Dropdown 3: Origin -->
+        <div class="border border-blue-600 bg-blue-50 px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          <span class="text-prada-blue font-semibold text-xs shrink-0">ORIGEN:</span>
+          <select id="filter-country"
+            class="bg-transparent text-prada-blue-night font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
+            <option value="all" selected>GLOBAL ARCHIVE</option>
+            <option value="Europe">UNIÓN EUROPEA &amp; UK</option>
+            <option value="United States">ESTADOS UNIDOS (USA)</option>
+            <option value="Spain">ESPAÑA (ES)</option>
+            <option value="United Kingdom">REINO UNIDO (UK)</option>
+            <option value="Germany">ALEMANIA (DE)</option>
+          </select>
+          <span class="material-symbols-outlined text-[14px] pointer-events-none text-prada-blue shrink-0 ml-0.5">expand_more</span>
+        </div>
+        <!-- Dropdown 4: Merchant Reputation -->
+        <div class="border border-amber-600 bg-prada-ochre-bg px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          <span class="text-amber-900 font-semibold text-xs shrink-0">REPUTACIÓN:</span>
+          <select id="filter-rating"
+            class="bg-transparent text-amber-950 font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
+            <option value="0">CUALQUIER REPUTACIÓN</option>
+            <option value="98">≥ 98.0% POSITIVO</option>
+            <option value="99" selected>≥ 99.0% POSITIVO</option>
+            <option value="100">100% IMPECABLE</option>
+          </select>
+          <span class="material-symbols-outlined text-[14px] pointer-events-none text-amber-700 shrink-0 ml-0.5">expand_more</span>
+        </div>
+        <!-- Dropdown 5: Sort Order -->
+        <div
+          class="border-2 border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          <span class="text-prada-blue font-bold text-xs shrink-0">ORDEN:</span>
+          <select id="sort-by"
+            class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
+            <option value="matches-desc" selected>MAYOR COINCIDENCIA DE DESEADOS</option>
+            <option value="price-asc">MENOR PRECIO PROMEDIO / PIEZA</option>
+            <option value="rating-desc">CALIFICACIÓN MERCANTE DISCOGS</option>
+          </select>
+          <span class="material-symbols-outlined text-[15px] pointer-events-none text-prada-red shrink-0 ml-0.5">expand_more</span>
+        </div>
       </div>
 
-      <!-- Filter Dropdowns Row -->
-      <div class="flex flex-wrap items-center gap-2 text-xs">
-        <!-- Min Matches -->
-        <select id="filter-min-matches" class="bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 py-1.5 px-2.5 text-on-surface outline-none cursor-pointer" title="Mínimo de discos por vendedor">
-          <option value="1">1+ discos</option>
-          <option value="2" selected>2+ discos por vendedor</option>
-          <option value="3">3+ discos</option>
-          <option value="4">4+ discos</option>
-          <option value="5">5+ discos</option>
-          <option value="7">7+ discos</option>
-          <option value="10">10+ discos</option>
-        </select>
-
-        <!-- Condition -->
-        <select id="filter-min-condition" class="bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 py-1.5 px-2.5 text-on-surface outline-none cursor-pointer" title="Estado mínimo del vinilo">
-          <option value="any" selected>Cualquier estado</option>
-          <option value="VG+">VG+ o superior</option>
-          <option value="NM">Near Mint / Mint</option>
-          <option value="M">Solo Mint (Nuevo)</option>
-          <option value="VG">VG o superior</option>
-        </select>
-
-        <!-- Seller Country -->
-        <select id="filter-country" class="bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 py-1.5 px-2.5 text-on-surface outline-none cursor-pointer" title="Ubicación del vendedor">
-          <option value="all" selected>Cualquier país</option>
-          <option value="Europe">Europa</option>
-          <option value="United States">EE.UU. (US)</option>
-          <option value="Spain">España (ES)</option>
-          <option value="United Kingdom">Reino Unido (UK)</option>
-          <option value="Germany">Alemania (DE)</option>
-        </select>
-
-        <!-- Seller Rating -->
-        <select id="filter-rating" class="bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 py-1.5 px-2.5 text-on-surface outline-none cursor-pointer" title="Calificación de vendedor">
-          <option value="0" selected>Cualquier reputación</option>
-          <option value="98">98%+ reputación</option>
-          <option value="99">99%+ reputación</option>
-          <option value="100">100% reputación</option>
-        </select>
-
-        <!-- Sort By -->
-        <select id="sort-by" class="bg-surface-container/60 hover:bg-surface-container rounded-lg border border-outline-variant/40 py-1.5 px-2.5 text-on-surface font-medium outline-none cursor-pointer" title="Ordenar resultados">
-          <option value="matches-desc" selected>Más coincidencias primero</option>
-          <option value="price-asc">Precio total más bajo</option>
-          <option value="rating-desc">Mejor reputación</option>
-        </select>
-
-        <!-- Filter Chips: Favorites & Shipping -->
-        <label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-outline-variant/30 hover:bg-surface-container text-on-surface cursor-pointer select-none">
-          <input type="checkbox" id="filter-priority-only" class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5">
-          <span>★ Solo favoritos</span>
-        </label>
-
-        <label class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-outline-variant/30 hover:bg-surface-container text-on-surface cursor-pointer select-none">
-          <input type="checkbox" id="filter-has-shipping" checked class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5">
-          <span>Con envío</span>
-        </label>
-
-        <button id="clear-cache-btn" class="px-2 py-1 text-tertiary hover:text-error text-[11px] rounded transition-colors cursor-pointer" title="Limpiar caché guardado de releases">
-          Limpiar caché
-        </button>
+      <div class="flex items-center gap-4 text-muted-graphite">
+        <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-xs">
+          <span class="material-symbols-outlined text-[16px] text-prada-red mr-2">search</span>
+          <input id="filter-search-release" type="text" placeholder="BUSCAR DISCO O ARTISTA..."
+            class="bg-transparent text-xs font-mono tracking-wide uppercase placeholder:text-muted-graphite focus:outline-none text-pitch-black w-48 sm:w-64">
+        </div>
       </div>
     </div>
   </section>
+</header>
+
+  <!-- Preserved Metric Counter Elements (kept for JS animated counters) -->
+  <div style="display: none;">
+    <span id="metric-wants-count">0</span>
+    <span id="metric-sellers-count">0</span>
+    <span id="metric-matches-count">0</span>
+  </div>
 
   <!-- Main Content Area -->
   <main class="main-content w-full flex-1 flex flex-col h-full overflow-y-auto">
-    <!-- Header Section with Integrated Horizontal Stat Pill -->
-    <header class="w-full bg-background flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 px-6 py-4 max-w-7xl mx-auto border-b border-surface-variant/40">
-      <div>
-        <h1 class="font-headline-lg text-headline-lg-mobile md:text-headline-lg font-bold text-on-background">Análisis del Marketplace</h1>
-        <p class="text-tertiary text-body-md max-w-2xl mt-0.5">Encuentra tiendas con múltiples vinilos de tu lista de deseos para ahorrar en envíos combinados.</p>
-      </div>
-
-      <!-- Integrated Horizontal Stat Pill -->
-      <div class="stat-pill-banner bg-surface-container-low border border-outline-variant/40 rounded-full px-4 py-2 flex items-center gap-3 text-xs font-semibold shadow-xs shrink-0">
-        <span class="inline-flex items-center gap-1.5">
-          <strong class="font-bold text-on-background text-sm" id="metric-wants-count">0</strong>
-          <span class="text-tertiary font-normal">Deseados</span>
-        </span>
-        <span class="text-outline-variant select-none">•</span>
-        <span class="inline-flex items-center gap-1.5">
-          <strong class="font-bold text-on-background text-sm" id="metric-sellers-count">0</strong>
-          <span class="text-tertiary font-normal">Tiendas</span>
-        </span>
-        <span class="text-outline-variant select-none">•</span>
-        <span class="inline-flex items-center gap-1.5">
-          <strong class="font-bold text-emerald-700 dark:text-emerald-400 text-sm" id="metric-matches-count">0</strong>
-          <span class="text-tertiary font-normal">En Venta</span>
-        </span>
-      </div>
-    </header>
-
     <!-- Canvas Wrapper -->
-    <div class="flex-1 px-6 py-6 max-w-7xl mx-auto w-full flex flex-col gap-6">
+    <div class="flex-1 px-6 py-6 max-w-[1780px] mx-auto w-full flex flex-col gap-6">
 
       <!-- PROGRESS / STATUS CARD: Spacious Centered Vinyl Digging Station -->
       <div class="scan-station-card" id="status-card" style="display: none;">
         <!-- Canvas radar in background with subtle golden particle glow -->
-        <canvas id="scan-radar-canvas" class="absolute inset-0 w-full h-full pointer-events-none opacity-25 z-0"></canvas>
+        <canvas id="scan-radar-canvas"
+          class="absolute inset-0 w-full h-full pointer-events-none opacity-25 z-0"></canvas>
 
         <div class="relative z-10 flex flex-col items-center text-center">
-          
+
           <!-- Top Header of Card: Live Step & ETA & Cancel Button -->
-          <div class="w-full flex items-center justify-between pb-4 mb-2 border-b border-outline-variant/20">
+          <div class="w-full flex items-center justify-between pb-4 mb-2 border-b border-hairline-light font-mono">
             <div class="flex items-center gap-2.5">
               <span class="relative flex h-2.5 w-2.5">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+                <span class="animate-ping absolute inline-flex h-full w-full bg-prada-red opacity-75"></span>
+                <span class="relative inline-flex h-2.5 w-2.5 bg-prada-red"></span>
               </span>
-              <h3 class="font-headline-sm font-bold text-on-surface text-sm md:text-base flex items-center gap-2" id="status-title">
+              <h3 class="font-sans font-black text-pitch-black text-sm md:text-base uppercase tracking-tight flex items-center gap-2"
+                id="status-title">
                 Escaneando Marketplace...
               </h3>
             </div>
             <div class="flex items-center gap-2.5">
-              <span id="scanning-eta-badge" class="text-xs text-tertiary font-medium bg-surface-container px-3 py-1 rounded-full border border-outline-variant/30 flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-[14px]">schedule</span> Calculando tiempo...
+              <span id="scanning-eta-badge"
+                class="text-[11px] text-muted-graphite font-mono font-bold uppercase bg-pure-white px-2.5 py-1 border border-hairline-dark flex items-center gap-1.5 shadow-xs">
+                <span class="material-symbols-outlined text-[13px] text-prada-red">schedule</span> Calculando tiempo...
               </span>
-              <button id="cancel-scan-btn" class="text-xs font-semibold text-error border border-error/30 px-3 py-1 rounded-lg hover:bg-error/10 transition-colors cursor-pointer flex items-center gap-1">
+              <button id="cancel-scan-btn"
+                class="text-[11px] font-mono font-bold uppercase tracking-wider text-prada-red bg-prada-red-bg border border-prada-red/40 hover:bg-prada-red hover:text-pure-white px-3 py-1 transition-colors cursor-pointer flex items-center gap-1">
                 <span class="material-symbols-outlined text-[14px]">cancel</span> Cancelar
               </button>
             </div>
@@ -291,7 +429,7 @@
 
           <!-- CENTERPIECE: Large 240px Album Sleeve + 220px Spinning Peeking Vinyl Disc -->
           <div class="scan-centerpiece">
-            
+
             <!-- Vinyl Disc peeking & spinning behind sleeve (220px) -->
             <div id="loading-turntable-container" class="scan-vinyl-disc">
               <!-- Vinyl concentric micro-grooves -->
@@ -314,29 +452,31 @@
               <!-- Glossy Sleeve Sheen Effect -->
               <div class="scan-sleeve-sheen"></div>
               <!-- Priority Bookmark Tag (if priority) -->
-              <div id="scanning-priority-tag" class="absolute top-2.5 right-2.5 bg-amber-500 text-neutral-950 text-[10px] font-bold px-2 py-0.5 rounded shadow-md flex items-center gap-1 z-20" style="display: none;">
-                <span>★</span> FAVORITO
+              <div id="scanning-priority-tag"
+                class="absolute top-2.5 right-2.5 bg-pitch-black text-pure-white border border-prada-red font-mono uppercase text-[9px] font-bold px-2 py-0.5 shadow-xs flex items-center gap-1 z-20"
+                style="display: none;">
+                <span class="text-prada-red">★</span> FAVORITO
               </div>
             </div>
 
           </div>
 
           <!-- Centered Release Information Block with Clean Hierarchy -->
-          <div class="scan-info-block mt-4 max-w-md mx-auto">
-            <h4 id="scanning-title" class="text-lg font-bold text-zinc-900 dark:text-zinc-100 truncate w-full">
+          <div class="scan-info-block mt-4 max-w-md mx-auto font-mono">
+            <h4 id="scanning-title" class="font-sans font-extrabold text-lg uppercase tracking-tight text-pitch-black truncate w-full">
               Título del Disco
             </h4>
-            <p id="scanning-artist" class="text-sm text-zinc-500 dark:text-zinc-400 truncate w-full mt-0.5">
+            <p id="scanning-artist" class="text-xs text-muted-graphite uppercase tracking-wider truncate w-full mt-1">
               Artista • Sello
             </p>
-            
+
             <!-- Metadata & Offers Badges -->
-            <div class="flex items-center justify-center gap-2 pt-2 text-xs">
-              <span id="scanning-badge-step" class="font-medium text-zinc-600 dark:text-zinc-300">
+            <div class="flex items-center justify-center gap-2 pt-2.5 text-xs">
+              <span id="scanning-badge-step" class="font-mono text-[11px] font-bold uppercase text-pitch-black bg-ivory-warm border border-hairline-dark px-2 py-0.5 shadow-2xs">
                 Disco -- de --
               </span>
-              <span class="text-zinc-400 select-none">•</span>
-              <span id="scanning-offers-badge" class="font-semibold text-emerald-700 dark:text-emerald-400">
+              <span class="text-hairline-dark select-none">/</span>
+              <span id="scanning-offers-badge" class="font-mono text-[11px] font-bold uppercase text-emerald-800 bg-emerald-50 border border-emerald-300/60 px-2 py-0.5 shadow-2xs">
                 Buscando ofertas...
               </span>
               <span id="scanning-format-badge" style="display: none;">LP</span>
@@ -344,13 +484,15 @@
           </div>
 
           <!-- Slim Elegant Progress Bar & ETA -->
-          <div class="scan-progress-box w-full max-w-md mx-auto mt-4">
-            <div class="w-full bg-zinc-200 dark:bg-zinc-800 rounded-full h-1.5 overflow-hidden">
-              <div id="progress-bar" class="bg-gradient-to-r from-amber-600 via-amber-500 to-primary h-full rounded-full transition-all duration-300" style="width: 0%;"></div>
+          <div class="scan-progress-box w-full max-w-md mx-auto mt-4 font-mono">
+            <div class="w-full bg-ivory-warm border border-hairline-dark h-2 overflow-hidden shadow-xs">
+              <div id="progress-bar"
+                class="bg-prada-red h-full transition-all duration-300"
+                style="width: 0%;"></div>
             </div>
-            <div class="flex justify-between items-center text-xs text-zinc-500 mt-2 px-0.5">
-              <span id="progress-text" class="truncate max-w-[280px] font-medium text-zinc-500">Iniciando análisis...</span>
-              <span id="progress-percent" class="font-bold text-zinc-900 dark:text-zinc-100 text-sm">0%</span>
+            <div class="flex justify-between items-center text-[11px] text-muted-graphite font-mono mt-2 px-0.5">
+              <span id="progress-text" class="truncate max-w-[280px] font-bold text-pitch-black uppercase">Iniciando análisis...</span>
+              <span id="progress-percent" class="font-bold text-prada-red text-xs">0%</span>
             </div>
           </div>
 
@@ -360,194 +502,325 @@
       <!-- RESULTS CONTAINER -->
       <div class="results-container flex-1 flex flex-col">
 
-        <!-- TAB NAVIGATION -->
-        <div class="tab-navigation flex flex-wrap items-center justify-between border-b border-outline-variant mb-6 gap-2" id="tab-navigation" style="display: none;">
-          <div class="flex items-center flex-wrap">
-            <button class="px-6 py-3 font-semibold text-primary border-b-2 border-primary flex items-center gap-2 cursor-pointer transition-colors" id="tab-btn-sellers">
-              <span class="material-symbols-outlined text-sm">storefront</span> Vendedores Marketplace
-            </button>
-            <button class="px-6 py-3 font-medium text-tertiary hover:text-primary transition-colors flex items-center gap-2 cursor-pointer" id="tab-btn-local">
-              <span class="material-symbols-outlined text-sm">location_on</span> Coincidencias Local (Sheets) <span id="badge-local-count" class="bg-secondary-container text-on-secondary-container text-xs font-bold px-2 py-0.5 rounded-full" style="display: none;">0</span>
-            </button>
-            <button class="px-6 py-3 font-medium text-tertiary hover:text-primary transition-colors flex items-center gap-2 cursor-pointer" id="tab-btn-stats">
-              <span class="material-symbols-outlined text-sm">bar_chart</span> Estadísticas de Lista
-            </button>
-          </div>
+        <!-- INTERACTIVE ONBOARDING / SELECTION PORTAL (EMPTY STATE) -->
+        <div
+          class="empty-state border border-hairline-dark bg-pure-white p-6 sm:p-10 w-full max-w-4xl relative flex flex-col items-center text-center mx-auto my-6 shadow-[4px_4px_0px_rgba(0,0,0,0.05)]"
+          id="empty-state">
+          <!-- Prada Linea Rossa Accent Stripe -->
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
 
-          <div class="flex items-center gap-2 py-2 pr-1">
-            <button id="btn-back-to-wants" class="px-3.5 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs" title="Volver a ver y gestionar tu lista de vinilos y favoritos">
-              <span class="material-symbols-outlined text-[16px] text-zinc-600 dark:text-zinc-300">arrow_back</span>
-              <span>Volver a Lista de Deseos</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- INTERACTIVE ONBOARDING WIZARD (EMPTY STATE) -->
-        <div class="empty-state bg-surface-container-lowest rounded-2xl p-8 md:p-12 w-full max-w-3xl custom-dashed-border shadow-lg relative flex flex-col items-center text-center mx-auto my-8" id="empty-state">
-          <!-- Stepper Indicator -->
-          <div class="flex items-center justify-center w-full max-w-xs mx-auto mb-10 relative">
-            <div class="absolute h-[2px] bg-surface-container-high w-full top-1/2 -translate-y-1/2 z-0"></div>
-            <div class="relative z-10 flex justify-between w-full">
-              <div class="h-8 w-8 rounded-full bg-primary text-on-primary flex items-center justify-center font-bold text-sm shadow-md" id="dot-1">1</div>
-              <div class="h-8 w-8 rounded-full bg-surface-container-high text-tertiary flex items-center justify-center font-bold text-sm" id="dot-2">2</div>
-              <div class="h-8 w-8 rounded-full bg-surface-container-high text-tertiary flex items-center justify-center font-bold text-sm" id="dot-3">3</div>
-            </div>
-          </div>
-
-          <!-- STEP 1: ACCOUNT DETECTION -->
-          <div class="wizard-step-pane active w-full flex flex-col items-center" id="step-pane-1">
-            <div class="relative w-32 h-32 mb-6 flex items-center justify-center">
-              <div class="w-28 h-28 rounded-full bg-neutral-900 border-4 border-neutral-800 shadow-xl flex items-center justify-center relative">
-                <div class="absolute inset-2 rounded-full border border-neutral-700/50 pointer-events-none"></div>
-                <div class="absolute inset-4 rounded-full border border-neutral-800/70 pointer-events-none"></div>
-                <div class="absolute inset-7 rounded-full border border-neutral-700/40 pointer-events-none"></div>
-                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-600 via-amber-500 to-primary flex items-center justify-center text-neutral-950 font-bold shadow-inner">
-                  <div class="w-2.5 h-2.5 rounded-full bg-neutral-950"></div>
-                </div>
-              </div>
-              <div class="absolute -bottom-1 -right-1 w-9 h-9 bg-surface-container-lowest rounded-full shadow-md flex items-center justify-center border border-outline-variant/50 text-primary">
-                <span class="material-symbols-outlined text-[18px]">search</span>
-              </div>
-            </div>
-            <h2 class="font-headline-md text-headline-md text-on-background mb-3">Paso 1: Detectar tu cuenta de Discogs</h2>
-            <p class="font-body-md text-body-md text-tertiary mb-8 max-w-md mx-auto">La extensión se conecta a tu sesión activa en Discogs para cargar tu lista de deseos de forma segura y automática.</p>
-
-            <div class="bg-surface-container bg-opacity-50 rounded-xl p-5 border border-black/5 w-full max-w-md mx-auto mb-8 shadow-sm">
-              <div class="flex items-center justify-center gap-2 mb-1" id="wizard-detection-status">
-                <span class="relative flex h-3 w-3">
-                  <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-                  <span class="relative inline-flex rounded-full h-3 w-3 bg-secondary"></span>
-                </span>
-                <h3 class="font-headline-sm text-headline-sm text-on-background font-semibold" id="wizard-detection-text">Buscando sesión activa...</h3>
-              </div>
-              <p class="font-body-sm text-body-sm text-tertiary" id="wizard-detection-subtext">Asegúrate de estar logueado en <a href="https://www.discogs.com" target="_blank" class="text-primary underline">discogs.com</a> en este navegador.</p>
-
-              <div id="wizard-input-fallback" class="mt-4 flex flex-col gap-2" style="display: none;">
-                <input type="text" id="wizard-manual-username" placeholder="Usuario de Discogs" class="w-full bg-surface border border-outline-variant rounded-lg p-2.5 text-center text-sm font-semibold outline-none focus:ring-2 focus:ring-primary">
-                <button id="wizard-save-username-btn" class="w-full bg-surface-tint text-on-primary rounded-lg py-2 text-xs font-bold hover:opacity-90">Sincronizar y Continuar</button>
-              </div>
-            </div>
-
-            <button id="wizard-next-1-btn" class="bg-primary text-on-primary font-headline-sm text-headline-sm font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300 disabled:opacity-50" disabled>
-              Continuar
-            </button>
-
-            <button id="wizard-resume-wants-btn-1" class="mt-3 px-4 py-2 rounded-lg border border-primary/40 bg-primary/10 text-primary font-semibold text-xs hover:bg-primary/20 transition-colors flex items-center gap-1.5 cursor-pointer" style="display: none;">
-              <span id="wizard-resume-wants-text-1">Continuar con mi lista cargada</span>
-              <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
-            </button>
-          </div>
-
-          <!-- STEP 2: SHIPPING LOCATION -->
-          <div class="wizard-step-pane w-full flex flex-col items-center" id="step-pane-2" style="display: none;">
-            <div class="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mb-6">
-              <span class="material-symbols-outlined text-4xl text-primary">location_on</span>
-            </div>
-            <h2 class="font-headline-md text-headline-md text-on-background mb-3">Paso 2: ¿Dónde recibirás tus discos?</h2>
-            <p class="font-body-md text-body-md text-tertiary mb-8 max-w-md mx-auto">Usaremos tu ubicación para calcular los costos de envío combinado de forma precisa y recomendarte las mejores tiendas.</p>
-
-            <div class="w-full max-w-md mx-auto mb-8 space-y-4">
-              <select id="wizard-buyer-country" class="w-full bg-surface border border-outline-variant rounded-lg p-3 font-body-md focus:ring-2 focus:ring-primary outline-none text-on-surface">
-                <option value="Uruguay" selected>Uruguay (UY)</option>
-                <option value="Spain">España (ES)</option>
-                <option value="United States">Estados Unidos (US)</option>
-                <option value="Argentina">Argentina (AR)</option>
-                <option value="United Kingdom">Reino Unido (UK)</option>
-                <option value="Germany">Alemania (DE)</option>
-                <option value="Other">Otro (Internacional)</option>
-              </select>
-            </div>
-
-            <div class="flex gap-4">
-              <button id="wizard-back-2-btn" class="px-6 py-2.5 border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 rounded-full font-semibold text-sm text-zinc-600 dark:text-zinc-300 cursor-pointer transition-colors">Atrás</button>
-              <button id="wizard-next-2-btn" class="bg-primary text-on-primary font-bold py-2.5 px-10 rounded-full shadow-md hover:opacity-90 cursor-pointer">Continuar</button>
-            </div>
-          </div>
-
-          <!-- STEP 3: SYNC WANTLIST -->
-          <div class="wizard-step-pane w-full flex flex-col items-center" id="step-pane-3" style="display: none;">
-            <div class="w-20 h-20 bg-surface-container rounded-full flex items-center justify-center mb-6">
-              <span class="material-symbols-outlined text-4xl text-primary">sync</span>
-            </div>
-            <h2 class="font-headline-md text-headline-md text-on-background mb-3">Paso 3: Sincronizar lista de deseos</h2>
-            <p class="font-body-md text-body-md text-tertiary mb-8 max-w-md mx-auto">Cargaremos los discos de tu Wantlist para poder analizar cuáles están disponibles en el Marketplace.</p>
-
-            <div class="w-full max-w-md mx-auto mb-8">
-              <button id="wizard-sync-btn" class="bg-primary text-on-primary font-bold py-3 px-12 rounded-full shadow-lg hover:shadow-xl transition-all">
-                Cargar mi Wantlist
-              </button>
-
-              <div id="wizard-sync-loader" class="flex flex-col items-center gap-3" style="display: none;">
-                <span class="material-symbols-outlined text-primary text-3xl animate-spin">sync</span>
-                <p id="wizard-sync-text" class="text-sm font-semibold text-tertiary">Conectando con Discogs...</p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center justify-center gap-3">
-              <button id="wizard-back-3-btn" class="px-6 py-2.5 border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 rounded-full font-semibold text-sm text-zinc-600 dark:text-zinc-300 cursor-pointer transition-colors">Atrás</button>
-              <button id="wizard-resume-wants-btn-3" class="px-6 py-2.5 border border-primary/50 text-primary bg-primary/10 rounded-full font-semibold text-sm hover:bg-primary/20 transition-colors flex items-center gap-1.5 cursor-pointer" style="display: none;">
-                <span id="wizard-resume-wants-text-3">Ir a mi Lista cargada</span>
-                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <!-- WANTLIST MANAGER (SELECCIÓN DE FAVORITOS GRID) -->
-        <div class="wantlist-manager bg-surface-container-lowest rounded-xl border border-surface-variant p-margin-lg shadow-sm mb-8 relative" id="wantlist-manager" style="display: none;">
-          <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4 pb-6 border-b border-surface-variant/50">
-            <div>
-              <div class="flex items-center gap-2.5 mb-3">
-                <button id="btn-back-to-wizard" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-colors cursor-pointer" title="Volver a la pantalla de bienvenida / cambiar usuario o país">
-                  <span class="material-symbols-outlined text-[16px] text-zinc-600 dark:text-zinc-300">arrow_back</span>
-                  <span>Volver al Inicio</span>
-                </button>
-                <button id="btn-forward-to-results" class="px-3.5 py-1.5 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-bold text-primary flex items-center gap-1.5 transition-colors cursor-pointer" style="display: none;" title="Volver a los resultados del análisis de vendedores">
-                  <span>Ver Resultados del Análisis</span>
-                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </button>
-              </div>
-              <h2 class="font-headline-md text-headline-md text-on-surface mb-1">Marca tus discos favoritos / prioritarios</h2>
-              <p class="font-body-sm text-body-sm text-on-surface-variant max-w-xl">
-                Usa la estrella (★) para destacar los vinilos que más deseas. Podrás filtrar vendedores que tengan al menos uno de tus seleccionados.
+          <!-- STEP 1: CHOICE SCREEN (LOS DOS LOGOS GRANDES) -->
+          <div id="onboard-step-choice" class="w-full flex flex-col items-center">
+            <!-- Top Hero Badge & Headline -->
+            <div class="mb-8 max-w-2xl mx-auto">
+              <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase mb-1.5 block">[ ORIGEN DE DISCOS / COMIENZO ]</span>
+              <h2 class="font-sans font-black text-2xl sm:text-3xl uppercase tracking-tight text-pitch-black mb-2">¿DÓNDE ESTÁ TU WISHLIST?</h2>
+              <p class="font-mono text-xs text-muted-graphite leading-relaxed">
+                Selecciona cómo quieres cargar tu lista de deseos para cruzar ofertas y encontrar vendedores en un solo paso, sin ventanas divididas.
               </p>
             </div>
 
-            <div class="flex flex-wrap gap-2.5 items-center w-full lg:w-auto">
-              <div class="filter-search-wrapper flex-1 lg:w-60">
-                <span class="material-symbols-outlined search-icon">search</span>
-                <input type="text" id="wants-search-input" placeholder="Buscar por título o artista..." class="pl-9 pr-3 py-1.5 border border-outline-variant rounded-lg bg-surface text-on-surface focus:ring-2 focus:ring-primary focus:border-primary w-full font-body-sm text-xs transition-all outline-none">
+            <!-- Two Big Clickable Cards / Logos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full text-left font-mono">
+              
+              <!-- LOGO / TARJETA 1: EN DISCOGS -->
+              <button id="choice-btn-discogs" type="button"
+                class="choice-card choice-card-discogs w-full text-left p-6 sm:p-8 flex flex-col justify-between relative">
+                <div class="choice-stripe absolute top-0 left-0 right-0 h-1 bg-transparent"></div>
+
+                <div>
+                  <div class="flex items-center justify-between gap-2 mb-6">
+                    <span class="choice-badge font-mono text-[9px] font-bold tracking-widest text-muted-graphite uppercase bg-surface-low px-2 py-0.5 border border-hairline-light">OPCIÓN 01</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite flex items-center gap-1.5">
+                      <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                      DISCOGS CLOUD
+                    </span>
+                  </div>
+
+                  <!-- Big Vinyl Logo -->
+                  <div class="choice-icon-box w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 bg-pitch-black border-2 border-pitch-black flex items-center justify-center relative shadow-sm">
+                    <div class="absolute inset-2 border border-neutral-700"></div>
+                    <div class="absolute inset-4 border border-neutral-700"></div>
+                    <div class="w-6 h-6 bg-prada-red flex items-center justify-center">
+                      <div class="w-1.5 h-1.5 bg-pitch-black"></div>
+                    </div>
+                  </div>
+
+                  <div class="text-center mb-4">
+                    <h3 class="choice-title font-sans font-black text-xl uppercase tracking-tight text-pitch-black">EN DISCOGS</h3>
+                    <p class="text-xs text-muted-graphite font-mono mt-1">Conexión con tu Wantlist oficial</p>
+                  </div>
+
+                  <p class="text-xs text-muted-graphite font-mono text-center leading-relaxed mb-6">
+                    Sincroniza en tiempo real los discos que ya tienes guardados en tu perfil de Discogs.
+                  </p>
+                </div>
+
+                <div class="choice-cta w-full py-2.5 px-4 bg-surface-low text-pitch-black border border-hairline-dark font-mono text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-2">
+                  <span>Elegir Discogs</span>
+                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </div>
+              </button>
+
+              <!-- LOGO / TARJETA 2: EN UNA PLANILLA -->
+              <button id="choice-btn-sheet" type="button"
+                class="choice-card choice-card-sheet w-full text-left p-6 sm:p-8 flex flex-col justify-between relative">
+                <div class="choice-stripe absolute top-0 left-0 right-0 h-1 bg-transparent"></div>
+
+                <div>
+                  <div class="flex items-center justify-between gap-2 mb-6">
+                    <span class="choice-badge font-mono text-[9px] font-bold tracking-widest text-muted-graphite uppercase bg-surface-low px-2 py-0.5 border border-hairline-light">OPCIÓN 02</span>
+                    <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite flex items-center gap-1.5">
+                      <span class="material-symbols-outlined text-[14px] text-prada-blue">table_chart</span>
+                      DRIVE / EXCEL
+                    </span>
+                  </div>
+
+                  <!-- Big Sheet Logo -->
+                  <div class="choice-icon-box w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-6 bg-pure-white border-2 border-pitch-black flex items-center justify-center relative shadow-sm">
+                    <span class="material-symbols-outlined text-3xl sm:text-4xl text-prada-blue">table_view</span>
+                  </div>
+
+                  <div class="text-center mb-4">
+                    <h3 class="choice-title font-sans font-black text-xl uppercase tracking-tight text-pitch-black">EN UNA PLANILLA</h3>
+                    <p class="text-xs text-muted-graphite font-mono mt-1">Google Sheets, Excel (.xlsx) o CSV</p>
+                  </div>
+
+                  <p class="text-xs text-muted-graphite font-mono text-center leading-relaxed mb-6">
+                    Pega celdas o sube tu archivo para importar tus vinilos y cruzarlos con vendedores.
+                  </p>
+                </div>
+
+                <div class="choice-cta w-full py-2.5 px-4 bg-surface-low text-pitch-black border border-hairline-dark font-mono text-xs font-bold uppercase tracking-wider text-center flex items-center justify-center gap-2">
+                  <span>Elegir Planilla</span>
+                  <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </div>
+              </button>
+
+            </div>
+          </div>
+
+          <!-- STEP 2A: ACTION PANE DISCOGS -->
+          <div id="onboard-pane-discogs" class="w-full max-w-xl mx-auto text-left font-mono" style="display: none;">
+            <div class="flex items-center justify-between pb-4 mb-6 border-b border-hairline-light">
+              <button id="btn-back-to-choice-discogs" type="button"
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer">
+                <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+                <span>Cambiar origen</span>
+              </button>
+              <span class="font-mono text-[9px] font-bold tracking-widest text-prada-red uppercase bg-prada-red-bg px-2 py-0.5 border border-prada-red/30">[ ORIGEN: DISCOGS ]</span>
+            </div>
+
+            <div class="text-center mb-6">
+              <div class="w-12 h-12 bg-pitch-black text-pure-white flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <span class="material-symbols-outlined text-2xl">album</span>
+              </div>
+              <h3 class="font-sans font-black text-xl uppercase tracking-tight text-pitch-black">CONECTAR CON DISCOGS</h3>
+              <p class="text-xs text-muted-graphite font-mono mt-1">Sincroniza tus discos guardados en tu perfil de Discogs.</p>
+            </div>
+
+            <div class="border-2 border-prada-red bg-pure-white p-6 shadow-sm mb-6 space-y-4">
+              <!-- Session status box -->
+              <div>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite block mb-1">USUARIO / SESIÓN EN ESTE NAVEGADOR:</span>
+                <div class="flex items-center justify-between gap-2 text-xs font-bold text-pitch-black p-2.5 bg-ivory-warm border border-hairline-dark" id="wizard-detection-status">
+                  <span class="flex items-center gap-1.5" id="wizard-detection-text">
+                    <span class="material-symbols-outlined text-[15px] text-prada-red animate-spin">sync</span>
+                    Detectando sesión...
+                  </span>
+                  <button id="btn-change-username-toggle" type="button" class="text-[9px] text-prada-blue underline uppercase cursor-pointer hover:text-pitch-black">Cambiar</button>
+                </div>
+                <div id="wizard-input-fallback" class="mt-2 flex flex-col gap-1.5" style="display: none;">
+                  <input type="text" id="wizard-manual-username" placeholder="NOMBRE DE USUARIO"
+                    class="w-full bg-pure-white border border-hairline-dark p-2 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red">
+                  <button id="wizard-save-username-btn" type="button"
+                    class="bg-pitch-black hover:bg-prada-red text-pure-white py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer">Guardar Usuario</button>
+                </div>
               </div>
 
-              <!-- Grid Size / Density Controls -->
-              <div class="flex items-center border border-outline-variant/60 rounded-lg bg-surface p-0.5" id="grid-density-controls" title="Tamaño de carátulas">
-                <button id="btn-density-compact" class="px-2 py-1 rounded bg-primary text-on-primary text-xs font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-xs" title="Carátulas compactas y nítidas (Recomendado)">
-                  <span class="material-symbols-outlined text-[15px]">grid_view</span>
-                  <span class="hidden sm:inline">Compacto</span>
-                </button>
-                <button id="btn-density-standard" class="px-2 py-1 rounded text-tertiary hover:text-on-surface text-xs font-medium flex items-center gap-1 cursor-pointer transition-all" title="Carátulas más grandes">
-                  <span class="material-symbols-outlined text-[15px]">window</span>
-                  <span class="hidden sm:inline">Estándar</span>
-                </button>
+              <!-- Shipping destination country -->
+              <div>
+                <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite block mb-1">PAÍS DE DESTINO (CALCULAR ENVÍO COMBINADO):</span>
+                <div class="relative border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center justify-between">
+                  <div class="flex items-center gap-2 w-full">
+                    <span class="material-symbols-outlined text-[15px] text-prada-blue shrink-0 pointer-events-none">location_on</span>
+                    <select id="wizard-buyer-country" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
+                      <option value="Uruguay" selected>Uruguay (UY)</option>
+                      <option value="Spain">España (ES)</option>
+                      <option value="United States">EE.UU. (US)</option>
+                      <option value="Argentina">Argentina (AR)</option>
+                      <option value="United Kingdom">Reino Unido (UK)</option>
+                      <option value="Germany">Alemania (DE)</option>
+                      <option value="Other">Otro (Internacional)</option>
+                    </select>
+                  </div>
+                  <span class="material-symbols-outlined text-[16px] pointer-events-none text-pitch-black shrink-0">expand_more</span>
+                </div>
               </div>
 
-              <!-- Cache Option Toggle in Manager -->
-              <label class="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant/60 rounded-lg bg-surface hover:bg-surface-container transition-colors text-xs font-semibold text-on-surface cursor-pointer select-none" title="Usar datos guardados localmente de las últimas 6 horas para un escaneo instantáneo, o desmarcar para escanear en vivo directamente de Discogs">
-                <input type="checkbox" id="manager-use-cache-checkbox" checked class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer">
-                <span class="flex items-center gap-1">
-                  <span class="material-symbols-outlined text-amber-500 text-[15px]">bolt</span>
-                  <span>Usar Caché</span>
-                </span>
-              </label>
+              <!-- Sync action button -->
+              <div class="pt-2 flex flex-col gap-2">
+                <button id="wizard-sync-btn" type="button"
+                  class="w-full bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                  <span class="material-symbols-outlined text-[16px]">sync</span>
+                  <span>SINCRONIZAR Y CARGAR DISCOS</span>
+                </button>
 
-              <button id="export-wants-manager-btn" class="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant rounded-lg text-on-surface hover:bg-surface-container transition-colors font-label-md text-xs bg-surface cursor-pointer">
-                <span class="material-symbols-outlined text-[#0F9D58] text-sm">grid_on</span> Sheets
+                <div id="wizard-sync-loader" class="flex items-center justify-center gap-2 py-2 text-xs font-bold text-prada-red" style="display: none;">
+                  <span class="material-symbols-outlined text-base animate-spin">sync</span>
+                  <span id="wizard-sync-text">Conectando con Discogs...</span>
+                </div>
+
+                <button id="wizard-resume-wants-btn-1" type="button"
+                  class="w-full border border-prada-blue/40 bg-blue-50/60 text-prada-blue font-mono text-xs font-semibold uppercase tracking-wider hover:bg-prada-blue hover:text-white py-2 px-3 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  style="display: none;">
+                  <span id="wizard-resume-wants-text-1">Continuar con lista ya guardada</span>
+                  <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- STEP 2B: ACTION PANE SPREADSHEET -->
+          <div id="onboard-pane-sheet" class="w-full max-w-xl mx-auto text-left font-mono" style="display: none;">
+            <div class="flex items-center justify-between pb-4 mb-6 border-b border-hairline-light">
+              <button id="btn-back-to-choice-sheet" type="button"
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer">
+                <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+                <span>Cambiar origen</span>
               </button>
-              <button id="import-local-sheet-manager-btn" class="flex items-center gap-1.5 px-3 py-1.5 border border-outline-variant rounded-lg text-on-surface hover:bg-surface-container transition-colors font-label-md text-xs bg-surface cursor-pointer">
-                <span class="material-symbols-outlined text-[#4285F4] text-sm">cloud_download</span> Planilla
+              <span class="font-mono text-[9px] font-bold tracking-widest text-prada-blue uppercase bg-blue-50 px-2 py-0.5 border border-prada-blue/30">[ ORIGEN: PLANILLA ]</span>
+            </div>
+
+            <div class="text-center mb-6">
+              <div class="w-12 h-12 bg-pure-white border border-pitch-black text-prada-blue flex items-center justify-center mx-auto mb-3 shadow-xs">
+                <span class="material-symbols-outlined text-2xl">table_chart</span>
+              </div>
+              <h3 class="font-sans font-black text-xl uppercase tracking-tight text-pitch-black">IMPORTAR DESDE PLANILLA</h3>
+              <p class="text-xs text-muted-graphite font-mono mt-1">Pega tus celdas copiadas de Google Sheets / Excel o sube tu archivo.</p>
+            </div>
+
+            <div class="border-2 border-prada-blue bg-pure-white p-6 shadow-sm mb-6 space-y-4">
+              <div>
+                <label class="text-[9px] font-bold uppercase tracking-wider text-pitch-black block mb-1.5">PEGAR FILAS COPIADAS DE GOOGLE SHEETS O EXCEL:</label>
+                <textarea id="onboard-sheet-paste-area"
+                  placeholder="Copia las filas en tu Sheet o Excel (ej: Artista | Título | Año...) y pégalas aquí..."
+                  class="w-full h-32 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite/70 focus:outline-none focus:border-prada-blue"></textarea>
+              </div>
+
+              <div class="flex items-center justify-between gap-2 p-2.5 bg-surface-low border border-hairline-light">
+                <label class="text-xs text-muted-graphite cursor-pointer hover:text-pitch-black flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-prada-blue">upload_file</span>
+                  <span class="font-bold">O subir archivo (.xlsx, .xls, .csv):</span>
+                  <input type="file" id="onboard-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="hidden">
+                </label>
+                <span id="onboard-file-name" class="text-xs font-bold text-prada-blue truncate max-w-[150px]"></span>
+              </div>
+
+              <!-- Action button for Spreadsheet -->
+              <div class="pt-2 flex flex-col gap-2">
+                <button id="onboard-sheet-analyze-btn" type="button"
+                  class="w-full bg-pitch-black hover:bg-prada-blue text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3.5 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                  <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
+                  <span>IMPORTAR Y CHEQUEAR VENDEDORES</span>
+                </button>
+                <p class="text-[10px] text-muted-graphite font-mono text-center">
+                  Mapeo guiado de columnas • Cruce inmediato sin ventanas divididas
+                </p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- WANTLIST MANAGER (SELECCIÓN DE FAVORITOS GRID) -->
+        <div
+          class="wantlist-manager border border-hairline-dark bg-pure-white p-6 shadow-[3px_3px_0px_rgba(0,0,0,0.04)] mb-8 relative"
+          id="wantlist-manager" style="display: none;">
+          <!-- Prada Linea Rossa Accent Stripe -->
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+
+          <!-- TOP UTILITY ROW: Back/Forward on Left, Density Controls on Top-Right Corner -->
+          <div class="flex items-center justify-between gap-3 pb-3.5 border-b border-hairline-light font-mono text-xs">
+            <div class="flex items-center gap-2">
+              <button id="btn-back-to-wizard"
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                data-tooltip="Volver a la selección de usuario y país" data-tooltip-pos="bottom">
+                <span class="material-symbols-outlined text-[15px]">arrow_back</span>
+                <span>Volver al Inicio</span>
               </button>
-              <button id="manager-start-scan-top-btn" class="bg-primary text-on-primary py-1.5 px-4 rounded-lg font-headline-sm text-xs font-bold hover:bg-surface-tint transition-all shadow-md flex items-center gap-1.5 cursor-pointer shrink-0">
-                <span class="material-symbols-outlined text-base">play_arrow</span> Iniciar Análisis
+              <button id="btn-forward-to-results"
+                class="px-3.5 py-1.5 border border-prada-blue/40 bg-blue-50/60 text-prada-blue font-bold uppercase tracking-wider hover:bg-prada-blue hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer"
+                style="display: none;" data-tooltip="Ir a los resultados del último análisis" data-tooltip-pos="bottom">
+                <span>Ver Resultados</span>
+                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+              </button>
+            </div>
+
+            <!-- Corner Grid Density Controls (Compact vs Standard) -->
+            <div class="flex items-center gap-2.5">
+              <span
+                class="hidden md:inline font-mono text-[10px] uppercase tracking-wider text-muted-graphite font-medium">VISTA:</span>
+              <div class="flex items-center border border-hairline-dark bg-pure-white p-0.5 shadow-xs"
+                id="grid-density-controls">
+                <button id="btn-density-compact"
+                  class="px-2.5 py-1 bg-pitch-black text-pure-white font-bold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                  data-tooltip="Vista compacta: más discos por pantalla" data-tooltip-pos="bottom">
+                  <span class="material-symbols-outlined text-[14px]">grid_view</span>
+                  <span class="hidden sm:inline">COMPACTO</span>
+                </button>
+                <button id="btn-density-standard"
+                  class="px-2.5 py-1 text-muted-graphite hover:text-pitch-black font-semibold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors"
+                  data-tooltip="Vista estándar: carátulas grandes con detalles" data-tooltip-pos="bottom">
+                  <span class="material-symbols-outlined text-[14px]">window</span>
+                  <span class="hidden sm:inline">ESTÁNDAR</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- CENTERED EDITORIAL HERO TITLE -->
+          <div class="text-center max-w-2xl mx-auto pt-6 pb-4">
+            <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase mb-1.5 block">[
+              GESTIÓN DE CATÁLOGO ]</span>
+            <h2 class="font-sans font-extrabold text-2xl md:text-3xl uppercase tracking-tight text-pitch-black mb-2">
+              MARCA TUS DISCOS FAVORITOS / PRIORITARIOS</h2>
+            <p class="font-mono text-xs text-muted-graphite leading-relaxed">
+              Usa la estrella (<strong class="text-prada-red">★</strong>) para destacar los vinilos que más deseas. El
+              motor de búsqueda priorizará los vendedores con mayor stock de tus favoritos.
+            </p>
+          </div>
+
+          <!-- ACTION TOOLBAR: Search Input on Left, Action Buttons on Right -->
+          <div class="wantlist-toolbar font-mono text-xs">
+            <!-- Left: Search Bar (Taller, spacious padding, focus ring) -->
+            <div class="wantlist-search-wrapper" data-tooltip="Filtrar por artista, título o formato" data-tooltip-pos="bottom">
+              <span class="material-symbols-outlined text-[17px] text-prada-red mr-2.5 shrink-0">search</span>
+              <input type="text" id="wants-search-input" placeholder="BUSCAR DISCO O ARTISTA..." class="bg-transparent font-mono text-xs uppercase text-pitch-black focus:outline-none w-full placeholder:text-muted-graphite tracking-wide leading-normal">
+            </div>
+
+            <!-- Right: Action Buttons & Primary CTA -->
+            <div class="wantlist-actions-group">
+              <!-- Hidden checkboxes kept for code backwards-compatibility -->
+              <input type="checkbox" id="manager-use-cache-checkbox" checked class="hidden" style="display: none !important;">
+              <input type="checkbox" id="bottom-use-cache-checkbox" checked class="hidden" style="display: none !important;">
+
+              <button id="export-wants-manager-btn"
+                class="flex items-center gap-1.5 px-3.5 py-2 border border-hairline-dark text-pitch-black hover:border-prada-emerald hover:text-emerald-800 font-mono text-xs uppercase font-semibold bg-pure-white cursor-pointer transition-colors shadow-xs"
+                data-tooltip="Exportar tu catálogo a archivo Excel / CSV" data-tooltip-pos="top">
+                <span class="material-symbols-outlined text-prada-emerald text-[15px]">grid_on</span>
+                <span>SHEETS</span>
+              </button>
+              <button id="import-local-sheet-manager-btn"
+                class="flex items-center gap-1.5 px-3.5 py-2 border border-hairline-dark text-pitch-black hover:border-prada-blue hover:text-prada-blue font-mono text-xs uppercase font-semibold bg-pure-white cursor-pointer transition-colors shadow-xs"
+                data-tooltip="Comparar con planillas Drive de tiendas físicas" data-tooltip-pos="top">
+                <span class="material-symbols-outlined text-prada-blue text-[15px]">cloud_download</span>
+                <span>PLANILLA</span>
+              </button>
+              <button id="manager-start-scan-top-btn"
+                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-wider py-2 px-5 shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                <span class="material-symbols-outlined text-[16px]">radar</span>
+                <span>INICIAR ANÁLISIS</span>
               </button>
             </div>
           </div>
@@ -558,66 +831,108 @@
           </div>
 
           <!-- Sticky Bottom Floating Action Bar -->
-          <div class="sticky bottom-4 z-40 bg-surface-container-lowest/95 backdrop-blur-md border border-primary/30 rounded-xl p-3.5 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-3 mt-8">
+          <div class="wantlist-sticky-bar font-mono text-xs">
             <div class="flex items-center gap-3">
-              <button id="bottom-btn-back-to-wizard" class="px-3 py-1.5 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 text-xs font-semibold text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5 transition-colors cursor-pointer" title="Volver al inicio">
-                <span class="material-symbols-outlined text-[16px] text-zinc-600 dark:text-zinc-300">arrow_back</span>
+              <button id="bottom-btn-back-to-wizard"
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                data-tooltip="Volver a la pantalla de bienvenida" data-tooltip-pos="top">
+                <span class="material-symbols-outlined text-[15px]">arrow_back</span>
                 <span>Inicio</span>
               </button>
-              <button id="bottom-btn-forward-to-results" class="px-3 py-1.5 rounded-lg border border-primary/40 bg-primary/10 hover:bg-primary/20 text-xs font-bold text-primary flex items-center gap-1.5 transition-colors cursor-pointer" style="display: none;" title="Ver resultados del análisis">
+              <button id="bottom-btn-forward-to-results"
+                class="px-3.5 py-1.5 border border-prada-blue/40 bg-blue-50/60 text-prada-blue font-bold uppercase tracking-wider hover:bg-prada-blue hover:text-white transition-colors flex items-center gap-1.5 cursor-pointer"
+                style="display: none;" data-tooltip="Ver resultados del análisis" data-tooltip-pos="top">
                 <span>Resultados</span>
-                <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
               </button>
-              <div class="flex items-center gap-2 text-xs font-semibold text-on-surface-variant">
-                <span class="material-symbols-outlined text-primary text-lg">stars</span>
-                <span class="hidden md:inline">Vinilos favoritos con estrella (★) para priorizar en el escaneo</span>
+              <div class="flex items-center gap-1.5 text-[11px] text-muted-graphite uppercase">
+                <span class="text-prada-red text-sm">★</span>
+                <span>MARCA FAVORITOS PARA PRIORIZAR EN EL ESCANEO</span>
               </div>
             </div>
             <div class="flex items-center gap-3">
-              <label class="flex items-center gap-1.5 px-2.5 py-1.5 border border-outline-variant/60 rounded-lg bg-surface text-xs font-semibold text-on-surface cursor-pointer select-none shadow-xs hover:bg-surface-container transition-colors" title="Usar datos guardados localmente para acelerar el escaneo o desmarcar para escanear en vivo">
-                <input type="checkbox" id="bottom-use-cache-checkbox" checked class="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5 cursor-pointer">
-                <span class="flex items-center gap-1">
-                  <span class="material-symbols-outlined text-amber-500 text-[15px]">bolt</span>
-                  <span>Usar Caché</span>
-                </span>
-              </label>
-              <button id="manager-start-scan-btn" class="bg-primary text-on-primary py-2 px-5 rounded-lg font-headline-sm text-xs font-bold hover:bg-surface-tint transition-all shadow-md active:scale-95 cursor-pointer flex items-center gap-1.5">
-                <span class="material-symbols-outlined text-base">rocket_launch</span> Iniciar Análisis de Vendedores
+              <button id="manager-start-scan-btn"
+                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-2 px-6 shadow-sm cursor-pointer transition-colors flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px]">radar</span>
+                <span>INICIAR ANÁLISIS DE VENDEDORES</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- RESULTS TWO-COLUMN WRAPPER (35% Left Sidebar / 65% Right Main List) -->
-        <div id="results-view-wrapper" class="results-two-col-layout items-start w-full mb-8" style="display: none;">
-          <!-- Columna izquierda (35%): Smart Purchase Recommendations -->
-          <aside class="results-col-sidebar">
-            <div class="smart-purchase-card scroll-reveal" id="smart-purchase-card" style="display: none;">
+        <!-- RESULTS RUNWAY WRAPPER (Stitch Runway Editorial Spread) -->
+        <div id="results-view-wrapper" class="w-full flex flex-col gap-10 mb-8" style="display: none;">
+
+          <!-- SECTION 1: CRATE OPTIMIZER / RUNWAY BENTO (High-End Editorial Consolidation) -->
+          <section class="flex flex-col gap-4">
+            <div class="flex flex-wrap items-baseline justify-between border-b-2 border-pitch-black pb-2">
+              <div class="flex items-baseline gap-4">
+                <span class="font-mono text-xs font-bold tracking-widest text-prada-red uppercase">[ SELECCIÓN 01
+                  ]</span>
+                <h1 class="font-sans font-extrabold text-2xl uppercase tracking-widest text-pitch-black">COMPRA
+                  INTELIGENTE CONSOLIDADA</h1>
+                <span class="text-prada-blue text-xs font-mono tracking-wider font-semibold">// OPTIMIZADOR MULTI-VENDOR
+                  DE CARGAMENTO</span>
+              </div>
+              <div
+                class="font-mono text-[11px] tracking-wider uppercase text-muted-graphite bg-prada-ochre-bg border border-prada-ochre/30 px-3 py-1">
+                AHORRO LOGÍSTICO ESTIMADO: <strong class="text-prada-red font-bold">HASTA 72% CONSOLIDADO</strong>
+              </div>
+            </div>
+
+            <!-- Bento Cards Grid (Dynamically Populated) -->
+            <div class="smart-purchase-card w-full" id="smart-purchase-card" style="display: none;">
               <!-- Dynamically populated Bento Grid for Opción A & Opción B -->
             </div>
-          </aside>
+          </section>
 
-          <!-- Columna derecha (65%): Seller Cards List -->
-          <section class="results-col-main">
-            <div class="results-grid space-y-4 scroll-reveal" id="results-grid" style="display: none;">
+          <!-- SECTION 2: RANKED SELLER DIRECTORY & ACCORDION (High Fashion Architectural Table) -->
+          <section class="flex flex-col gap-4 mt-2">
+            <div class="flex flex-wrap items-baseline justify-between border-b-2 border-pitch-black pb-2">
+              <div class="flex items-baseline gap-4">
+                <span class="font-mono text-xs font-bold tracking-widest text-prada-red uppercase">[ SELECCIÓN 02
+                  ]</span>
+                <h2 class="font-sans font-extrabold text-2xl uppercase tracking-widest text-pitch-black">RANKING DE
+                  VENDEDORES POR COINCIDENCIAS</h2>
+                <span class="text-prada-blue text-xs font-mono tracking-wider font-semibold"
+                  id="selection-sellers-summary">// TIENDAS EVALUADAS CON ALGORITMO LOGÍSTICO</span>
+              </div>
+              <div class="flex items-center gap-4 text-xs font-mono uppercase tracking-wider text-muted-graphite">
+                <span>MODO: <strong class="text-pitch-black">ALTA PRECISIÓN DE ARCHIVO</strong></span>
+                <span>|</span>
+                <button id="btn-export-results-csv"
+                  class="text-prada-red underline hover:text-prada-red-dark uppercase font-bold cursor-pointer"
+                  type="button">EXPORTAR CSV</button>
+              </div>
+            </div>
+
+            <!-- Seller List / Fashion Line Layout -->
+            <div class="results-grid flex flex-col gap-3 w-full" id="results-grid" style="display: none;">
               <!-- Dynamically populated seller cards -->
             </div>
           </section>
         </div>
 
         <!-- NO RESULTS STATE -->
-        <div class="no-results-state bg-surface-container-lowest rounded-xl p-8 border border-outline-variant/30 text-center shadow-sm" id="no-results-state" style="display: none;">
-          <div class="w-16 h-16 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-4">
-            <span class="material-symbols-outlined text-3xl text-tertiary">search_off</span>
+        <div
+          class="no-results-state border border-hairline-dark bg-pure-white p-8 md:p-12 text-center shadow-[4px_4px_0px_rgba(0,0,0,0.05)] relative font-mono max-w-2xl mx-auto my-8"
+          id="no-results-state" style="display: none;">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+          
+          <div class="w-16 h-16 bg-ivory-warm border border-hairline-dark flex items-center justify-center mx-auto mb-4 shadow-xs">
+            <span class="material-symbols-outlined text-3xl text-prada-red">search_off</span>
           </div>
-          <h3 class="font-headline-sm text-headline-sm text-on-background mb-2">No se encontraron vendedores con estos filtros</h3>
-          <p class="text-tertiary text-body-sm mb-6 max-w-md mx-auto">Prueba reduciendo la cantidad de discos mínimos o limpiando la búsqueda.</p>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1.5">[ RESULTADOS / FILTROS ]</span>
+          <h3 class="font-sans font-extrabold text-xl md:text-2xl uppercase tracking-tight text-pitch-black mb-2">No se encontraron vendedores con estos filtros</h3>
+          <p class="text-muted-graphite text-xs font-mono mb-6 max-w-md mx-auto leading-relaxed">Prueba reduciendo la cantidad de discos mínimos, eliminando el filtro de país o limpiando la búsqueda.</p>
           <div class="flex flex-wrap items-center justify-center gap-3">
-            <button id="btn-reset-filters" class="bg-primary text-on-primary px-6 py-2.5 rounded-lg font-semibold text-sm hover:opacity-90 transition-opacity cursor-pointer">
+            <button id="btn-reset-filters"
+              class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-6 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors shadow-sm cursor-pointer">
               Mostrar todos los vendedores
             </button>
-            <button id="btn-back-to-wants-from-no-results" class="px-5 py-2.5 border border-zinc-300 dark:border-zinc-700 bg-transparent hover:bg-zinc-200/60 dark:hover:bg-zinc-800/60 rounded-lg font-semibold text-sm text-zinc-600 dark:text-zinc-300 transition-colors inline-flex items-center gap-1.5 cursor-pointer">
-              <span class="material-symbols-outlined text-base text-zinc-600 dark:text-zinc-300">arrow_back</span>
+            <button id="btn-back-to-wants-from-no-results"
+              class="px-5 py-2.5 border border-hairline-dark bg-pure-white hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider text-pitch-black transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+              <span class="material-symbols-outlined text-[15px] text-pitch-black">arrow_back</span>
               <span>Volver a Lista de Deseos</span>
             </button>
           </div>
@@ -640,181 +955,322 @@
   <!-- MODALS -->
 
   <!-- RESUME SESSION DIALOG MODAL -->
-  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="resume-modal" style="display: none;">
-    <div class="modal-content bg-surface-container-lowest rounded-2xl p-6 max-w-md w-full border border-outline-variant shadow-xl">
-      <h2 class="font-headline-md text-headline-md text-on-surface mb-3">Búsqueda Incompleta Detectada</h2>
-      <div class="text-body-sm text-tertiary space-y-2 mb-6">
-        <p>Se detectó una sesión previa interrumpida del usuario <strong id="resume-username" class="text-on-surface">...</strong>.</p>
-        <p>Quedó en el disco <strong id="resume-progress" class="text-primary">...</strong> con <strong id="resume-matches" class="text-primary">...</strong> ofertas acumuladas.</p>
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="resume-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-md w-full shadow-2xl relative font-mono">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+      <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1">[ SESIÓN INTERRUMPIDA ]</span>
+      <h2 class="font-sans font-extrabold text-xl uppercase tracking-tight text-pitch-black mb-3">Búsqueda Incompleta Detectada</h2>
+      <div class="text-xs text-muted-graphite space-y-2 mb-6 bg-ivory-warm border border-hairline-dark p-3.5">
+        <p>Se detectó una sesión previa interrumpida del usuario <strong id="resume-username"
+            class="text-pitch-black uppercase font-bold">...</strong>.</p>
+        <p>Quedó en el disco <strong id="resume-progress" class="text-prada-red font-bold">...</strong> con <strong
+            id="resume-matches" class="text-prada-blue font-bold">...</strong> ofertas acumuladas.</p>
       </div>
-      <div class="flex justify-end gap-3">
-        <button id="btn-discard-session" class="px-4 py-2 border border-outline-variant rounded-lg text-sm font-semibold hover:bg-surface-container">Descartar</button>
-        <button id="btn-resume-session" class="bg-primary text-on-primary px-5 py-2 rounded-lg font-semibold text-sm hover:opacity-90">Reanudar Búsqueda</button>
+      <div class="flex justify-end gap-3 font-mono text-xs">
+        <button id="btn-discard-session"
+          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">Descartar</button>
+        <button id="btn-resume-session"
+          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">Reanudar Búsqueda</button>
       </div>
     </div>
   </div>
 
   <!-- PRIVATE WANTLIST HELP MODAL -->
-  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="private-wantlist-modal" style="display: none;">
-    <div class="modal-content bg-surface-container-lowest rounded-2xl p-6 max-w-md w-full border border-outline-variant shadow-xl">
-      <div class="flex items-center gap-3 mb-4">
-        <span class="material-symbols-outlined text-3xl text-primary">lock</span>
-        <h2 class="font-headline-sm text-headline-sm font-bold">Tu Lista de Deseos está Privada</h2>
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="private-wantlist-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-md w-full shadow-2xl relative font-mono">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+      <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 border border-hairline-dark bg-ivory-warm flex items-center justify-center text-prada-red shrink-0 shadow-xs">
+          <span class="material-symbols-outlined text-2xl">lock</span>
+        </div>
+        <div>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-0.5">[ PRIVACIDAD DISCOGS ]</span>
+          <h2 class="font-sans font-extrabold text-lg uppercase tracking-tight text-pitch-black">Tu Lista está en Privado</h2>
+        </div>
       </div>
-      <p class="text-body-sm text-tertiary mb-4">Discogs no permite que herramientas externas lean listas configuradas como privadas.</p>
-      <div class="bg-surface-container rounded-lg p-4 border border-outline-variant/50 space-y-3 mb-6">
-        <p class="text-xs font-semibold">1. Abrí tus ajustes de privacidad:</p>
-        <a href="https://www.discogs.com/settings/privacy" target="_blank" class="inline-flex items-center gap-2 bg-primary text-on-primary px-4 py-2 rounded text-xs font-bold">
-          ⚙️ Abrir Privacidad en Discogs
+      <p class="text-xs text-muted-graphite font-mono mb-4 leading-relaxed">Discogs no permite que extensiones externas lean listas configuradas como privadas.</p>
+      <div class="bg-ivory-warm p-4 border border-hairline-dark space-y-3 mb-6 text-xs font-mono">
+        <p class="font-bold text-pitch-black uppercase text-[11px]">1. Abrí tus ajustes de privacidad:</p>
+        <a href="https://www.discogs.com/settings/privacy" target="_blank"
+          class="inline-flex items-center gap-2 bg-pitch-black hover:bg-prada-red text-pure-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-xs">
+          <span>Abrir Privacidad en Discogs</span>
+          <span class="material-symbols-outlined text-[13px]">open_in_new</span>
         </a>
-        <p class="text-xs font-semibold">2. Cambiá "Lista de deseos" a "Pública" y guardá.</p>
+        <p class="font-bold text-pitch-black uppercase text-[11px] pt-1">2. Cambiá "Lista de deseos" a "Pública" y guardá.</p>
       </div>
-      <div class="flex justify-end gap-3">
-        <button id="btn-close-private-modal" class="px-4 py-2 border border-outline-variant rounded-lg text-sm font-semibold">Cerrar</button>
-        <button id="btn-sync-again" class="bg-primary text-on-primary px-5 py-2 rounded-lg font-semibold text-sm">Volver a Intentar</button>
+      <div class="flex justify-end gap-3 font-mono text-xs">
+        <button id="btn-close-private-modal"
+          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
+        <button id="btn-sync-again" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">Volver a Intentar</button>
       </div>
     </div>
   </div>
 
   <!-- EXPORT TO SHEETS MODAL -->
-  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="export-sheets-modal" style="display: none;">
-    <div class="modal-content bg-surface-container-lowest rounded-2xl p-6 max-w-lg w-full border border-outline-variant shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-[#0F9D58]">grid_on</span>
-          <div>
-            <h2 class="font-headline-sm text-headline-sm font-bold">Exportar para Google Sheets / Excel</h2>
-            <p class="text-xs text-tertiary">Compará tus vinilos con los Drives de tiendas locales</p>
-          </div>
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="export-sheets-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-lg w-full shadow-2xl relative font-mono">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-emerald-800 uppercase block mb-1">[ EXPORTACIÓN TABULAR ]</span>
+          <h2 class="font-sans text-xl font-extrabold uppercase tracking-tight text-pitch-black">Exportar a Sheets / Excel</h2>
+          <p class="text-xs text-muted-graphite font-mono mt-1">Exporta tu Wantlist para comparar con catálogos locales o almacenar tu registro.</p>
         </div>
-        <button id="btn-close-export-modal-top" class="text-tertiary hover:text-on-surface text-xl">&times;</button>
+        <button id="btn-close-export-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
       </div>
 
       <div class="space-y-4 mb-6">
-        <div class="bg-surface-container rounded-lg p-4 border border-outline-variant/50 space-y-3">
-          <label class="font-semibold text-xs text-on-surface block">1. ¿Qué querés exportar?</label>
+        <div class="bg-ivory-warm p-4 border border-hairline-dark space-y-3">
+          <label class="font-bold text-xs uppercase tracking-wider text-pitch-black block">1. ALCANCE DE EXPORTACIÓN:</label>
           <div class="space-y-2 text-xs">
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="export-scope" value="all" checked class="text-primary focus:ring-primary">
-              <span>Toda mi Lista de Deseos (<strong id="export-count-all" class="text-primary">0</strong> discos)</span>
+              <input type="radio" name="export-scope" value="all" checked class="accent-prada-red">
+              <span class="text-pitch-black">TODA LA WANTLIST (<strong id="export-count-all" class="text-prada-red">0</strong> DISCOS)</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-              <input type="radio" name="export-scope" value="priority" class="text-primary focus:ring-primary">
-              <span>Solo marcados con Estrella ★ (<strong id="export-count-priority" class="text-primary">0</strong> discos)</span>
+              <input type="radio" name="export-scope" value="priority" class="accent-prada-red">
+              <span class="text-pitch-black">SOLO FAVORITOS ★ (<strong id="export-count-priority" class="text-prada-red">0</strong> DISCOS)</span>
             </label>
             <label id="export-scope-offers-label" class="flex items-center gap-2 cursor-pointer opacity-50">
-              <input type="radio" name="export-scope" value="offers" id="radio-export-offers" disabled class="text-primary focus:ring-primary">
-              <span>Ofertas del Marketplace encontradas (<strong id="export-count-offers" class="text-secondary">0</strong> ofertas)</span>
+              <input type="radio" name="export-scope" value="offers" id="radio-export-offers" disabled class="accent-prada-red">
+              <span class="text-muted-graphite">OFERTAS DEL MARKETPLACE (<strong id="export-count-offers" class="text-prada-blue">0</strong> OFERTAS)</span>
             </label>
           </div>
         </div>
 
-        <div class="flex gap-3">
-          <button id="btn-copy-sheets-action" class="flex-1 bg-[#0F9D58] text-white py-2.5 px-4 rounded-lg font-bold text-xs hover:opacity-90 flex items-center justify-center gap-2">
-            📋 Copiar para Google Sheets (1-Clic)
+        <div class="flex flex-col sm:flex-row gap-3">
+          <button id="btn-copy-sheets-action"
+            class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-pure-white py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+            <span class="material-symbols-outlined text-[15px]">content_copy</span>
+            <span>COPIAR PARA SHEETS (1-CLIC)</span>
           </button>
-          <button id="btn-download-csv-action" class="flex-1 border border-outline-variant bg-surface py-2.5 px-4 rounded-lg font-semibold text-xs hover:bg-surface-container flex items-center justify-center gap-2">
-            📥 Descargar CSV (.csv)
+          <button id="btn-download-csv-action"
+            class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+            <span class="material-symbols-outlined text-[15px]">download</span>
+            <span>DESCARGAR CSV</span>
           </button>
         </div>
-        <div id="export-toast-msg" class="p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-700 text-xs text-center font-semibold" style="display: none;">
+        <div id="export-toast-msg"
+          class="p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs text-center font-bold font-mono shadow-xs"
+          style="display: none;">
           ✓ ¡Copiado al portapapeles! Abrí tu Google Sheet y presioná Ctrl + V.
         </div>
       </div>
 
-      <div class="flex justify-end">
-        <button id="btn-close-export-modal" class="px-5 py-2 border border-outline-variant rounded-lg text-xs font-semibold">Cerrar</button>
+      <div class="flex justify-end pt-3 border-t border-hairline-light">
+        <button id="btn-close-export-modal"
+          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
       </div>
     </div>
   </div>
 
   <!-- IMPORT LOCAL SHEET MODAL -->
-  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4" id="local-sheet-modal" style="display: none;">
-    <div class="modal-content bg-surface-container-lowest rounded-2xl p-6 max-w-2xl w-full border border-outline-variant shadow-xl">
-      <div class="flex justify-between items-center mb-4">
-        <div class="flex items-center gap-3">
-          <span class="material-symbols-outlined text-2xl text-[#4285F4]">cloud_download</span>
-          <div>
-            <h2 class="font-headline-sm text-headline-sm font-bold">Importar y Cruzar Planilla Local (Drive)</h2>
-            <p class="text-xs text-tertiary">Pegá el stock de disquerías locales para encontrar coincidencias con tu Wantlist</p>
-          </div>
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+    id="local-sheet-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-5xl w-full shadow-2xl relative font-mono my-auto">
+      <!-- Prada Linea Rossa Accent Stripe -->
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+
+      <div class="flex justify-between items-start mb-6">
+        <div>
+          <span id="local-modal-badge" class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1">[ CATÁLOGO LOCAL / SHEETS ]</span>
+          <h2 id="local-modal-title" class="font-sans text-xl md:text-2xl font-extrabold uppercase tracking-tight text-pitch-black">Cruzar Planilla Local (Drive / Excel)</h2>
+          <p id="local-modal-desc" class="text-xs text-muted-graphite font-mono mt-1">Copia el stock de disquerías locales uruguayas para encontrar coincidencias inmediatas con tu Wantlist.</p>
         </div>
-        <button id="btn-close-local-modal-top" class="text-tertiary hover:text-on-surface text-xl">&times;</button>
+        <button id="btn-close-local-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
       </div>
 
-      <div class="space-y-4 mb-6">
+      <div class="space-y-5 mb-6">
         <div id="local-step-1">
-          <label class="font-semibold text-xs text-on-surface block mb-2">1. Pegá aquí las celdas copiadas del Google Sheet / Excel de la tienda:</label>
-          <textarea id="local-sheet-paste-area" placeholder="Copiar filas directamente de Google Sheets o Excel (ej: Artista | Título | Precio | Estado...) y pegarlas aquí..." class="w-full h-36 bg-surface border border-outline-variant rounded-lg p-3 text-xs font-mono outline-none focus:ring-1 focus:ring-primary"></textarea>
+          <label class="font-mono font-bold text-xs uppercase tracking-wider text-pitch-black block mb-2">1. Pegá aquí las celdas copiadas del Google Sheet / Excel:</label>
+          <textarea id="local-sheet-paste-area"
+            placeholder="Copiar filas directamente de Google Sheets o Excel (ej: Artista | Título | Precio | Estado...) y pegarlas aquí..."
+            class="w-full h-36 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite focus:outline-none focus:border-pitch-black"></textarea>
 
-          <div class="flex items-center justify-between mt-3 gap-3">
-            <div class="flex items-center gap-2 text-xs text-tertiary">
-              <span>O subí un archivo:</span>
-              <input type="file" id="local-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs">
+          <div class="flex flex-wrap items-center justify-between mt-3 gap-3">
+            <div class="flex items-center gap-2 text-xs text-muted-graphite">
+              <span class="font-bold uppercase tracking-wider">O subí archivo:</span>
+              <input type="file" id="local-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs font-mono cursor-pointer">
             </div>
-            <button id="btn-analyze-local-paste" class="bg-secondary text-on-secondary px-5 py-2 rounded-lg font-bold text-xs hover:opacity-90">
+            <button id="btn-analyze-local-paste"
+              class="bg-pitch-black text-pure-white hover:bg-prada-red px-5 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-sm">
               Analizar Filas
             </button>
           </div>
         </div>
 
-        <div id="local-step-2" style="display: none;" class="space-y-3 bg-surface-container p-4 rounded-lg border border-outline-variant/50">
-          <div class="flex justify-between items-center">
-            <h4 class="font-semibold text-xs">2. Asigná cada columna al dato correspondiente:</h4>
-            <span id="local-detected-rows-count" class="text-xs font-bold text-primary">0 filas detectadas</span>
+        <div id="local-step-2" style="display: none;"
+          class="space-y-3 bg-ivory-warm/70 p-4 border border-hairline-dark">
+          <div class="flex justify-between items-center flex-wrap gap-2">
+            <h4 class="font-mono font-bold text-xs uppercase tracking-wider text-pitch-black">2. Asigná cada columna al dato correspondiente:</h4>
+            <span id="local-detected-rows-count" class="text-xs font-bold text-prada-red font-mono bg-prada-red-bg border border-prada-red/30 px-2 py-0.5">0 filas detectadas</span>
           </div>
-          <div class="overflow-x-auto max-h-48 rounded border border-outline-variant">
-            <table id="local-mapping-table" class="w-full text-xs text-left">
+          
+          <div class="flex items-center justify-between text-[10px] text-muted-graphite font-mono pt-1">
+            <span class="flex items-center gap-1 font-semibold text-pitch-black">
+              <span class="material-symbols-outlined text-[14px] text-prada-blue">swap_horiz</span>
+              Desplazá horizontalmente la tabla para mapear cada columna (← →)
+            </span>
+            <span>Mapeá al menos Artista, Título o ID Discogs</span>
+          </div>
+
+          <div class="overflow-x-auto max-h-72 border border-hairline-dark bg-pure-white shadow-xs" style="scrollbar-width: thin;">
+            <table id="local-mapping-table" class="text-xs text-left font-mono border-collapse" style="table-layout: fixed; min-width: max-content; width: 100%;">
               <!-- Dynamically mapped preview table -->
             </table>
           </div>
           <div class="flex justify-end gap-3 pt-2">
-            <button id="btn-back-local-step-1" class="px-4 py-1.5 border border-outline-variant rounded text-xs font-semibold">Atrás</button>
-            <button id="btn-run-local-match" class="bg-primary text-on-primary px-5 py-1.5 rounded text-xs font-bold">🔍 Cruzar con mi Wantlist</button>
+            <button id="btn-back-local-step-1"
+              class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Atrás</button>
+            <button id="btn-run-local-match" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">
+              🔍 Cruzar con mi Wantlist
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="flex justify-end">
-        <button id="btn-close-local-modal" class="px-5 py-2 border border-outline-variant rounded-lg text-xs font-semibold">Cerrar</button>
+      <div class="flex justify-end pt-3 border-t border-hairline-light">
+        <button id="btn-close-local-modal"
+          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCAN MODE / CACHE SELECTION DIALOG MODAL -->
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="scan-cache-modal" style="display: none;">
+    <div class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-lg w-full shadow-2xl relative">
+      <!-- Prada Linea Rossa Accent Stripe -->
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+
+      <div class="flex items-center justify-between mb-3">
+        <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase">[ MODO DE ESCANEO
+          ]</span>
+        <button id="btn-close-scan-cache-modal"
+          class="text-muted-graphite hover:text-pitch-black p-1 cursor-pointer transition-colors" data-tooltip="Cerrar">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <h2 class="font-sans font-extrabold text-xl md:text-2xl uppercase tracking-tight text-pitch-black mb-2">
+        ¿CÓMO DESEAS ANALIZAR EL MARKETPLACE?
+      </h2>
+      <p class="font-mono text-xs text-muted-graphite mb-6 leading-relaxed">
+        Selecciona si deseas usar los datos guardados en tu equipo para un análisis inmediato o consultar directamente a
+        Discogs.
+      </p>
+
+      <!-- Choice Cards -->
+      <div class="space-y-3 mb-6 font-mono">
+        <!-- Option 1: Cached (Fast) -->
+        <button id="btn-scan-with-cache"
+          class="w-full text-left p-4 border-2 border-pitch-black bg-surface-low hover:bg-pure-white hover:border-prada-red transition-all cursor-pointer group shadow-xs flex items-start gap-3.5">
+          <div
+            class="w-10 h-10 border border-hairline-dark bg-pure-white flex items-center justify-center text-prada-red shrink-0 group-hover:bg-prada-red group-hover:text-pure-white transition-colors">
+            <span class="material-symbols-outlined text-[20px]">bolt</span>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span
+                class="font-bold text-xs uppercase text-pitch-black tracking-wide group-hover:text-prada-red transition-colors">USAR
+                CACHÉ (RECOMENDADO)</span>
+              <span
+                class="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-300/60 px-1.5 py-0.5 font-bold uppercase">INSTANTÁNEO</span>
+            </div>
+            <p class="text-[11px] text-muted-graphite font-normal normal-case leading-normal">
+              Utiliza datos guardados en las últimas 6 horas. Inicia al instante y protege tu cuenta de límites de
+              peticiones.
+            </p>
+          </div>
+        </button>
+
+        <!-- Option 2: Live Discogs Scan -->
+        <button id="btn-scan-live-direct"
+          class="w-full text-left p-4 border border-hairline-dark bg-pure-white hover:border-pitch-black hover:bg-surface-low transition-all cursor-pointer group shadow-xs flex items-start gap-3.5">
+          <div
+            class="w-10 h-10 border border-hairline-dark bg-surface-low flex items-center justify-center text-prada-blue shrink-0 group-hover:bg-pitch-black group-hover:text-pure-white transition-colors">
+            <span class="material-symbols-outlined text-[20px]">travel_explore</span>
+          </div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-bold text-xs uppercase text-pitch-black tracking-wide">ESCANEAR EN VIVO (DISCOGS)</span>
+              <span
+                class="text-[9px] bg-blue-50 text-prada-blue border border-blue-200 px-1.5 py-0.5 font-bold uppercase">TIEMPO
+                REAL</span>
+            </div>
+            <p class="text-[11px] text-muted-graphite font-normal normal-case leading-normal">
+              Consulta en tiempo real a la API de Discogs para obtener precios, ofertas y disponibilidad al segundo.
+            </p>
+          </div>
+        </button>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-between pt-4 border-t border-hairline-light font-mono text-xs">
+        <label class="flex items-center gap-2 text-[11px] text-muted-graphite cursor-pointer select-none">
+          <input type="checkbox" id="scan-remember-cache-choice"
+            class="h-3.5 w-3.5 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer">
+          <span>Recordar esta preferencia</span>
+        </label>
+        <button id="btn-cancel-scan-cache-modal"
+          class="px-4 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider transition-colors cursor-pointer text-[11px]">
+          CANCELAR
+        </button>
       </div>
     </div>
   </div>
 
   <!-- DOCKED BOTTOM FOOTER LOGGER / CONSOLE (Fixed to bottom of window, bounded to 180px with internal scrollbar) -->
-  <div id="scan-logger-dock" class="scan-bottom-dock" style="display: none;">
-    <div class="max-w-[1400px] mx-auto px-4 py-2">
+  <div id="scan-logger-dock" class="scan-bottom-dock font-mono" style="display: none;">
+    <div class="max-w-[1780px] mx-auto px-6 py-2.5">
       <!-- Toggle Header Bar -->
       <div class="flex items-center justify-between gap-3">
-        <button id="log-accordion-toggle" class="scan-logger-toggle flex items-center justify-between flex-1 cursor-pointer">
+        <button id="log-accordion-toggle"
+          class="scan-logger-toggle flex items-center justify-between flex-1 cursor-pointer">
           <div class="flex items-center gap-2.5 overflow-hidden flex-1 mr-3">
             <span class="relative flex h-2 w-2 shrink-0">
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              <span
+                class="animate-ping absolute inline-flex h-full w-full bg-emerald-400 opacity-75"></span>
+              <span class="relative inline-flex h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span class="material-symbols-outlined text-primary text-base shrink-0">terminal</span>
-            <span class="text-xs font-bold text-white shrink-0">Registro de escaneo</span>
-            <span id="log-latest-ticker" class="text-xs text-neutral-400 font-mono truncate hidden sm:inline-block max-w-[650px]">
+            <span class="material-symbols-outlined text-prada-red text-base shrink-0">terminal</span>
+            <span class="text-xs font-bold uppercase tracking-wider text-pure-white shrink-0">Terminal de Escaneo</span>
+            <span id="log-latest-ticker"
+              class="text-xs text-neutral-400 font-mono truncate hidden sm:inline-block max-w-[650px]">
               Esperando eventos...
             </span>
           </div>
-          <div class="flex items-center gap-2.5 shrink-0">
-            <span id="log-count-badge" class="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-neutral-800 text-amber-400 border border-amber-500/40">
+          <div class="flex items-center gap-3 shrink-0">
+            <span id="log-count-badge"
+              class="text-[10px] font-bold px-2 py-0.5 bg-neutral-900 text-prada-ochre border border-prada-ochre/40 uppercase">
               0 eventos
             </span>
-            <span id="log-chevron" class="material-symbols-outlined text-neutral-300 hover:text-primary transition-transform duration-300 text-sm">
+            <span id="log-chevron"
+              class="material-symbols-outlined text-neutral-300 hover:text-pure-white transition-transform duration-300 text-sm">
               expand_less
             </span>
           </div>
         </button>
 
         <!-- Quick actions right next to toggle -->
-        <div class="flex items-center gap-1.5 shrink-0">
-          <button id="copy-logs-btn" class="text-xs text-neutral-200 hover:text-white px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800/80 hover:bg-neutral-800 transition-colors flex items-center gap-1 cursor-pointer" title="Copiar logs al portapapeles">
+        <div class="flex items-center gap-2 shrink-0">
+          <button id="copy-logs-btn"
+            class="text-xs font-bold uppercase tracking-wider text-neutral-300 hover:text-pure-white hover:bg-neutral-800 px-3 py-1.5 border border-neutral-700 bg-neutral-900 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Copiar logs al portapapeles">
             <span class="material-symbols-outlined text-[14px]">content_copy</span>
             <span class="hidden md:inline">Copiar</span>
           </button>
-          <button id="clear-logs-btn" class="text-xs text-neutral-200 hover:text-rose-400 px-3 py-1.5 rounded-lg border border-neutral-700 bg-neutral-800/80 hover:bg-neutral-800 transition-colors flex items-center gap-1 cursor-pointer" title="Limpiar registro">
+          <button id="clear-logs-btn"
+            class="text-xs font-bold uppercase tracking-wider text-neutral-300 hover:text-prada-red hover:bg-neutral-800 px-3 py-1.5 border border-neutral-700 bg-neutral-900 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            title="Limpiar registro">
             <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
             <span class="hidden md:inline">Limpiar</span>
           </button>
@@ -828,8 +1284,33 @@
     </div>
   </div>
 
+  <!-- LUXURY EDITORIAL ARCHIVAL FOOTER (Prada Heritage Finish with Linea Rossa Strip) -->
+  <footer class="mt-12 bg-pitch-black border-t-2 border-prada-red py-6 px-6 text-neutral-300">
+    <div
+      class="max-w-[1780px] mx-auto flex flex-wrap items-center justify-between gap-6 font-mono text-[10px] uppercase tracking-widest">
+      <div class="flex flex-wrap items-center gap-6">
+        <span class="text-pure-white font-bold flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 bg-prada-red"></span>
+          DISCOGS MATCHER PRO v2.4.1
+        </span>
+        <span class="text-neutral-600">/</span>
+        <span>BERLÍN • LONDRES • DETROIT • TOKIO • MONTEVIDEO</span>
+        <span class="text-neutral-600">/</span>
+        <span class="text-prada-ochre font-semibold">DISCOGS API v2.0 (OAUTH 1.0A)</span>
+      </div>
+      <div class="flex items-center gap-6 text-neutral-400">
+        <span>PROXY REGIONAL LATAM: <strong class="text-emerald-400 font-semibold">SINCRONIZADO</strong></span>
+        <span class="text-neutral-600">/</span>
+        <span>AMORTIGUADOR ROTATIVO: <strong class="text-blue-400 font-semibold">100% SEGURO</strong></span>
+        <span class="text-neutral-600">/</span>
+        <span class="text-pure-white">© 2025 TODOS LOS DERECHOS RESERVADOS</span>
+      </div>
+    </div>
+  </footer>
+
   <script src="xlsx.full.min.js"></script>
   <script src="motion.js"></script>
   <script src="dashboard.js"></script>
 </body>
+
 </html>

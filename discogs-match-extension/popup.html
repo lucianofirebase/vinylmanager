@@ -1,23 +1,85 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="referrer" content="no-referrer">
+  <title>Discogs Matcher Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
   <div class="popup-container">
-    <div class="header">
-      <div class="vinyl-icon">💿</div>
-      <h1>Discogs Matcher</h1>
+    <!-- Signature Prada Linea Rossa Accent Stripe -->
+    <div class="brand-top-stripe"></div>
+
+    <!-- Header / Brand Runway -->
+    <header class="popup-header">
+      <div class="brand-group">
+        <!-- Prada Linea Rossa Inspired Geometric Badge -->
+        <div class="brand-badge">
+          <div class="badge-red-strip"></div>
+          D
+        </div>
+        <div class="brand-titles">
+          <div class="brand-main">
+            <span class="brand-text">DISCOGS MATCHER</span>
+            <span class="brand-red-dash"></span>
+          </div>
+          <span class="brand-sub">CRATE DIGGING INTELIGENTE</span>
+        </div>
+      </div>
+      <span class="version-tag">PRO v2.4.1</span>
+    </header>
+
+    <!-- Session Status Bar -->
+    <div class="session-strip" id="session-strip" title="Gestionar sesión / Modo testing">
+      <div class="session-status">
+        <span class="status-pulse-dot" id="popup-status-dot"></span>
+        <span class="status-label" id="popup-status-label">SINCRONIZADO</span>
+      </div>
+      <div class="session-user" id="popup-user-display" title="Estado de cuenta de Discogs">
+        <span class="material-symbols-outlined icon-user">account_circle</span>
+        <span class="user-name" id="popup-username">Coutoff7</span>
+      </div>
     </div>
-    <p class="subtitle">Optimiza tus compras agrupando discos por vendedor y ahorra en envíos.</p>
-    
-    <button id="open-dashboard-btn" class="btn">
-      <span>Abrir Dashboard</span>
-      <span class="arrow">→</span>
-    </button>
+
+    <!-- Architectural Feature Highlights -->
+    <div class="feature-receipt">
+      <div class="feature-item">
+        <div class="feature-index">01</div>
+        <div class="feature-copy">
+          <strong>CONSOLIDACIÓN DE ENVÍOS</strong>
+          <p>Agrupa compras para maximizar discos por tienda y minimizar fletes internacionales.</p>
+        </div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-index">02</div>
+        <div class="feature-copy">
+          <strong>CRUCE LOCAL & DRIVE</strong>
+          <p>Compara tu Wantlist con planillas de stock de disquerías uruguayas al instante.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workflow Actions -->
+    <div class="actions-group">
+      <button id="open-dashboard-btn" class="btn-primary" type="button">
+        <span class="material-symbols-outlined icon-btn">terminal</span>
+        <span>ABRIR DASHBOARD PRO</span>
+        <span class="btn-arrow">→</span>
+      </button>
+    </div>
+
+    <!-- Archival Monogram Footer -->
+    <footer class="popup-footer">
+      <span>DISCOGS API v2.0 • MONTEVIDEO / DETROIT</span>
+    </footer>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
