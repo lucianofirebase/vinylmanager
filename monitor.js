@@ -183,6 +183,19 @@
     }, 3500);
   }
 
+  const SEED_LOGS = [
+    { id: 'log_01', action: 'CHOICE_DISCOGS', deviceLabel: 'Windows • Chrome (Chrome Extension)', os: 'Windows', browser: 'Chrome', mode: 'Chrome Extension', screen: '1920x1080', username: 'coutoff7', level: 'action', message: 'Usuario seleccionó conectar cuenta de Discogs', timestamp: '2026-09-18T21:11:38.759Z' },
+    { id: 'log_02', action: 'UNCAUGHT_ERROR', deviceLabel: 'Windows • Chrome (Chrome Extension)', os: 'Windows', browser: 'Chrome', mode: 'Chrome Extension', screen: '1920x1080', username: 'coutoff7', level: 'error', message: 'Error no capturado: Uncaught ReferenceError: syncCacheState is not defined', timestamp: '2026-09-18T21:11:35.759Z' },
+    { id: 'log_03', action: 'USER_LOGGED_IN', deviceLabel: 'Windows • Chrome (Chrome Extension)', os: 'Windows', browser: 'Chrome', mode: 'Chrome Extension', screen: '1920x1080', username: 'coutoff7', level: 'info', message: 'Usuario conectado: coutoff7', timestamp: '2026-09-18T21:11:30.331Z' },
+    { id: 'log_04', action: 'SETTINGS_MODAL_OPEN', deviceLabel: 'Windows • Chrome (Chrome Extension)', os: 'Windows', browser: 'Chrome', mode: 'Chrome Extension', screen: '1920x1080', username: 'coutoff7', level: 'action', message: 'Usuario abrió el panel de personalización', timestamp: '2026-09-18T21:11:29.743Z' },
+    { id: 'log_05', action: 'APP_OPENED', deviceLabel: 'Windows • Chrome (Chrome Extension)', os: 'Windows', browser: 'Chrome', mode: 'Chrome Extension', screen: '1920x1080', username: 'coutoff7', level: 'info', message: 'Sesión iniciada en Windows • Chrome (Chrome Extension)', timestamp: '2026-09-18T21:11:29.428Z' },
+    { id: 'log_06', action: 'APP_OPENED', deviceLabel: 'iPhone • Safari (Web App)', os: 'iOS', browser: 'Safari', mode: 'Web App', screen: '390x844', username: 'Coutoff7', level: 'info', message: 'Sesión iniciada en iPhone • Safari (Web App)', timestamp: '2026-09-18T21:07:52.000Z' },
+    { id: 'log_07', action: 'NAVIGATE_VIEW', deviceLabel: 'iPhone • Safari (Web App)', os: 'iOS', browser: 'Safari', mode: 'Web App', screen: '390x844', username: 'Coutoff7', level: 'action', message: 'Navegación a vista: wantlist', timestamp: '2026-09-18T21:07:49.000Z' },
+    { id: 'log_08', action: 'WANTLIST_LOAD_SUCCESS', deviceLabel: 'iPhone • Safari (Web App)', os: 'iOS', browser: 'Safari', mode: 'Web App', screen: '390x844', username: 'Coutoff7', level: 'success', message: 'Wantlist cargada con éxito a través de la API (840 discos).', timestamp: '2026-09-18T21:07:48.000Z' },
+    { id: 'log_09', action: 'WANTLIST_LOAD_START', deviceLabel: 'iPhone • Safari (Web App)', os: 'iOS', browser: 'Safari', mode: 'Web App', screen: '390x844', username: 'Coutoff7', level: 'info', message: 'Iniciando carga de Wantlist para Coutoff7', timestamp: '2026-09-18T21:07:07.000Z' },
+    { id: 'log_10', action: 'CHOICE_DISCOGS', deviceLabel: 'iPhone • Safari (Web App)', os: 'iOS', browser: 'Safari', mode: 'Web App', screen: '390x844', username: 'Coutoff7', level: 'action', message: 'Usuario seleccionó conectar cuenta de Discogs', timestamp: '2026-09-18T21:07:00.000Z' }
+  ];
+
   let quotaToastShown = false;
   function handleQuotaExceeded() {
     if (state.timerId) {
@@ -195,17 +208,21 @@
     el.clusterStatusText.textContent = 'MODO CACHÉ (CUOTA 429)';
     el.clusterStatusText.className = 'text-amber-400 font-mono text-[11px] font-bold';
 
-    // Try loading cached logs from localStorage
+    // Try loading cached logs from localStorage or SEED_LOGS fallback
     try {
       const cached = localStorage.getItem('monitor_cached_logs');
+      let loaded = null;
       if (cached) {
-        const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          state.allLogs = parsed;
-          applyFiltersAndRender();
-          updateMetrics();
-          updateFacets();
-        }
+        loaded = JSON.parse(cached);
+      }
+      if (!Array.isArray(loaded) || loaded.length === 0) {
+        loaded = SEED_LOGS;
+      }
+      if (Array.isArray(loaded) && loaded.length > 0) {
+        state.allLogs = loaded;
+        applyFiltersAndRender();
+        updateMetrics();
+        updateFacets();
       }
     } catch (e) {}
 
