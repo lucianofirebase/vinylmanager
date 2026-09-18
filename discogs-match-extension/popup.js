@@ -8,9 +8,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Detect username from cookies or saved localStorage
   detectUserSession(popupUsername, popupStatusLabel);
 
+  // Track popup open
+  if (window.Telemetry) {
+    window.Telemetry.track('POPUP_OPENED', 'Usuario abrió popup de la extensión');
+  }
+
   // Main Dashboard Action (re-uses existing tab or opens new one)
   if (openDashboardBtn) {
     openDashboardBtn.addEventListener('click', () => {
+      if (window.Telemetry) {
+        window.Telemetry.track('POPUP_CLICK_DASHBOARD', 'Usuario hizo clic en Abrir Dashboard desde popup');
+      }
       openOrFocusTab('dashboard.html');
     });
   }

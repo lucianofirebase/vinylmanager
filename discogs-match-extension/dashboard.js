@@ -558,18 +558,33 @@ document.addEventListener('DOMContentLoaded', () => {
     if (onboardStepChoice) onboardStepChoice.style.display = 'flex';
     if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'none';
     if (onboardPaneSheet) onboardPaneSheet.style.display = 'none';
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('ONBOARDING_VIEW_CHOICE', 'Usuario volvió al menú de bienvenida');
+      }
+    } catch (e) {}
   };
 
   const showDiscogsPane = () => {
     if (onboardStepChoice) onboardStepChoice.style.display = 'none';
     if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'block';
     if (onboardPaneSheet) onboardPaneSheet.style.display = 'none';
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('CHOICE_DISCOGS', 'Usuario seleccionó conectar cuenta de Discogs');
+      }
+    } catch (e) {}
   };
 
   const showSheetPane = () => {
     if (onboardStepChoice) onboardStepChoice.style.display = 'none';
     if (onboardPaneDiscogs) onboardPaneDiscogs.style.display = 'none';
     if (onboardPaneSheet) onboardPaneSheet.style.display = 'block';
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('CHOICE_SHEET', 'Usuario seleccionó importar catálogo local');
+      }
+    } catch (e) {}
   };
 
   if (choiceBtnDiscogs) choiceBtnDiscogs.addEventListener('click', showDiscogsPane);
@@ -696,6 +711,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('SCAN_MODAL_OPEN', `Usuario abrió modal de escaneo para ${state.wants.length} vinilos`, {
+          wantsCount: state.wants.length,
+          username: state.username
+        });
+      }
+    } catch (e) {}
+
     // If user previously set "remember choice", execute directly
     const rememberPref = localStorage.getItem('remember_scan_cache_choice') === 'true';
     if (rememberPref) {
@@ -725,6 +749,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnScanWithCache) {
     btnScanWithCache.addEventListener('click', () => {
+      try {
+        if (window.Telemetry?.track) {
+          window.Telemetry.track('SCAN_OPTION_CACHE', 'Usuario eligió escanear con Caché Turbo');
+        }
+      } catch (e) {}
       if (scanRememberCacheChoice && scanRememberCacheChoice.checked) {
         localStorage.setItem('remember_scan_cache_choice', 'true');
       }
@@ -736,6 +765,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (btnScanLiveDirect) {
     btnScanLiveDirect.addEventListener('click', () => {
+      try {
+        if (window.Telemetry?.track) {
+          window.Telemetry.track('SCAN_OPTION_LIVE', 'Usuario eligió escaneo en vivo sin caché');
+        }
+      } catch (e) {}
       if (scanRememberCacheChoice && scanRememberCacheChoice.checked) {
         localStorage.setItem('remember_scan_cache_choice', 'true');
       }
@@ -1300,6 +1334,11 @@ function updateForwardAndBackButtons() {
 
 function navigateToView(viewName, pushHistory = true) {
   closeAllModals();
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('NAVIGATE_VIEW', `Navegación a vista: ${viewName}`, { view: viewName, username: state.username });
+    }
+  } catch (e) {}
 
   const emptyState = document.getElementById('empty-state');
   const wantlistManager = document.getElementById('wantlist-manager');
@@ -1835,6 +1874,11 @@ function disconnectUserSession(showNotification = true) {
   if (showNotification) {
     showToast('Sesión desconectada. Modo testing sin cuenta activado.', 'info');
     log('Sesión desconectada por el usuario (Modo Testing).', 'info');
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('USER_DISCONNECTED', 'Usuario desconectó la sesión (Modo Invitado / Testing)');
+      }
+    } catch (e) {}
   }
 }
 
@@ -1908,6 +1952,11 @@ function setLoggedInUser(username) {
   state.username = username;
   localStorage.removeItem('discogs_session_disconnected');
   localStorage.setItem('discogs_username', username);
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('USER_LOGGED_IN', `Usuario conectado: ${username}`, { username });
+    }
+  } catch (e) {}
   
   if (connectionStatus) {
     connectionStatus.textContent = 'ACTIVO';
@@ -2226,6 +2275,11 @@ async function loadWantlist() {
   }
   
   log(`Cargando lista de deseos para '${state.username}'...`);
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('WANTLIST_LOAD_START', `Iniciando carga de Wantlist para ${state.username}`, { username: state.username });
+    }
+  } catch (e) {}
   
   try {
     // Clear previous runs
@@ -2364,6 +2418,14 @@ async function loadWantlist() {
     
     state.wants = loadedWants;
     metricWantsCount.textContent = state.wants.length;
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('WANTLIST_LOAD_SUCCESS', `Wantlist cargada con éxito: ${loadedWants.length} discos`, {
+          username: state.username,
+          totalWants: loadedWants.length
+        });
+      }
+    } catch (e) {}
     
     // Pre-calculate and render stats immediately when wantlist finishes loading
     calculateAndRenderStats();
@@ -2385,6 +2447,14 @@ async function loadWantlist() {
     
   } catch (error) {
     log(`Error al cargar Wantlist: ${error.message}`, 'error');
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('WANTLIST_LOAD_ERROR', `Error al cargar Wantlist: ${error.message}`, {
+          username: state.username,
+          error: error.message
+        });
+      }
+    } catch (e) {}
     const privateModal = document.getElementById('private-wantlist-modal');
     if (privateModal) {
       privateModal.style.display = 'flex';
@@ -2741,8 +2811,25 @@ async function startMarketplaceScan(startIndex = 0) {
     if (logCountBadge) logCountBadge.textContent = '0 eventos';
     if (logLatestTicker) logLatestTicker.textContent = 'Iniciando escaneo del marketplace...';
     log('Iniciando escaneo del marketplace...');
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('SCAN_STARTED', `Iniciando escaneo del marketplace para ${state.wants.length} discos`, {
+          username: state.username,
+          totalWants: state.wants.length,
+          startIndex
+        });
+      }
+    } catch (e) {}
   } else {
     log(`Reanudando escaneo del marketplace desde el disco ${startIndex + 1}...`, 'info');
+    try {
+      if (window.Telemetry?.track) {
+        window.Telemetry.track('SCAN_RESUMED', `Reanudando escaneo desde disco ${startIndex + 1}`, {
+          username: state.username,
+          startIndex
+        });
+      }
+    } catch (e) {}
   }
   
   startScanBtn.disabled = true;
@@ -2943,11 +3030,29 @@ async function startMarketplaceScan(startIndex = 0) {
         clearScanSession();
       }
       currentAppView = 'results-sellers';
+      try {
+        if (window.Telemetry?.track) {
+          window.Telemetry.track('SCAN_COMPLETED', `Escaneo completado: ${state.groupedSellers.length} vendedores con stock, ${state.allListings.length} ofertas`, {
+            username: state.username,
+            sellersFound: state.groupedSellers.length,
+            listingsFound: state.allListings.length,
+            cancelled: state.cancelRequested
+          });
+        }
+      } catch (e) {}
     } else {
       toggleFiltersState(false);
       if (state.wants.length > 0) {
         navigateToView('wantlist', false);
       }
+      try {
+        if (window.Telemetry?.track && !state.cancelRequested) {
+          window.Telemetry.track('SCAN_ZERO_RESULTS', `Escaneo finalizado sin resultados para ${state.wants.length} discos`, {
+            username: state.username,
+            wantsCount: state.wants.length
+          });
+        }
+      } catch (e) {}
     }
     updateForwardAndBackButtons();
   }
@@ -3135,6 +3240,11 @@ function cancelScan() {
   state.cancelRequested = true;
   cancelScanBtn.textContent = 'Cancelando...';
   log('Solicitando cancelación del escaneo...');
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('SCAN_CANCELLED', 'Usuario solicitó cancelar el escaneo', { username: state.username });
+    }
+  } catch (e) {}
 }
 
 // Robust helper to parse prices and shipping costs taking into account different locale formats (dots vs commas)
@@ -4882,6 +4992,16 @@ function toggleWantPriority(id, cardEl) {
   if (!item) return;
   
   item.isPriority = !item.isPriority;
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('FAVORITE_TOGGLED', `${item.isPriority ? 'Marcado como prioritario' : 'Desmarcado de prioritarios'}: ${item.title || id}`, {
+        releaseId: id,
+        title: item.title,
+        isPriority: item.isPriority,
+        username: state.username
+      });
+    }
+  } catch (e) {}
   
   const star = cardEl.querySelector('.want-star');
   if (item.isPriority) {
@@ -5697,6 +5817,14 @@ async function handleCopySheetsAction() {
 function handleDownloadCsvAction() {
   const scopeRadio = document.querySelector('input[name="export-scope"]:checked');
   const scope = scopeRadio ? scopeRadio.value : 'all';
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('EXPORT_CSV', `Usuario exportó datos a CSV: tipo '${scope}'`, {
+        scope,
+        username: state.username
+      });
+    }
+  } catch (e) {}
   
   const usernameStr = state.username ? state.username : 'discogs';
   const dateStr = new Date().toISOString().slice(0, 10);
@@ -5727,6 +5855,11 @@ function switchTab(tabName, pushHistory = false) {
   state.currentTab = tabName;
   currentAppView = `results-${tabName}`;
   updateForwardAndBackButtons();
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('TAB_SWITCH', `Pestaña cambiada a: ${tabName}`, { tab: tabName, username: state.username });
+    }
+  } catch (e) {}
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
@@ -6377,6 +6510,15 @@ function handleRunLocalMatch() {
   }
   
   state.localMatches = matches;
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('LOCAL_MATCHING_COMPLETED', `Cotejo local finalizado: ${matches.length} coincidencias encontradas`, {
+        totalRows: rows.length,
+        matchCount: matches.length,
+        username: state.username
+      });
+    }
+  } catch (e) {}
   closeLocalSheetModal();
   
   const tabBtnLocal = document.getElementById('tab-btn-local');
@@ -6554,6 +6696,14 @@ function renderLocalMatches() {
 async function copyLocalMatchesToClipboard() {
   const matches = state.localMatches || [];
   if (matches.length === 0) return;
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('ORDER_COPIED_WHATSAPP', `Pedido para WhatsApp copiado: ${matches.length} vinilos coincidentes`, {
+        matchCount: matches.length,
+        username: state.username
+      });
+    }
+  } catch (e) {}
   
   const textLines = ['¡Hola! Me interesan los siguientes vinilos de su catálogo:', ''];
   matches.forEach((m, idx) => {

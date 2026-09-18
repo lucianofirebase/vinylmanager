@@ -77,7 +77,7 @@
   const sessionId = getSessionId();
 
   // Send log entry to Firestore REST endpoint
-  async function sendRemoteLog(level, message, details = {}) {
+  async function sendRemoteLog(level, message, details = {}, action = 'LOG') {
     try {
       const username = window.state?.username || localStorage.getItem('discogs_username') || 'INVITADO';
       const cleanMessage = String(message || '').substring(0, 800);
@@ -91,18 +91,19 @@
 
       const payload = {
         fields: {
+          action: { stringValue: String(action || 'LOG').toUpperCase() },
           deviceId: { stringValue: deviceId },
           deviceLabel: { stringValue: device.label },
           os: { stringValue: device.os },
           browser: { stringValue: device.browser },
           mode: { stringValue: device.mode },
-          screen: { stringValue: `${window.innerWidth}x${window.innerHeight}` },
+          screen: { stringValue: `${window.innerWidth || 0}x${window.innerHeight || 0}` },
           sessionId: { stringValue: sessionId },
           username: { stringValue: username },
           level: { stringValue: level || 'info' },
           message: { stringValue: cleanMessage },
           details: { stringValue: detailsStr },
-          url: { stringValue: window.location.href.substring(0, 250) },
+          url: { stringValue: (window.location?.href || '').substring(0, 250) },
           timestamp: { timestampValue: new Date().toISOString() }
         }
       };
@@ -137,6 +138,7 @@
         return {
           id: doc.name.split('/').pop(),
           docName: doc.name,
+          action: f.action?.stringValue || 'LOG',
           deviceId: f.deviceId?.stringValue || 'Desconocido',
           deviceLabel: f.deviceLabel?.stringValue || 'Dispositivo',
           os: f.os?.stringValue || '',
@@ -175,7 +177,7 @@
         lineno: event.lineno,
         colno: event.colno,
         stack: event.error?.stack || ''
-      });
+      }, 'UNCAUGHT_ERROR');
     });
 
     // Global unhandled promise rejection listener
@@ -184,7 +186,7 @@
       const msg = reason?.message || String(reason || 'Promesa rechazada sin manejar');
       sendRemoteLog('error', `Promesa rechazada: ${msg}`, {
         stack: reason?.stack || ''
-      });
+      }, 'PROMISE_REJECTION');
     });
   }
 
@@ -193,17 +195,18 @@
     sendRemoteLog('info', `Sesión iniciada en ${device.label}`, {
       url: window.location?.href || '',
       referrer: document?.referrer || 'Directo'
-    });
+    }, 'APP_OPENED');
   }, 1000);
 
   // Expose API
   const root = typeof window !== 'undefined' ? window : (typeof globalThis !== 'undefined' ? globalThis : this);
   root.Telemetry = {
-    log: (msg, details) => sendRemoteLog('info', msg, details),
-    info: (msg, details) => sendRemoteLog('info', msg, details),
-    warn: (msg, details) => sendRemoteLog('warn', msg, details),
-    error: (msg, details) => sendRemoteLog('error', msg, details),
-    success: (msg, details) => sendRemoteLog('success', msg, details),
+    track: (action, msg, details) => sendRemoteLog('action', msg, details, action),
+    log: (msg, details) => sendRemoteLog('info', msg, details, 'LOG'),
+    info: (msg, details) => sendRemoteLog('info', msg, details, 'INFO'),
+    warn: (msg, details) => sendRemoteLog('warn', msg, details, 'WARN'),
+    error: (msg, details) => sendRemoteLog('error', msg, details, 'ERROR'),
+    success: (msg, details) => sendRemoteLog('success', msg, details, 'SUCCESS'),
     fetchLogs: fetchRemoteLogs,
     deleteLog: deleteRemoteLog,
     getDeviceInfo: () => device,
