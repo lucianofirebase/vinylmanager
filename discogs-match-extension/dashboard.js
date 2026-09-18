@@ -1331,9 +1331,15 @@ function navigateToView(viewName, pushHistory = true) {
       const choice = document.getElementById('onboard-step-choice');
       const pDiscogs = document.getElementById('onboard-pane-discogs');
       const pSheet = document.getElementById('onboard-pane-sheet');
-      if (choice) choice.style.display = 'flex';
-      if (pDiscogs) pDiscogs.style.display = 'none';
-      if (pSheet) pSheet.style.display = 'none';
+      if (stepNum === 1) {
+        if (choice) choice.style.display = 'flex';
+        if (pDiscogs) pDiscogs.style.display = 'none';
+        if (pSheet) pSheet.style.display = 'none';
+      } else {
+        if (choice) choice.style.display = 'none';
+        if (pDiscogs) pDiscogs.style.display = 'block';
+        if (pSheet) pSheet.style.display = 'none';
+      }
       goToWizardStep(stepNum);
     }
     currentAppView = `wizard-${stepNum}`;
@@ -2029,7 +2035,23 @@ async function fetchDirect(url) {
       console.log(`[DirectFetch] Éxito. Descargados ${text.length} bytes.`);
       return text;
     } catch (error) {
-      console.error(`[DirectFetch] Error en fetch directo para URL: ${url}:`, error.message);
+      console.warn(`[DirectFetch] Error en fetch directo para URL: ${url}:`, error.message);
+      // In web mode without extension privileges, browser blocks cross-origin requests.
+      // Attempt proxy fallback for API requests:
+      if (!IS_EXTENSION && (error.message?.includes('Failed to fetch') || error.name === 'TypeError')) {
+        try {
+          console.log(`[DirectFetch] Intentando proxy CORS para: ${url}`);
+          const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+          const proxyResp = await fetch(proxyUrl);
+          if (proxyResp.ok) {
+            const proxyText = await proxyResp.text();
+            console.log(`[DirectFetch] Éxito vía proxy CORS. ${proxyText.length} bytes.`);
+            return proxyText;
+          }
+        } catch (proxyErr) {
+          console.error(`[DirectFetch] Proxy CORS falló:`, proxyErr.message);
+        }
+      }
       throw error;
     }
   });
@@ -4832,19 +4854,13 @@ function collapseSellerCard(sName) {
 }
 
 // Wantlist Manager UI functions
-function showWantlistManager() {
-  emptyState.style.display = 'none';
-  resultsGrid.style.display = 'none';
-  noResultsState.style.display = 'none';
-  wantlistManager.style.display = 'block';
-  wantsSearchInput.value = '';
-  
+function showWantlistManager(pushHistory = true) {
+  navigateToView('wantlist', pushHistory);
+  if (wantsSearchInput) wantsSearchInput.value = '';
   if (refreshWantsBtn) {
     refreshWantsBtn.style.display = 'flex';
     refreshWantsBtn.disabled = false;
   }
-  
-  // Render list of wants
   renderWantsManagerList();
 }
 

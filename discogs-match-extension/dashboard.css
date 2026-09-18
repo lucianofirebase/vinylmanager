@@ -4649,3 +4649,37 @@ select option {
     max-width: calc(100vw - 28px) !important;
   }
 }
+
+/* Mobile Action Bar & Spacer */
+#mobile-action-bar {
+  display: flex !important;
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 9999 !important;
+  background-color: #FAF9F5 !important;
+  border-top: 2px solid #E02B20 !important;
+  padding: 10px 16px !important;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.12) !important;
+  box-sizing: border-box !important;
+  transform: translateZ(0) !important;
+  -webkit-transform: translateZ(0) !important;
+}
+
+#mobile-bar-spacer {
+  display: block !important;
+  height: calc(64px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+@media (min-width: 1024px) {
+  #mobile-action-bar {
+    display: none !important;
+  }
+  #mobile-bar-spacer {
+    display: none !important;
+  }
+}

@@ -53,7 +53,7 @@
   <header id="top-navbar" class="sticky top-0 z-50 bg-ivory-warm/95 backdrop-blur-md border-b border-hairline-light">
     <!-- Top row: Brand Monogram, Editorial Title & Global Controls -->
     <div
-      class="max-w-[1780px] mx-auto px-4 sm:px-6 pt-4 pb-3 flex items-center justify-between gap-3 border-b border-hairline-subtle overflow-x-auto">
+      class="max-w-[1780px] mx-auto px-4 sm:px-6 pt-3 pb-3 flex flex-wrap items-center justify-between gap-3 border-b border-hairline-subtle">
       <!-- Brand Logo / Wordmark -->
       <div class="flex items-center gap-4">
         <button id="nav-back-btn"
@@ -63,22 +63,20 @@
           <span class="hidden sm:inline">ATRÁS</span>
         </button>
 
-        <a class="group flex items-center gap-3 tracking-tighter" href="#">
+        <a class="group flex items-center gap-3 tracking-tighter shrink-0" href="#">
           <!-- Prada Linea Rossa Inspired Geometric Badge -->
           <div id="logo-vinyl"
-            class="relative w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-mono font-extrabold text-sm tracking-normal shadow-sm overflow-hidden">
+            class="relative w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-mono font-extrabold text-sm tracking-normal shadow-sm overflow-hidden shrink-0">
             <div class="absolute left-0 top-0 bottom-0 w-1 bg-prada-red"></div>
             D
           </div>
           <div class="flex flex-col">
             <div class="flex items-center gap-2">
               <span
-                class="font-extrabold text-base sm:text-lg tracking-widest uppercase font-sans text-pitch-black">DISCOGS
-                MATCHER</span>
-              <span class="h-1.5 w-5 bg-prada-red inline-block"></span>
+                class="font-extrabold text-base sm:text-lg tracking-widest uppercase font-sans text-pitch-black whitespace-nowrap">DISCOGS MATCHER</span>
+              <span class="h-1.5 w-5 bg-prada-red inline-block hidden sm:inline-block"></span>
             </div>
-            <span class="font-mono text-[9px] tracking-widest text-muted-graphite uppercase -mt-0.5">CRATE DIGGING
-              INTELIGENTE</span>
+            <span class="font-mono text-[9px] tracking-widest text-muted-graphite uppercase -mt-0.5 hidden sm:block">CRATE DIGGING INTELIGENTE</span>
           </div>
         </a>
         <span class="hidden sm:inline-block border-l border-hairline-light h-6"></span>
@@ -131,8 +129,9 @@
 
       <!-- User Locale & Profile Meta -->
       <div class="flex items-center gap-3 text-xs font-mono">
+      <!-- Country + Currency selectors: hidden on mobile, shown sm+ -->
         <div
-          class="flex items-center border border-hairline-light bg-pure-white divide-x divide-hairline-light shadow-sm">
+          class="hidden sm:flex items-center border border-hairline-light bg-pure-white divide-x divide-hairline-light shadow-sm">
           <div
             class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-pitch-black">
             <span class="material-symbols-outlined text-[13px] text-prada-blue shrink-0">location_on</span>
@@ -171,7 +170,7 @@
             <span class="w-1.5 h-1.5 bg-prada-red" id="connection-status-dot"></span>
             <span class="text-[10px] tracking-widest uppercase font-semibold text-pitch-black truncate max-w-[95px]"
               id="username-display">—</span>
-            <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium"
+            <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium hidden sm:inline"
               id="connection-status">ACTIVO</span>
             <span class="material-symbols-outlined text-[12px] text-muted-graphite pointer-events-none">expand_more</span>
             <div id="user-avatar" style="display: none;">?</div>
@@ -383,32 +382,7 @@
   </section>
 </header>
 
-  <!-- MOBILE ACTION BAR — visible only on screens < lg, replaces hidden desktop nav buttons -->
-  <div id="mobile-action-bar"
-    class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-ivory-warm/97 backdrop-blur-sm border-t-2 border-prada-red px-4 py-2.5 flex items-center gap-2 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
-    <!-- Load wantlist -->
-    <button id="mobile-load-wants-btn"
-      class="flex-1 bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
-      <span class="material-symbols-outlined text-[16px]">favorite</span>
-      <span>CARGAR</span>
-    </button>
-    <!-- Start scan -->
-    <button id="mobile-start-scan-btn"
-      class="flex-1 bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
-      <span class="material-symbols-outlined text-[16px]">radar</span>
-      <span>ANALIZAR</span>
-    </button>
-    <!-- User badge -->
-    <div id="mobile-user-badge"
-      class="shrink-0 border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center gap-1.5 cursor-pointer"
-      title="Gestionar cuenta">
-      <span class="w-1.5 h-1.5 bg-prada-red" id="mobile-status-dot"></span>
-      <span class="font-mono text-[10px] font-bold uppercase text-pitch-black max-w-[70px] truncate" id="mobile-username">—</span>
-    </div>
-  </div>
 
-  <!-- Spacer so mobile content isn't hidden behind the bar -->
-  <div class="lg:hidden h-16" id="mobile-bar-spacer"></div>
 
 
   <!-- Preserved Metric Counter Elements (kept for JS animated counters) -->
@@ -977,6 +951,8 @@
         </div>
 
       </div>
+      <!-- Spacer so mobile content isn't hidden behind the bottom bar -->
+      <div class="lg:hidden h-20" id="mobile-bar-spacer"></div>
     </div>
   </main>
 
@@ -1335,6 +1311,29 @@
       </div>
     </div>
   </footer>
+
+  <!-- MOBILE ACTION BAR — Fixed at viewport bottom on mobile/tablet screens -->
+  <div id="mobile-action-bar">
+    <!-- Load wantlist -->
+    <button id="mobile-load-wants-btn"
+      class="flex-1 bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      <span class="material-symbols-outlined text-[16px]">favorite</span>
+      <span>CARGAR</span>
+    </button>
+    <!-- Start scan -->
+    <button id="mobile-start-scan-btn"
+      class="flex-1 bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      <span class="material-symbols-outlined text-[16px]">radar</span>
+      <span>ANALIZAR</span>
+    </button>
+    <!-- User badge -->
+    <div id="mobile-user-badge"
+      class="shrink-0 border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center gap-1.5 cursor-pointer"
+      title="Gestionar cuenta">
+      <span class="w-1.5 h-1.5 bg-prada-red" id="mobile-status-dot"></span>
+      <span class="font-mono text-[10px] font-bold uppercase text-pitch-black max-w-[75px] truncate" id="mobile-username">—</span>
+    </div>
+  </div>
 
   <script src="xlsx.full.min.js"></script>
   <script src="motion.js"></script>
