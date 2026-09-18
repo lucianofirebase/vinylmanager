@@ -36,9 +36,6 @@
         <span class="text-neutral-600 hidden md:inline">|</span>
         <span class="text-neutral-400 hidden md:inline">RADAR SÓNICO: <span class="text-emerald-400 font-semibold"
             id="ticker-radar-status">CACHÉ ACTIVO</span></span>
-        <span class="text-neutral-600 hidden md:inline">|</span>
-        <span class="text-neutral-400 hidden md:inline">TELEMETRÍA: <strong class="text-emerald-400 font-semibold cursor-pointer hover:underline"
-            id="ticker-telemetry-btn">EN VIVO (VER)</strong></span>
       </div>
       <div class="flex items-center gap-6 text-neutral-300">
         <span>COLECCIÓN: <strong class="text-pure-white" id="ticker-wants-count">0 DISCOS</strong></span>
@@ -242,12 +239,6 @@
                 style="display: none;">
                 <span class="material-symbols-outlined text-[14px]">autorenew</span>
                 <span>AUTODETECTAR SESIÓN DISCOGS</span>
-              </button>
-
-              <button id="btn-open-remote-logs" type="button"
-                class="w-full border border-prada-blue/40 bg-prada-blue/10 text-prada-blue hover:bg-prada-blue hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5 mt-1">
-                <span class="material-symbols-outlined text-[14px]">cell_tower</span>
-                <span>VER LOGS REMOTOS (IPHONE / WEB)</span>
               </button>
             </div>
           </div>
@@ -1023,43 +1014,7 @@
     </div>
   </div>
 
-  <!-- REMOTE LOGS MODAL (FIREBASE TELEMETRY VIEWER) -->
-  <div id="remote-logs-modal" class="modal-overlay fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4" style="display: none;">
-    <div class="bg-pure-white border-2 border-prada-red max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl relative font-mono">
-      <div class="p-4 border-b border-hairline-dark flex items-center justify-between bg-ivory-warm">
-        <div class="flex items-center gap-2.5">
-          <span class="w-2.5 h-2.5 bg-prada-red animate-pulse"></span>
-          <h3 class="font-sans font-black text-sm sm:text-base uppercase tracking-wider text-pitch-black">LOGS REMOTOS EN VIVO • IPHONE &amp; OTROS DISPOSITIVOS</h3>
-          <span id="remote-logs-count-badge" class="bg-pitch-black text-pure-white font-mono text-[10px] font-bold px-2 py-0.5">0 logs</span>
-        </div>
-        <div class="flex items-center gap-2">
-          <button id="btn-refresh-remote-logs" type="button" class="border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 shadow-2xs">
-            <span class="material-symbols-outlined text-[14px]">refresh</span>
-            <span>Refrescar</span>
-          </button>
-          <button id="btn-close-remote-logs" type="button" class="w-7 h-7 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer font-bold text-base">✕</button>
-        </div>
-      </div>
 
-      <!-- Filter chips -->
-      <div class="px-4 py-2.5 bg-surface-low border-b border-hairline-light flex items-center gap-2 overflow-x-auto text-[10px]" id="remote-logs-filters">
-        <button class="px-2.5 py-1 bg-pitch-black text-pure-white font-bold uppercase cursor-pointer remote-filter-btn active" data-filter="all">TODOS</button>
-        <button class="px-2.5 py-1 bg-pure-white border border-hairline-dark text-pitch-black font-bold uppercase cursor-pointer remote-filter-btn" data-filter="error">SOLO ERRORES</button>
-        <button class="px-2.5 py-1 bg-pure-white border border-hairline-dark text-pitch-black font-bold uppercase cursor-pointer remote-filter-btn" data-filter="iphone">IPHONE</button>
-      </div>
-
-      <!-- Logs stream container -->
-      <div class="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-xs max-h-[60vh] bg-pitch-black text-neutral-200 divide-y divide-neutral-800" id="remote-logs-list">
-        <p class="text-neutral-500 text-center py-8">Cargando logs de telemetría de Firebase...</p>
-      </div>
-
-      <!-- Footer info -->
-      <div class="p-3 bg-ivory-warm border-t border-hairline-light flex flex-wrap items-center justify-between gap-2 text-[10px] text-muted-graphite">
-        <span>Tu ID de sesión actual: <strong class="text-pitch-black" id="current-device-id-label">—</strong></span>
-        <span>Colección: <strong class="text-prada-red font-bold">vinylstockmanager / app_logs</strong> (Firestore)</span>
-      </div>
-    </div>
-  </div>
 
   <!-- EXPORT TO SHEETS MODAL -->
   <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
