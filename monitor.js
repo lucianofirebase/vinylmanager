@@ -20,7 +20,7 @@
     },
     autoScroll: true,
     wrapLines: false,
-    refreshIntervalMs: 5000,
+    refreshIntervalMs: 30000,
     timerId: null,
     isFetching: false
   };
@@ -183,6 +183,38 @@
     }, 3500);
   }
 
+  let quotaToastShown = false;
+  function handleQuotaExceeded() {
+    if (state.timerId) {
+      clearInterval(state.timerId);
+      state.timerId = null;
+    }
+    if (el.selectRefreshRate) {
+      el.selectRefreshRate.value = '0';
+    }
+    el.clusterStatusText.textContent = 'MODO CACHÉ (CUOTA 429)';
+    el.clusterStatusText.className = 'text-amber-400 font-mono text-[11px] font-bold';
+
+    // Try loading cached logs from localStorage
+    try {
+      const cached = localStorage.getItem('monitor_cached_logs');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          state.allLogs = parsed;
+          applyFiltersAndRender();
+          updateMetrics();
+          updateFacets();
+        }
+      }
+    } catch (e) {}
+
+    if (!quotaToastShown) {
+      quotaToastShown = true;
+      showToast('⚠️ Cuota diaria de Firebase alcanzada (50k lecturas). Mostrando datos guardados en caché.', 'warning');
+    }
+  }
+
   // Fetch Firestore Documents
   async function fetchLogs() {
     if (state.isFetching) return;
@@ -195,7 +227,7 @@
         structuredQuery: {
           from: [{ collectionId: 'app_logs' }],
           orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
-          limit: 300
+          limit: 60
         }
       };
 
@@ -206,6 +238,10 @@
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          handleQuotaExceeded();
+          return;
+        }
         throw new Error(`Error HTTP ${response.status} al consultar Firestore`);
       }
 
@@ -251,14 +287,24 @@
         };
       }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
+      // Persist logs in localStorage for offline / quota fallback
+      try {
+        localStorage.setItem('monitor_cached_logs', JSON.stringify(state.allLogs));
+      } catch (e) {}
+
       // Update Cluster Status
       el.clusterStatusText.textContent = `LIVE CLUSTER (${state.allLogs.length})`;
+      el.clusterStatusText.className = 'text-emerald-400 font-mono text-[11px] font-bold';
 
       // Apply current filters and re-render
       applyFiltersAndRender();
       updateMetrics();
       updateFacets();
     } catch (err) {
+      if (err.message && err.message.includes('429')) {
+        handleQuotaExceeded();
+        return;
+      }
       console.error('[Vinyl Ops Monitor] Error al obtener telemetría:', err);
       showToast(`Error de conexión: ${err.message}`, 'error');
       el.clusterStatusText.textContent = 'ERROR DE CONEXIÓN';
@@ -806,6 +852,21 @@
 
   // Initialization
   function init() {
+    // Restore cached logs immediately so view is populated instantly
+    try {
+      const cached = localStorage.getItem('monitor_cached_logs');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          state.allLogs = parsed;
+          el.clusterStatusText.textContent = `MODO CACHÉ (${state.allLogs.length})`;
+          applyFiltersAndRender();
+          updateMetrics();
+          updateFacets();
+        }
+      }
+    } catch (e) {}
+
     initEventListeners();
     fetchLogs();
     setupRefreshTimer();

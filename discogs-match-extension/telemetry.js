@@ -76,8 +76,11 @@
   const deviceId = getDeviceId();
   const sessionId = getSessionId();
 
+  let telemetryMutedUntil = 0;
+
   // Send log entry to Firestore REST endpoint
   async function sendRemoteLog(level, message, details = {}, action = 'LOG') {
+    if (Date.now() < telemetryMutedUntil) return;
     try {
       const username = window.state?.username || localStorage.getItem('discogs_username') || 'INVITADO';
       const cleanMessage = String(message || '').substring(0, 800);
@@ -116,6 +119,10 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
         keepalive: true
+      }).then(res => {
+        if (res.status === 429) {
+          telemetryMutedUntil = Date.now() + 15 * 60 * 1000;
+        }
       }).catch(() => {
         // Silently ignore telemetry network failures
       });
