@@ -35,6 +35,12 @@ const CURRENCY_MAP = {
   'COP': { symbol: '$', code: 'COP', rate: 0.00025 }
 };
 
+// Load custom UYU rate if saved in personalization settings
+const savedCustomUyuRate = parseFloat(localStorage.getItem('custom_uyu_rate'));
+if (savedCustomUyuRate > 0 && CURRENCY_MAP.UYU) {
+  CURRENCY_MAP.UYU.rate = 1 / savedCustomUyuRate;
+}
+
 function formatPrice(val, currencyCode, overrideDisplayCurrency = null) {
   const numVal = typeof val === 'number' ? (isNaN(val) ? 0 : val) : (parseFloat(val) || 0);
   const displayCurrencySelect = document.getElementById('display-currency');
@@ -475,6 +481,32 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnCloseLocalModalTop) btnCloseLocalModalTop.addEventListener('click', closeLocalSheetModal);
   if (btnAnalyzeLocalPaste) btnAnalyzeLocalPaste.addEventListener('click', handleAnalyzeLocalSheet);
   if (btnRunLocalMatch) btnRunLocalMatch.addEventListener('click', handleRunLocalMatch);
+
+  // Settings & Personalization modal listeners
+  const btnOpenSettings = document.getElementById('btn-open-settings');
+  const mobileBtnOpenSettings = document.getElementById('mobile-btn-open-settings');
+  const btnCloseSettingsModal = document.getElementById('btn-close-settings-modal');
+  const btnCloseSettingsModalBottom = document.getElementById('btn-close-settings-modal-bottom');
+  const btnSaveSettings = document.getElementById('btn-save-settings');
+  const btnClearScanCache = document.getElementById('btn-clear-scan-cache');
+  const btnResetDefaultSettings = document.getElementById('btn-reset-default-settings');
+  const settingsDensityStandard = document.getElementById('settings-density-standard');
+  const settingsDensityCompact = document.getElementById('settings-density-compact');
+
+  if (btnOpenSettings) btnOpenSettings.addEventListener('click', openSettingsModal);
+  if (mobileBtnOpenSettings) mobileBtnOpenSettings.addEventListener('click', openSettingsModal);
+  if (btnCloseSettingsModal) btnCloseSettingsModal.addEventListener('click', closeSettingsModal);
+  if (btnCloseSettingsModalBottom) btnCloseSettingsModalBottom.addEventListener('click', closeSettingsModal);
+  if (btnSaveSettings) btnSaveSettings.addEventListener('click', applySettingsFromModal);
+  if (btnClearScanCache) btnClearScanCache.addEventListener('click', clearScanCacheAction);
+  if (btnResetDefaultSettings) btnResetDefaultSettings.addEventListener('click', resetDefaultSettingsAction);
+
+  if (settingsDensityStandard) {
+    settingsDensityStandard.addEventListener('click', () => updateSettingsDensityUI('standard'));
+  }
+  if (settingsDensityCompact) {
+    settingsDensityCompact.addEventListener('click', () => updateSettingsDensityUI('compact'));
+  }
   if (btnBackLocalStep1) {
     btnBackLocalStep1.addEventListener('click', () => {
       const step1 = document.getElementById('local-step-1');
@@ -1288,7 +1320,8 @@ function closeAllModals() {
     document.getElementById('local-sheet-modal'),
     document.getElementById('private-wantlist-modal'),
     document.getElementById('resume-modal'),
-    document.getElementById('scan-cache-modal')
+    document.getElementById('scan-cache-modal'),
+    document.getElementById('settings-modal')
   ];
   let closedAny = false;
   modals.forEach(m => {
@@ -5674,6 +5707,237 @@ function closeExportSheetsModal() {
     exportSheetsModal.classList.remove('open');
     exportSheetsModal.style.display = 'none';
   }
+}
+
+// ==========================================
+// PERSONALIZATION & SETTINGS MODAL FUNCTIONS
+// ==========================================
+
+function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (!modal) return;
+
+  // Populate fields from current state or localStorage
+  const useCacheSaved = localStorage.getItem('use_scan_cache') !== 'false';
+  const turboRadio = document.getElementById('settings-cache-turbo');
+  const liveRadio = document.getElementById('settings-cache-live');
+  if (turboRadio && liveRadio) {
+    turboRadio.checked = useCacheSaved;
+    liveRadio.checked = !useCacheSaved;
+  }
+
+  const rememberSaved = localStorage.getItem('remember_scan_cache_choice') === 'true';
+  const rememberCheckbox = document.getElementById('settings-remember-cache');
+  if (rememberCheckbox) rememberCheckbox.checked = rememberSaved;
+
+  const minMatchesSelect = document.getElementById('settings-min-matches');
+  const filterMinMatchesEl = document.getElementById('filter-min-matches');
+  if (minMatchesSelect) {
+    minMatchesSelect.value = localStorage.getItem('filter_min_matches') || (filterMinMatchesEl ? filterMinMatchesEl.value : '2');
+  }
+
+  const minCondSelect = document.getElementById('settings-min-condition');
+  const filterMinCondEl = document.getElementById('filter-min-condition');
+  if (minCondSelect) {
+    minCondSelect.value = localStorage.getItem('filter_min_condition') || (filterMinCondEl ? filterMinCondEl.value : 'VG+');
+  }
+
+  const minRatingSelect = document.getElementById('settings-min-rating');
+  const filterRatingEl = document.getElementById('filter-rating');
+  if (minRatingSelect) {
+    minRatingSelect.value = localStorage.getItem('filter_min_rating') || (filterRatingEl ? filterRatingEl.value : '99');
+  }
+
+  const currSelect = document.getElementById('settings-currency');
+  const displayCurrEl = document.getElementById('display-currency');
+  if (currSelect) {
+    currSelect.value = localStorage.getItem('display_currency') || (displayCurrEl ? displayCurrEl.value : 'USD');
+  }
+
+  const countrySelect = document.getElementById('settings-country');
+  const buyerCountryEl = document.getElementById('buyer-country');
+  if (countrySelect) {
+    countrySelect.value = localStorage.getItem('buyer_country') || (buyerCountryEl ? buyerCountryEl.value : 'Uruguay');
+  }
+
+  const rateInput = document.getElementById('settings-rate-uyu');
+  if (rateInput) {
+    rateInput.value = localStorage.getItem('custom_uyu_rate') || '40';
+  }
+
+  const currentDensity = localStorage.getItem('wants_grid_density') || 'standard';
+  updateSettingsDensityUI(currentDensity);
+
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('SETTINGS_MODAL_OPEN', 'Usuario abrió el panel de personalización');
+    }
+  } catch (e) {}
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (modal) {
+    modal.classList.remove('open');
+    modal.style.display = 'none';
+  }
+}
+
+function updateSettingsDensityUI(density) {
+  const stdBtn = document.getElementById('settings-density-standard');
+  const compBtn = document.getElementById('settings-density-compact');
+  if (!stdBtn || !compBtn) return;
+
+  if (density === 'compact') {
+    stdBtn.className = 'px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pure-white text-muted-graphite hover:text-pitch-black';
+    compBtn.className = 'px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pitch-black text-pure-white';
+  } else {
+    stdBtn.className = 'px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pitch-black text-pure-white';
+    compBtn.className = 'px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pure-white text-muted-graphite hover:text-pitch-black';
+  }
+}
+
+function applySettingsFromModal() {
+  // Cache mode
+  const turboRadio = document.getElementById('settings-cache-turbo');
+  const isTurbo = turboRadio ? turboRadio.checked : true;
+  localStorage.setItem('use_scan_cache', isTurbo ? 'true' : 'false');
+  syncCacheState(isTurbo);
+
+  const rememberCheckbox = document.getElementById('settings-remember-cache');
+  if (rememberCheckbox) {
+    localStorage.setItem('remember_scan_cache_choice', rememberCheckbox.checked ? 'true' : 'false');
+  }
+
+  // Min matches
+  const minMatchesSelect = document.getElementById('settings-min-matches');
+  const filterMinMatchesEl = document.getElementById('filter-min-matches');
+  if (minMatchesSelect) {
+    localStorage.setItem('filter_min_matches', minMatchesSelect.value);
+    if (filterMinMatchesEl) filterMinMatchesEl.value = minMatchesSelect.value;
+  }
+
+  // Min condition
+  const minCondSelect = document.getElementById('settings-min-condition');
+  const filterMinCondEl = document.getElementById('filter-min-condition');
+  if (minCondSelect) {
+    localStorage.setItem('filter_min_condition', minCondSelect.value);
+    if (filterMinCondEl) filterMinCondEl.value = minCondSelect.value;
+  }
+
+  // Min rating
+  const minRatingSelect = document.getElementById('settings-min-rating');
+  const filterRatingEl = document.getElementById('filter-rating');
+  if (minRatingSelect) {
+    localStorage.setItem('filter_min_rating', minRatingSelect.value);
+    if (filterRatingEl) filterRatingEl.value = minRatingSelect.value;
+  }
+
+  // Currency
+  const currSelect = document.getElementById('settings-currency');
+  const displayCurrEl = document.getElementById('display-currency');
+  if (currSelect) {
+    localStorage.setItem('display_currency', currSelect.value);
+    if (displayCurrEl) displayCurrEl.value = currSelect.value;
+  }
+
+  // Country
+  const countrySelect = document.getElementById('settings-country');
+  const buyerCountryEl = document.getElementById('buyer-country');
+  if (countrySelect) {
+    localStorage.setItem('buyer_country', countrySelect.value);
+    if (buyerCountryEl) buyerCountryEl.value = countrySelect.value;
+  }
+
+  // Custom UYU Rate
+  const rateInput = document.getElementById('settings-rate-uyu');
+  if (rateInput) {
+    const val = parseFloat(rateInput.value) || 40;
+    localStorage.setItem('custom_uyu_rate', String(val));
+    if (CURRENCY_MAP.UYU) {
+      CURRENCY_MAP.UYU.rate = 1 / val;
+    }
+  }
+
+  // Density
+  const compBtn = document.getElementById('settings-density-compact');
+  const isCompact = compBtn && compBtn.classList.contains('bg-pitch-black');
+  setGridDensity(isCompact ? 'compact' : 'standard');
+
+  // Re-render results if any
+  if (state.groupedSellers && state.groupedSellers.length > 0) {
+    renderResults();
+    if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
+  }
+
+  showToast('Ajustes y preferencias guardados con éxito', 'success');
+
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('SETTINGS_SAVED', 'Ajustes de personalización actualizados', {
+        cacheMode: isTurbo ? 'turbo' : 'live',
+        currency: currSelect?.value,
+        country: countrySelect?.value,
+        minCondition: minCondSelect?.value,
+        uyuRate: rateInput?.value
+      });
+    }
+  } catch (e) {}
+
+  closeSettingsModal();
+}
+
+function clearScanCacheAction() {
+  const keysToRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && (key.startsWith('marketplace_cache_') || key.startsWith('discogs_cache_') || key.startsWith('scan_session_'))) {
+      keysToRemove.push(key);
+    }
+  }
+  keysToRemove.forEach(k => localStorage.removeItem(k));
+  localStorage.removeItem('remember_scan_cache_choice');
+
+  showToast(`Caché liberado: ${keysToRemove.length} elementos eliminados`, 'info');
+
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('CACHE_PURGED', `Caché de escaneo purgado (${keysToRemove.length} entradas)`, { itemsRemoved: keysToRemove.length });
+    }
+  } catch (e) {}
+}
+
+function resetDefaultSettingsAction() {
+  localStorage.removeItem('use_scan_cache');
+  localStorage.removeItem('remember_scan_cache_choice');
+  localStorage.removeItem('filter_min_matches');
+  localStorage.removeItem('filter_min_condition');
+  localStorage.removeItem('filter_min_rating');
+  localStorage.removeItem('custom_uyu_rate');
+  localStorage.removeItem('wants_grid_density');
+
+  if (CURRENCY_MAP.UYU) CURRENCY_MAP.UYU.rate = 0.025;
+
+  const turboRadio = document.getElementById('settings-cache-turbo');
+  if (turboRadio) turboRadio.checked = true;
+  const rememberCheckbox = document.getElementById('settings-remember-cache');
+  if (rememberCheckbox) rememberCheckbox.checked = false;
+  const minMatches = document.getElementById('settings-min-matches');
+  if (minMatches) minMatches.value = '2';
+  const minCond = document.getElementById('settings-min-condition');
+  if (minCond) minCond.value = 'VG+';
+  const minRating = document.getElementById('settings-min-rating');
+  if (minRating) minRating.value = '99';
+  const rateInput = document.getElementById('settings-rate-uyu');
+  if (rateInput) rateInput.value = '40';
+
+  updateSettingsDensityUI('standard');
+  setGridDensity('standard');
+
+  showToast('Ajustes restablecidos a sus valores predeterminados', 'info');
 }
 
 function escapeCSVCell(val) {

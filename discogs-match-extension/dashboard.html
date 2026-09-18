@@ -163,86 +163,92 @@
           </div>
         </div>
 
-        <div class="relative">
-          <div
-            class="flex items-center gap-2 border border-hairline-light bg-pure-white px-3 py-1 shadow-sm cursor-pointer hover:border-hairline-dark transition-colors"
-            id="user-card" title="Gestionar cuenta de Discogs (Testing y Sesión)">
-            <span class="w-1.5 h-1.5 bg-prada-red" id="connection-status-dot"></span>
-            <span class="text-[10px] tracking-widest uppercase font-semibold text-pitch-black truncate max-w-[95px]"
-              id="username-display">—</span>
-            <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium hidden sm:inline"
-              id="connection-status">ACTIVO</span>
-            <span class="material-symbols-outlined text-[12px] text-muted-graphite pointer-events-none">expand_more</span>
-            <div id="user-avatar" style="display: none;">?</div>
-          </div>
-
-          <!-- Account Management / Testing Dropdown Popover -->
-          <div
-            class="input-fallback p-5 bg-pure-white border border-hairline-dark font-mono"
-            id="input-fallback" style="display: none;">
-            <!-- Prada Linea Rossa Accent Stripe -->
-            <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
-
-            <div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline-light">
-              <span class="text-[10px] font-bold tracking-widest text-prada-red uppercase">[ CUENTA &amp; SESIÓN ]</span>
-              <button id="btn-close-user-dropdown" type="button" class="w-5 h-5 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer text-sm font-bold">✕</button>
+        <div class="flex items-center gap-1.5">
+          <div class="relative">
+            <div
+              class="flex items-center gap-2 border border-hairline-light bg-pure-white px-3 py-1 shadow-sm cursor-pointer hover:border-hairline-dark transition-colors"
+              id="user-card" title="Gestionar cuenta de Discogs (Testing y Sesión)">
+              <span class="w-1.5 h-1.5 bg-prada-red" id="connection-status-dot"></span>
+              <span class="text-[10px] tracking-widest uppercase font-semibold text-pitch-black truncate max-w-[95px]"
+                id="username-display">—</span>
+              <span class="text-[9px] text-emerald-700 bg-emerald-50 px-1 font-medium hidden sm:inline"
+                id="connection-status">ACTIVO</span>
+              <span class="material-symbols-outlined text-[12px] text-muted-graphite pointer-events-none">expand_more</span>
+              <div id="user-avatar" style="display: none;">?</div>
             </div>
 
-            <!-- Current Session Info Card -->
-            <div class="bg-ivory-warm p-3 border border-hairline-light mb-3">
-              <div class="flex items-center justify-between mb-1.5">
-                <span class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold">ESTADO ACTUAL:</span>
-                <span id="user-dropdown-status-badge" class="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300">
-                  ACTIVO
-                </span>
-              </div>
-              <div class="flex items-center gap-2.5 mt-2">
-                <div class="w-8 h-8 bg-pitch-black text-pure-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs" id="user-dropdown-avatar">
-                  —
-                </div>
-                <div class="min-w-0 flex-1">
-                  <span id="user-dropdown-username" class="font-sans font-extrabold text-sm uppercase text-pitch-black block truncate">
-                    —
-                  </span>
-                  <span id="user-dropdown-subtext" class="text-[9px] text-muted-graphite block truncate">
-                    Sesión vinculada a Discogs
-                  </span>
-                </div>
-              </div>
-            </div>
+            <!-- Account Management / Testing Dropdown Popover -->
+            <div
+              class="input-fallback p-5 bg-pure-white border border-hairline-dark font-mono"
+              id="input-fallback" style="display: none;">
+              <!-- Prada Linea Rossa Accent Stripe -->
+              <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
 
-            <!-- Action: Enter / Switch Username -->
-            <div class="space-y-1.5 mb-3">
-              <label class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold block">
-                INGRESAR O CAMBIAR USUARIO:
-              </label>
-              <div class="flex gap-1.5">
-                <input type="text" id="manual-username" placeholder="OTRO USUARIO DISCOGS"
-                  class="flex-1 bg-pure-white border border-hairline-dark px-2.5 py-1.5 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red">
-                <button id="save-username-btn" type="button"
-                  class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 font-mono text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0">
-                  GUARDAR
+              <div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline-light">
+                <span class="text-[10px] font-bold tracking-widest text-prada-red uppercase">[ CUENTA &amp; SESIÓN ]</span>
+                <button id="btn-close-user-dropdown" type="button" class="w-5 h-5 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer text-sm font-bold">✕</button>
+              </div>
+
+              <!-- Current Session Info Card -->
+              <div class="bg-ivory-warm p-3 border border-hairline-light mb-3">
+                <div class="flex items-center justify-between mb-1.5">
+                  <span class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold">ESTADO ACTUAL:</span>
+                  <span id="user-dropdown-status-badge" class="text-[9px] px-1.5 py-0.5 font-bold uppercase tracking-wider bg-emerald-50 text-emerald-800 border border-emerald-300">
+                    CONECTADO
+                  </span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <div class="w-7 h-7 bg-pitch-black text-pure-white flex items-center justify-center font-bold text-xs" id="user-dropdown-avatar">
+                    ?
+                  </div>
+                  <div class="overflow-hidden">
+                    <span class="text-xs font-bold text-pitch-black truncate block" id="user-dropdown-username">—</span>
+                    <span class="text-[9px] text-muted-graphite block truncate" id="user-dropdown-method">Detectado automáticamente</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Manual Username Switcher -->
+              <div class="space-y-2 mb-3">
+                <label class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold block">CAMBIAR USUARIO (MODO TESTING):</label>
+                <div class="flex gap-1.5">
+                  <input
+                    class="border border-hairline-light px-2.5 py-1.5 text-xs bg-surface-low focus:border-pitch-black focus:outline-none flex-1 font-mono text-pitch-black"
+                    id="manual-username" placeholder="ej. mi_usuario_discogs" type="text" />
+                  <button id="save-username-btn" type="button"
+                    class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0">
+                    VINCULAR
+                  </button>
+                </div>
+                <p class="text-[9px] text-muted-graphite leading-tight">Podés ingresar cualquier usuario público de Discogs para probar su Wantlist.</p>
+              </div>
+
+              <!-- Session Actions -->
+              <div class="pt-2 border-t border-hairline-light flex flex-col gap-2">
+                <button id="btn-disconnect-session" type="button"
+                  class="w-full border border-prada-red/40 bg-prada-red-bg text-prada-red hover:bg-prada-red hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                  <span class="material-symbols-outlined text-[14px]">logout</span>
+                  <span>DESCONECTAR CUENTA (MODO TESTING)</span>
+                </button>
+
+                <button id="btn-reconnect-session" type="button"
+                  class="w-full border border-hairline-light bg-surface-low hover:border-pitch-black text-pitch-black py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  style="display: none;">
+                  <span class="material-symbols-outlined text-[14px]">autorenew</span>
+                  <span>AUTODETECTAR SESIÓN DISCOGS</span>
                 </button>
               </div>
             </div>
-
-            <!-- Actions: Disconnect (Testing) & Reconnect -->
-            <div class="pt-2 border-t border-hairline-light flex flex-col gap-2">
-              <button id="btn-disconnect-session" type="button"
-                class="w-full border border-prada-red/40 bg-prada-red-bg text-prada-red hover:bg-prada-red hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
-                <span class="material-symbols-outlined text-[14px]">logout</span>
-                <span>DESCONECTAR CUENTA (MODO TESTING)</span>
-              </button>
-
-              <button id="btn-reconnect-session" type="button"
-                class="w-full border border-hairline-light bg-surface-low hover:border-pitch-black text-pitch-black py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                style="display: none;">
-                <span class="material-symbols-outlined text-[14px]">autorenew</span>
-                <span>AUTODETECTAR SESIÓN DISCOGS</span>
-              </button>
-            </div>
+            <div style="display: none;"><input type="password" id="discogs-token-input"></div>
           </div>
-          <div style="display: none;"><input type="password" id="discogs-token-input"></div>
+
+          <!-- Settings Gear Button (Personalización) -->
+          <button id="btn-open-settings"
+            class="flex items-center justify-center border border-hairline-light bg-pure-white hover:border-hairline-dark hover:bg-surface-low text-pitch-black p-1.5 shadow-sm transition-all cursor-pointer group"
+            title="Personalización y Configuración"
+            data-tooltip="Personalización y Ajustes" data-tooltip-pos="bottom">
+            <span class="material-symbols-outlined text-[16px] text-muted-graphite group-hover:text-pitch-black transition-transform group-hover:rotate-45 duration-300">settings</span>
+          </button>
         </div>
       </div>
     </div>
@@ -1077,6 +1083,245 @@
     </div>
   </div>
 
+  <!-- PERSONALIZATION & SETTINGS MODAL -->
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="settings-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-xl w-full shadow-2xl relative font-mono max-h-[90vh] flex flex-col">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-pitch-black"></div>
+
+      <!-- Header -->
+      <div class="flex justify-between items-start mb-4 pb-3 border-b border-hairline-light shrink-0">
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <span class="material-symbols-outlined text-[18px] text-pitch-black">tune</span>
+            <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase">[ PANEL DE PERSONALIZACIÓN ]</span>
+          </div>
+          <h2 class="font-sans text-xl font-extrabold uppercase tracking-tight text-pitch-black">Ajustes &amp; Preferencias</h2>
+        </div>
+        <button id="btn-close-settings-modal" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
+      </div>
+
+      <!-- Scrollable Settings Body -->
+      <div class="flex-1 overflow-y-auto pr-1 space-y-5 text-xs">
+        
+        <!-- Setting Group 1: Motor de Escaneo & Rendimiento -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-prada-red">speed</span>
+              MOTOR DE ESCANEO &amp; RENDIMIENTO
+            </span>
+            <span class="text-[9px] bg-pitch-black text-pure-white px-1.5 py-0.5 rounded font-mono">CORE</span>
+          </div>
+
+          <!-- Default Cache Mode -->
+          <div class="space-y-1.5">
+            <label class="font-bold text-pitch-black uppercase text-[10.5px] block">Modo de Búsqueda Predeterminado:</label>
+            <div class="grid grid-cols-2 gap-2">
+              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors">
+                <input type="radio" name="settings-cache-mode" value="cache" id="settings-cache-turbo" checked class="mt-0.5 accent-prada-red">
+                <div>
+                  <span class="font-bold block text-pitch-black text-[11px]">⚡ CACHÉ TURBO</span>
+                  <span class="text-[10px] text-muted-graphite leading-tight block">5x más veloz. Usa datos recientes guardados.</span>
+                </div>
+              </label>
+              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors">
+                <input type="radio" name="settings-cache-mode" value="live" id="settings-cache-live" class="mt-0.5 accent-prada-red">
+                <div>
+                  <span class="font-bold block text-pitch-black text-[11px]">🌐 SIEMPRE EN VIVO</span>
+                  <span class="text-[10px] text-muted-graphite leading-tight block">Consulta Discogs directo en cada disco.</span>
+                </div>
+              </label>
+            </div>
+            <label class="flex items-center gap-2 pt-1 cursor-pointer">
+              <input type="checkbox" id="settings-remember-cache" class="accent-prada-red">
+              <span class="text-muted-graphite text-[10.5px]">Recordar siempre mi elección sin abrir el cuadro de diálogo</span>
+            </label>
+          </div>
+
+          <!-- Min Discs for Seller Highlighting -->
+          <div class="pt-2 border-t border-hairline-light flex items-center justify-between">
+            <div>
+              <span class="font-bold text-pitch-black text-[11px] block">Lote Mínimo para Destacar Vendedor:</span>
+              <span class="text-[10px] text-muted-graphite">Amortiza el costo de envío agrupando vinilos</span>
+            </div>
+            <select id="settings-min-matches" class="border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs cursor-pointer outline-none">
+              <option value="1">1+ Vinilos (Cualquiera)</option>
+              <option value="2" selected>2+ Vinilos (Recomendado)</option>
+              <option value="3">3+ Vinilos</option>
+              <option value="5">5+ Vinilos (Grandes lotes)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Setting Group 2: Filtros de Calidad & Goldmine -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-prada-emerald">verified</span>
+              FILTROS DE CALIDAD &amp; GOLDMINE
+            </span>
+            <span class="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.5 rounded font-mono font-bold">ESTADO</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Estado Mínimo del Vinilo:</label>
+              <select id="settings-min-condition" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+                <option value="any">Cualquier condición</option>
+                <option value="VG+" selected>VG+ o Superior (Recomendado)</option>
+                <option value="NM">NM / Mint / Unplayed</option>
+                <option value="M">MINT (Nuevo sin abrir)</option>
+                <option value="VG">VG o Superior</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Reputación Mínima del Vendedor:</label>
+              <select id="settings-min-rating" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+                <option value="0">Cualquier reputación</option>
+                <option value="95">≥ 95.0% Positivo</option>
+                <option value="98">≥ 98.0% Positivo</option>
+                <option value="99" selected>≥ 99.0% Positivo (Recomendado)</option>
+                <option value="100">100% Impecable</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setting Group 3: Moneda & Localización -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-prada-blue">payments</span>
+              MONEDA &amp; LOCALIZACIÓN
+            </span>
+            <span class="text-[9px] bg-blue-100 text-blue-800 border border-blue-300 px-1.5 py-0.5 rounded font-mono font-bold">PRECIOS</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Moneda Principal:</label>
+              <select id="settings-currency" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+                <option value="USD" selected>$ USD (Dólar estadounidense)</option>
+                <option value="UYU">UYU ($U Pesos Uruguayos)</option>
+                <option value="EUR">€ EUR (Euro)</option>
+                <option value="GBP">£ GBP (Libra esterlina)</option>
+                <option value="ARS">$ ARS (Pesos argentinos)</option>
+                <option value="BRL">R$ BRL (Real brasileño)</option>
+                <option value="original">Moneda original de la tienda</option>
+              </select>
+            </div>
+            <div>
+              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">País del Comprador (Envío):</label>
+              <select id="settings-country" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+                <option value="Uruguay" selected>Uruguay (UY)</option>
+                <option value="Spain">España (ES)</option>
+                <option value="United States">EE.UU. (US)</option>
+                <option value="Argentina">Argentina (AR)</option>
+                <option value="United Kingdom">Reino Unido (UK)</option>
+                <option value="Germany">Alemania (DE)</option>
+                <option value="Other">Otro / Internacional</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Custom UYU Exchange Rate -->
+          <div class="pt-2 border-t border-hairline-light flex items-center justify-between">
+            <div>
+              <span class="font-bold text-pitch-black text-[11px] block">Cotización Dólar (UYU por 1 USD):</span>
+              <span class="text-[10px] text-muted-graphite">Usado para convertir precios en pesos uruguayos</span>
+            </div>
+            <div class="flex items-center gap-1">
+              <span class="font-bold text-xs text-pitch-black">$U</span>
+              <input type="number" id="settings-rate-uyu" step="0.5" min="20" max="100" value="40"
+                class="w-20 border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs text-right outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- Setting Group 4: Apariencia & Cuadrícula -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-pitch-black">grid_view</span>
+              APARIENCIA &amp; VISUALIZACIÓN
+            </span>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="font-bold text-pitch-black text-[11px] block">Densidad de la Wantlist:</span>
+              <span class="text-[10px] text-muted-graphite">Tamaño de las tarjetas en la lista de deseos</span>
+            </div>
+            <div class="flex border border-hairline-dark bg-pure-white overflow-hidden shadow-xs">
+              <button type="button" id="settings-density-standard" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pitch-black text-pure-white">Estándar</button>
+              <button type="button" id="settings-density-compact" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pure-white text-muted-graphite hover:text-pitch-black">Compacta</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Setting Group 5: Observabilidad & Consola Ops -->
+        <div class="border border-purple-200 bg-purple-50/50 p-4 space-y-3">
+          <div class="flex items-center justify-between text-purple-950 font-bold uppercase text-[11px] border-b border-purple-200 pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-purple-700">monitor_heart</span>
+              OBSERVABILIDAD &amp; TELEMETRÍA (DATADOG STYLE)
+            </span>
+            <span class="text-[9px] bg-purple-900 text-purple-200 px-1.5 py-0.5 rounded font-mono font-bold">VINYL OPS</span>
+          </div>
+          <p class="text-[11px] text-purple-900 leading-relaxed">
+            Consola externa en vivo para inspeccionar pods, eventos, dispositivos (iPhone / Chrome) y trazas de error en tiempo real.
+          </p>
+          <a href="monitor.html" target="_blank"
+            class="inline-flex items-center justify-center gap-2 bg-purple-900 hover:bg-purple-950 text-white w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider transition-colors shadow-xs">
+            <span class="material-symbols-outlined text-[16px]">open_in_new</span>
+            <span>ABRIR CONSOLA VINYL OPS (LIVE STREAM)</span>
+          </a>
+        </div>
+
+        <!-- Setting Group 6: Mantenimiento & Datos Locales -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-muted-graphite">cleaning_services</span>
+              ALMACENAMIENTO &amp; MANTENIMIENTO
+            </span>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <button type="button" id="btn-clear-scan-cache"
+              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-rose-50 hover:border-rose-300 hover:text-rose-800 text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+              <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
+              <span>Limpiar Caché de Escaneo</span>
+            </button>
+            <button type="button" id="btn-reset-default-settings"
+              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-muted-graphite hover:text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+              <span class="material-symbols-outlined text-[14px]">restart_alt</span>
+              <span>Restablecer Ajustes</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer Actions -->
+      <div class="flex justify-between items-center pt-4 border-t border-hairline-light shrink-0 mt-3 font-mono text-xs">
+        <span class="text-[10px] text-muted-graphite">Los cambios se guardan automáticamente.</span>
+        <div class="flex gap-2">
+          <button id="btn-close-settings-modal-bottom"
+            class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">
+            CERRAR
+          </button>
+          <button id="btn-save-settings"
+            class="bg-pitch-black hover:bg-prada-red text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[15px]">check</span>
+            <span>APLICAR</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- IMPORT LOCAL SHEET MODAL -->
   <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
     id="local-sheet-modal" style="display: none;">
@@ -1335,6 +1580,12 @@
       <span class="w-1.5 h-1.5 bg-prada-red" id="mobile-status-dot"></span>
       <span class="font-mono text-[10px] font-bold uppercase text-pitch-black max-w-[75px] truncate" id="mobile-username">—</span>
     </div>
+    <!-- Settings button for mobile -->
+    <button id="mobile-btn-open-settings"
+      class="shrink-0 border border-hairline-dark bg-pure-white p-2 flex items-center justify-center text-pitch-black cursor-pointer hover:bg-surface-low"
+      title="Ajustes y Personalización">
+      <span class="material-symbols-outlined text-[18px]">settings</span>
+    </button>
   </div>
 
   <script src="xlsx.full.min.js"></script>
