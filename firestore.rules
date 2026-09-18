@@ -53,5 +53,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
       }
     }
+
+    // Telemetry and diagnostic logs from extension and mobile web apps
+    match /app_logs/{logId} {
+      // Anyone can send and view telemetry logs
+      allow read, write: if true;
+    }
   }
 }
