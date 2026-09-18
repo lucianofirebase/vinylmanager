@@ -190,15 +190,29 @@
     el.refreshIcon.classList.add('animate-spin');
 
     try {
-      const endpoint = `${BASE_URL}?key=${FIREBASE_API_KEY}&pageSize=150`;
-      const response = await fetch(endpoint);
+      const runQueryEndpoint = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery?key=${FIREBASE_API_KEY}`;
+      const payload = {
+        structuredQuery: {
+          from: [{ collectionId: 'app_logs' }],
+          orderBy: [{ field: { fieldPath: 'timestamp' }, direction: 'DESCENDING' }],
+          limit: 300
+        }
+      };
+
+      const response = await fetch(runQueryEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
       if (!response.ok) {
         throw new Error(`Error HTTP ${response.status} al consultar Firestore`);
       }
 
-      const data = await response.json();
-      const rawDocs = data.documents || [];
+      const queryResults = await response.json();
+      const rawDocs = (Array.isArray(queryResults) ? queryResults : [])
+        .filter((item) => item.document && item.document.fields)
+        .map((item) => item.document);
 
       // Parse documents
       state.allLogs = rawDocs.map((doc) => {
@@ -213,6 +227,8 @@
           else if (level === 'error') action = 'ERROR';
           else action = 'LOG';
         }
+
+        const rawTs = f.timestamp?.timestampValue || f.timestamp?.stringValue || doc.createTime || new Date().toISOString();
 
         return {
           id: doc.name.split('/').pop(),
@@ -230,7 +246,7 @@
           message: msg,
           details: f.details?.stringValue || '',
           url: f.url?.stringValue || '',
-          timestamp: f.timestamp?.timestampValue || doc.createTime || new Date().toISOString(),
+          timestamp: rawTs,
           rawDoc: doc
         };
       }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));

@@ -41,6 +41,24 @@ if (savedCustomUyuRate > 0 && CURRENCY_MAP.UYU) {
   CURRENCY_MAP.UYU.rate = 1 / savedCustomUyuRate;
 }
 
+// Synchronize all Cache Checkboxes and remember user's choice in localStorage
+function syncCacheState(enabled) {
+  const useCacheCheckbox = document.getElementById('use-cache-checkbox');
+  const managerUseCacheCheckbox = document.getElementById('manager-use-cache-checkbox');
+  const bottomUseCacheCheckbox = document.getElementById('bottom-use-cache-checkbox');
+  const settingsTurbo = document.getElementById('settings-cache-turbo');
+  const settingsDirect = document.getElementById('settings-cache-direct');
+  if (useCacheCheckbox) useCacheCheckbox.checked = enabled;
+  if (managerUseCacheCheckbox) managerUseCacheCheckbox.checked = enabled;
+  if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.checked = enabled;
+  if (settingsTurbo && settingsDirect) {
+    settingsTurbo.checked = enabled;
+    settingsDirect.checked = !enabled;
+  }
+  localStorage.setItem('use_scan_cache', String(enabled));
+}
+window.syncCacheState = syncCacheState;
+
 function formatPrice(val, currencyCode, overrideDisplayCurrency = null) {
   const numVal = typeof val === 'number' ? (isNaN(val) ? 0 : val) : (parseFloat(val) || 0);
   const displayCurrencySelect = document.getElementById('display-currency');
@@ -709,13 +727,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const wantsGrid = document.getElementById('wants-list-grid');
 
   // Synchronize all Cache Checkboxes and remember user's choice in localStorage
-  const syncCacheState = (enabled) => {
-    if (useCacheCheckbox) useCacheCheckbox.checked = enabled;
-    if (managerUseCacheCheckbox) managerUseCacheCheckbox.checked = enabled;
-    if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.checked = enabled;
-    localStorage.setItem('use_scan_cache', String(enabled));
-  };
-
   const savedCachePref = localStorage.getItem('use_scan_cache');
   const initialCacheVal = savedCachePref === null ? true : savedCachePref === 'true';
   syncCacheState(initialCacheVal);
@@ -1508,7 +1519,10 @@ function showWantlistManager(pushHistory = true) {
 }
 
 // Render loaded wants list inside Wantlist Manager for marking favorites (★)
-function renderWantsListInManager() {
+let wantsRenderLimit = 48;
+
+function renderWantsListInManager(resetLimit = true) {
+  if (resetLimit) wantsRenderLimit = 48;
   updatePriorityFilterUI();
   const wantsListGrid = document.getElementById('wants-list-grid');
   if (!wantsListGrid) return;
@@ -1526,7 +1540,10 @@ function renderWantsListInManager() {
     return;
   }
 
-  filteredWants.forEach((item, index) => {
+  // Safe chunked rendering for mobile performance & memory stability
+  const itemsToRender = filteredWants.slice(0, wantsRenderLimit);
+
+  itemsToRender.forEach((item, index) => {
     const card = document.createElement('div');
     const isChecked = item.isPriority ? 'checked' : '';
     const starId = `star-want-${item.id || index}`;
@@ -1548,7 +1565,7 @@ function renderWantsListInManager() {
     displayArtist = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
 
     card.className = `record-card record-card-animated bg-pure-white border border-hairline-dark p-2.5 flex flex-col items-center relative transition-all duration-200 hover:shadow-md cursor-pointer ${item.isPriority ? 'active-priority' : ''}`;
-    card.style.animationDelay = `${Math.min(index * 0.02, 0.8)}s`;
+    card.style.animationDelay = `${Math.min(index * 0.02, 0.5)}s`;
     card.dataset.title = displayTitle.toLowerCase();
     card.dataset.artist = displayArtist.toLowerCase();
     
@@ -1627,6 +1644,32 @@ function renderWantsListInManager() {
     wantsListGrid.appendChild(card);
   });
 
+  // "Cargar más discos" button if there are more than current chunk
+  if (filteredWants.length > wantsRenderLimit) {
+    const remaining = filteredWants.length - wantsRenderLimit;
+    const loadMoreContainer = document.createElement('div');
+    loadMoreContainer.id = 'wants-load-more-container';
+    loadMoreContainer.className = 'w-full py-6 text-center col-span-full flex flex-col items-center justify-center gap-2';
+    loadMoreContainer.style.gridColumn = '1 / -1';
+    loadMoreContainer.innerHTML = `
+      <button type="button" id="btn-load-more-wants" class="px-6 py-2.5 bg-pitch-black hover:bg-prada-red text-pure-white font-mono text-xs font-bold uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-2">
+        <span class="material-symbols-outlined text-base">expand_more</span>
+        <span>Cargar más discos (${itemsToRender.length} de ${filteredWants.length})</span>
+      </button>
+      <span class="text-[10px] font-mono text-muted-graphite uppercase tracking-wider">+${remaining} discos disponibles en memoria</span>
+    `;
+    wantsListGrid.appendChild(loadMoreContainer);
+
+    const btnLoadMore = loadMoreContainer.querySelector('#btn-load-more-wants');
+    if (btnLoadMore) {
+      btnLoadMore.addEventListener('click', (e) => {
+        e.preventDefault();
+        wantsRenderLimit += 48;
+        renderWantsListInManager(false);
+      });
+    }
+  }
+
   // Patch star burst microanimations after render
   if (window.Motion) {
     requestAnimationFrame(() => window.Motion.patchStarCards());
@@ -1634,50 +1677,7 @@ function renderWantsListInManager() {
 }
 
 function filterWantsInManager() {
-  const input = document.getElementById('wants-search-input');
-  const query = (input ? input.value : '').toLowerCase().trim();
-  const grid = document.getElementById('wants-list-grid');
-  if (!grid) return;
-  
-  const cards = grid.querySelectorAll('.record-card');
-  if (!cards || cards.length === 0) {
-    if (state.wants && state.wants.length > 0) {
-      renderWantsListInManager();
-    }
-    return;
-  }
-  
-  let visibleCount = 0;
-  cards.forEach(card => {
-    const title = (card.dataset.title || card.querySelector('p.font-sans')?.textContent || '').toLowerCase();
-    const artist = (card.dataset.artist || card.querySelector('p.font-mono')?.textContent || '').toLowerCase();
-    const allText = card.textContent.toLowerCase();
-    
-    if (!query || title.includes(query) || artist.includes(query) || allText.includes(query)) {
-      card.style.display = 'flex';
-      visibleCount++;
-    } else {
-      card.style.display = 'none';
-    }
-  });
-
-  let emptyMsg = document.getElementById('wants-filter-empty-msg');
-  if (visibleCount === 0 && query) {
-    if (!emptyMsg) {
-      emptyMsg = document.createElement('div');
-      emptyMsg.id = 'wants-filter-empty-msg';
-      emptyMsg.className = 'w-full py-16 text-center col-span-full flex flex-col items-center justify-center';
-      emptyMsg.style.gridColumn = '1 / -1';
-      emptyMsg.innerHTML = `
-        <span class="material-symbols-outlined text-4xl text-muted-graphite mb-2">search_off</span>
-        <p class="font-sans font-extrabold text-sm uppercase tracking-wide text-pitch-black mb-1">Sin coincidencias para "${escapeHTML(input.value)}"</p>
-        <p class="font-mono text-xs text-muted-graphite">Prueba con otro título o artista de tu Wantlist.</p>
-      `;
-      grid.appendChild(emptyMsg);
-    }
-  } else if (emptyMsg) {
-    emptyMsg.remove();
-  }
+  renderWantsListInManager(true);
 }
 
 // Initialize Application and detect user session
@@ -1716,6 +1716,25 @@ async function initApp() {
         showFallbackLogin();
       }
     }
+    // Load saved wants cache if available for this user
+    const savedUser = state.username || localStorage.getItem('discogs_username');
+    if (savedUser && (!state.wants || state.wants.length === 0)) {
+      try {
+        const cached = localStorage.getItem(`discogs_wants_cache_${savedUser.toLowerCase()}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            state.wants = parsed;
+            if (metricWantsCount) metricWantsCount.textContent = state.wants.length;
+            log(`Lista de deseos (${state.wants.length} discos) restaurada automáticamente para ${savedUser}.`, 'info');
+          }
+        }
+      } catch (e) {
+        console.warn('Error reading saved wants cache:', e);
+      }
+    }
+
+    updateForwardAndBackButtons();
   } catch (error) {
     console.error('Session detection error:', error);
     showFallbackLogin();
@@ -2451,6 +2470,24 @@ async function loadWantlist() {
     
     state.wants = loadedWants;
     metricWantsCount.textContent = state.wants.length;
+
+    // Persist wants to localStorage to survive mobile Safari memory drops / reloads
+    try {
+      const compact = loadedWants.map(w => ({
+        id: w.id,
+        title: w.title,
+        artist: w.artist,
+        image: w.image,
+        isPriority: !!w.isPriority,
+        haveCount: w.haveCount,
+        wantCount: w.wantCount,
+        year: w.year
+      }));
+      localStorage.setItem(`discogs_wants_cache_${(state.username || 'user').toLowerCase()}`, JSON.stringify(compact));
+    } catch (cacheErr) {
+      console.warn('Could not cache wants in localStorage:', cacheErr);
+    }
+
     try {
       if (window.Telemetry?.track) {
         window.Telemetry.track('WANTLIST_LOAD_SUCCESS', `Wantlist cargada con éxito: ${loadedWants.length} discos`, {
@@ -2716,16 +2753,24 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   let unshippableCount = 0;
   let unshippableLocations = [];
   
-  // Try fetching from chrome.storage.local cache first (if user enabled cache)
+  // Try fetching from chrome.storage.local or localStorage cache first (if user enabled cache)
   const isCacheEnabled = localStorage.getItem('use_scan_cache') !== 'false' && (!useCacheCheckbox || useCacheCheckbox.checked);
-  if (isCacheEnabled && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+  if (isCacheEnabled) {
     try {
       const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-      const cacheData = await new Promise(resolve => {
-        chrome.storage.local.get([cacheKey], (result) => {
-          resolve(result[cacheKey] || null);
+      let cacheData = null;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        cacheData = await new Promise(resolve => {
+          chrome.storage.local.get([cacheKey], (result) => {
+            resolve(result[cacheKey] || null);
+          });
         });
-      });
+      } else {
+        const localRaw = localStorage.getItem(cacheKey);
+        if (localRaw) {
+          try { cacheData = JSON.parse(localRaw); } catch (e) {}
+        }
+      }
       
       if (cacheData && cacheData.version === 3) {
         const now = Date.now();
@@ -2776,19 +2821,22 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
     updateOffersDisplay(parsedListings);
     
     // Save to cache with version 3 tag
+    const cacheObj = {
+      timestamp: Date.now(),
+      version: 3,
+      listings: parsedListings,
+      communityStats: communityStats,
+      totalWorldListings: totalWorldListings,
+      unshippableCount: unshippableCount,
+      unshippableLocations: unshippableLocations
+    };
+    const cacheKey = `release_${item.id}_${buyerCountryVal}`;
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-      const cacheKey = `release_${item.id}_${buyerCountryVal}`;
-      chrome.storage.local.set({
-        [cacheKey]: {
-          timestamp: Date.now(),
-          version: 3,
-          listings: parsedListings,
-          communityStats: communityStats,
-          totalWorldListings: totalWorldListings,
-          unshippableCount: unshippableCount,
-          unshippableLocations: unshippableLocations
-        }
-      });
+      chrome.storage.local.set({ [cacheKey]: cacheObj });
+    } else {
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(cacheObj));
+      } catch (err) {}
     }
     
     return { 
@@ -3075,14 +3123,25 @@ async function startMarketplaceScan(startIndex = 0) {
       } catch (e) {}
     } else {
       toggleFiltersState(false);
-      if (state.wants.length > 0) {
+      if (state.wants && state.wants.length > 0) {
         navigateToView('wantlist', false);
+      } else {
+        navigateToView('wizard-1', false);
       }
+
+      if (typeof showToast === 'function' && !state.cancelRequested) {
+        if (!IS_EXTENSION) {
+          showToast('Análisis finalizado. En la web móvil, Discogs restringe peticiones en vivo por CORS. Para cruzar vendedores en vivo ilimitado, usa la extensión de Chrome.', 'info', 6000);
+        } else {
+          showToast('No se encontraron copias en venta para los filtros seleccionados.', 'info', 4000);
+        }
+      }
+
       try {
         if (window.Telemetry?.track && !state.cancelRequested) {
-          window.Telemetry.track('SCAN_ZERO_RESULTS', `Escaneo finalizado sin resultados para ${state.wants.length} discos`, {
+          window.Telemetry.track('SCAN_ZERO_RESULTS', `Escaneo finalizado sin resultados para ${state.wants ? state.wants.length : 0} discos`, {
             username: state.username,
-            wantsCount: state.wants.length
+            wantsCount: state.wants ? state.wants.length : 0
           });
         }
       } catch (e) {}
