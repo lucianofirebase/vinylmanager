@@ -210,7 +210,8 @@
 
               <div class="flex items-center justify-between pb-3 mb-3 border-b border-hairline-light">
                 <span class="text-[10px] font-bold tracking-widest text-prada-red uppercase">[ CUENTA &amp; SESIÓN ]</span>
-                <button id="btn-close-user-dropdown" type="button" class="w-5 h-5 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer text-sm font-bold">✕</button>
+                <button id="btn-close-user-dropdown" type="button" class="w-5 h-5 flex items-center justify-center text-muted-graphite hover:text-pitch-black cursor-pointer text-sm font-bold"
+                  data-tooltip="Cerrar menú de cuenta" data-tooltip-pos="left">✕</button>
               </div>
 
               <!-- Current Session Info Card -->
@@ -238,9 +239,11 @@
                 <div class="flex gap-1.5">
                   <input
                     class="border border-hairline-light px-2.5 py-1.5 text-xs bg-surface-low focus:border-pitch-black focus:outline-none flex-1 font-mono text-pitch-black"
-                    id="manual-username" placeholder="ej. mi_usuario_discogs" type="text" />
+                    id="manual-username" placeholder="ej. mi_usuario_discogs" type="text"
+                    data-tooltip="Ingresa el usuario de cualquier cuenta pública de Discogs para analizar sus vinilos" data-tooltip-pos="bottom" />
                   <button id="save-username-btn" type="button"
-                    class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0">
+                    class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
+                    data-tooltip="Vincular este usuario y cargar su catálogo de deseos" data-tooltip-pos="bottom">
                     VINCULAR
                   </button>
                 </div>
@@ -250,14 +253,16 @@
               <!-- Session Actions -->
               <div class="pt-2 border-t border-hairline-light flex flex-col gap-2">
                 <button id="btn-disconnect-session" type="button"
-                  class="w-full border border-prada-red/40 bg-prada-red-bg text-prada-red hover:bg-prada-red hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+                  class="w-full border border-prada-red/40 bg-prada-red-bg text-prada-red hover:bg-prada-red hover:text-pure-white py-2 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+                  data-tooltip="Desconectar la cuenta activa y volver al asistente inicial" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[14px]">logout</span>
                   <span>DESCONECTAR CUENTA (MODO TESTING)</span>
                 </button>
 
                 <button id="btn-reconnect-session" type="button"
                   class="w-full border border-hairline-light bg-surface-low hover:border-pitch-black text-pitch-black py-1.5 px-3 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-                  style="display: none;">
+                  style="display: none;"
+                  data-tooltip="Reconectar y autodetectar tu sesión iniciada en Discogs.com" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[14px]">autorenew</span>
                   <span>AUTODETECTAR SESIÓN DISCOGS</span>
                 </button>
@@ -463,7 +468,8 @@
                 <span class="material-symbols-outlined text-[13px] text-prada-red">schedule</span> Calculando tiempo...
               </span>
               <button id="cancel-scan-btn"
-                class="text-[11px] font-mono font-bold uppercase tracking-wider text-prada-red bg-prada-red-bg border border-prada-red/40 hover:bg-prada-red hover:text-pure-white px-3 py-1 transition-colors cursor-pointer flex items-center gap-1">
+                class="text-[11px] font-mono font-bold uppercase tracking-wider text-prada-red bg-prada-red-bg border border-prada-red/40 hover:bg-prada-red hover:text-pure-white px-3 py-1 transition-colors cursor-pointer flex items-center gap-1"
+                data-tooltip="Detener inmediatamente el escaneo y conservar los resultados analizados hasta ahora" data-tooltip-pos="bottom">
                 <span class="material-symbols-outlined text-[14px]">cancel</span> Cancelar
               </button>
             </div>
@@ -473,7 +479,7 @@
           <div class="scan-centerpiece">
 
             <!-- Vinyl Disc peeking & spinning behind sleeve (220px) -->
-            <div id="loading-turntable-container" class="scan-vinyl-disc">
+            <div id="loading-turntable-container" class="scan-vinyl-disc turntable-vinyl">
               <!-- Vinyl concentric micro-grooves -->
               <div class="scan-vinyl-groove scan-vinyl-groove-1"></div>
               <div class="scan-vinyl-groove scan-vinyl-groove-2"></div>
@@ -884,7 +890,8 @@
                 <span>PLANILLA</span>
               </button>
               <button id="manager-start-scan-top-btn"
-                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-wider py-2 px-5 shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors shrink-0">
+                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-wider py-2 px-5 shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors shrink-0"
+                data-tooltip="Iniciar radar de búsqueda para cruzar tu lista de deseos con el Marketplace de Discogs" data-tooltip-pos="top">
                 <span class="material-symbols-outlined text-[16px]">radar</span>
                 <span>INICIAR ANÁLISIS</span>
               </button>
@@ -921,7 +928,8 @@
             </div>
             <div class="flex items-center gap-3">
               <button id="manager-start-scan-btn"
-                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-2 px-6 shadow-sm cursor-pointer transition-colors flex items-center gap-1.5">
+                class="bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-2 px-6 shadow-sm cursor-pointer transition-colors flex items-center gap-1.5"
+                data-tooltip="Iniciar radar de búsqueda para cruzar tu lista de deseos con el Marketplace de Discogs" data-tooltip-pos="top">
                 <span class="material-symbols-outlined text-[15px]">radar</span>
                 <span>INICIAR ANÁLISIS DE VENDEDORES</span>
               </button>
@@ -943,9 +951,17 @@
                 <span class="text-prada-blue text-xs font-mono tracking-wider font-semibold">// OPTIMIZADOR MULTI-VENDOR
                   DE CARGAMENTO</span>
               </div>
-              <div
-                class="font-mono text-[11px] tracking-wider uppercase text-muted-graphite bg-prada-ochre-bg border border-prada-ochre/30 px-3 py-1">
-                AHORRO LOGÍSTICO ESTIMADO: <strong class="text-prada-red font-bold">HASTA 72% CONSOLIDADO</strong>
+              <div class="flex items-center gap-3">
+                <div
+                  class="font-mono text-[11px] tracking-wider uppercase text-muted-graphite bg-prada-ochre-bg border border-prada-ochre/30 px-3 py-1">
+                  AHORRO LOGÍSTICO ESTIMADO: <strong class="text-prada-red font-bold">HASTA 72% CONSOLIDADO</strong>
+                </div>
+                <button id="btn-scroll-to-results" type="button"
+                  class="font-mono text-[11px] font-bold uppercase tracking-wider text-pitch-black hover:text-prada-red bg-pure-white border border-hairline-dark hover:border-pitch-black px-3 py-1 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                  data-tooltip="Desplazarse hacia abajo al ranking completo de tiendas evaluadas" data-tooltip-pos="bottom">
+                  <span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+                  <span>VER RANKING COMPLETO</span>
+                </button>
               </div>
             </div>
 
@@ -1172,7 +1188,8 @@
           </div>
           <h2 class="font-sans text-xl font-extrabold uppercase tracking-tight text-pitch-black">Ajustes &amp; Preferencias</h2>
         </div>
-        <button id="btn-close-settings-modal" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
+        <button id="btn-close-settings-modal" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono"
+          data-tooltip="Cerrar ventana de ajustes" data-tooltip-pos="left">&times;</button>
       </div>
 
       <!-- Scrollable Settings Body -->
@@ -1686,27 +1703,31 @@
   <div id="mobile-action-bar">
     <!-- Load wantlist -->
     <button id="mobile-load-wants-btn"
-      class="flex-1 bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      class="flex-1 bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40"
+      data-tooltip="Cargar o sincronizar catálogo de deseos de Discogs" data-tooltip-pos="top">
       <span class="material-symbols-outlined text-[16px]">favorite</span>
       <span>CARGAR</span>
     </button>
     <!-- Start scan -->
     <button id="mobile-start-scan-btn"
-      class="flex-1 bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40">
+      class="flex-1 bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono font-bold text-[11px] uppercase tracking-wider py-2.5 flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer disabled:opacity-40"
+      data-tooltip="Iniciar radar de búsqueda en tiendas de Discogs" data-tooltip-pos="top">
       <span class="material-symbols-outlined text-[16px]">radar</span>
       <span>ANALIZAR</span>
     </button>
     <!-- User badge -->
     <div id="mobile-user-badge"
       class="shrink-0 border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center gap-1.5 cursor-pointer"
-      title="Gestionar cuenta">
+      title="Gestionar cuenta"
+      data-tooltip="Gestionar usuario y sesión activa de Discogs" data-tooltip-pos="top">
       <span class="w-1.5 h-1.5 bg-prada-red" id="mobile-status-dot"></span>
       <span class="font-mono text-[10px] font-bold uppercase text-pitch-black max-w-[75px] truncate" id="mobile-username">—</span>
     </div>
     <!-- Settings button for mobile -->
     <button id="mobile-btn-open-settings"
       class="shrink-0 border border-hairline-dark bg-pure-white p-2 flex items-center justify-center text-pitch-black cursor-pointer hover:bg-surface-low"
-      title="Ajustes y Personalización">
+      title="Ajustes y Personalización"
+      data-tooltip="Ajustes de moneda, país de envío y filtros" data-tooltip-pos="top">
       <span class="material-symbols-outlined text-[18px]">settings</span>
     </button>
   </div>

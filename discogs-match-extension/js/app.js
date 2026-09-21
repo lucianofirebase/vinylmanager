@@ -159,7 +159,7 @@ function updateUserDropdownInfo() {
   const statusBadge = document.getElementById('user-dropdown-status-badge');
   const avatarEl = document.getElementById('user-dropdown-avatar');
   const userText = document.getElementById('user-dropdown-username');
-  const subtextEl = document.getElementById('user-dropdown-subtext');
+  const subtextEl = document.getElementById('user-dropdown-subtext') || document.getElementById('user-dropdown-method');
   const btnDisconnect = document.getElementById('btn-disconnect-session');
   const btnReconnect = document.getElementById('btn-reconnect-session');
   
@@ -724,7 +724,7 @@ function switchTab(tabName, pushHistory = false) {
   }
 
   if (resultsGrid) {
-    resultsGrid.style.display = tabName === 'sellers' ? 'grid' : 'none';
+    resultsGrid.style.display = tabName === 'sellers' ? 'flex' : 'none';
     if (tabName === 'sellers') {
       resultsGrid.classList.remove('scroll-reveal');
       resultsGrid.classList.add('visible');

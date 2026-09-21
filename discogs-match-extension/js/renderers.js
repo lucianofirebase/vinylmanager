@@ -634,7 +634,7 @@ function renderResults() {
   const currentActiveTab = state.currentTab || 'sellers';
   currentAppView = `results-${currentActiveTab}`;
   updateForwardAndBackButtons();
-  resultsGrid.style.display = currentActiveTab === 'sellers' ? 'grid' : 'none';
+  resultsGrid.style.display = currentActiveTab === 'sellers' ? 'flex' : 'none';
   const resultsViewWrapper = document.getElementById('results-view-wrapper');
   if (resultsViewWrapper) resultsViewWrapper.style.display = currentActiveTab === 'sellers' ? 'flex' : 'none';
   const smartCard = document.getElementById('smart-purchase-card');

@@ -1015,7 +1015,7 @@ async function refreshWantlistIncremental() {
       statusCard.style.display = 'block';
       if (scanLoggerDock) scanLoggerDock.style.display = 'block';
       startRadarShaderCanvas();
-      const turntableVinyl = document.getElementById('turntable-vinyl');
+      const turntableVinyl = document.getElementById('turntable-vinyl') || document.getElementById('loading-turntable-container');
       if (turntableVinyl) turntableVinyl.classList.add('spinning');
       if (logoVinyl) logoVinyl.classList.add('spinning');
       
@@ -1085,7 +1085,7 @@ async function refreshWantlistIncremental() {
     statusCard.style.display = 'none';
     if (scanLoggerDock) scanLoggerDock.style.display = 'none';
     stopRadarShaderCanvas();
-    const turntableVinyl = document.getElementById('turntable-vinyl');
+    const turntableVinyl = document.getElementById('turntable-vinyl') || document.getElementById('loading-turntable-container');
     if (turntableVinyl) turntableVinyl.classList.remove('spinning');
     
     const scanningCoverArt = document.getElementById('scanning-cover-art');
