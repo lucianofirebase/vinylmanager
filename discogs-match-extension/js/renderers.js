@@ -1281,10 +1281,9 @@ function calculateAndRenderStats() {
       }
     });
 
-    // Top 5 cheapest releases by their lowest entry price
-    const top5Cheapest = [...releaseEntryPrices]
-      .sort((a, b) => a.priceUSD - b.priceUSD)
-      .slice(0, 5);
+    // All releases with active listings sorted by lowest entry price (cheapest first)
+    const allCheapestReleases = [...releaseEntryPrices]
+      .sort((a, b) => a.priceUSD - b.priceUSD);
 
     // Top 5 most expensive releases (Objetos de Lujo) by their lowest entry price
     const top5Expensive = [...releaseEntryPrices]
@@ -1314,32 +1313,6 @@ function calculateAndRenderStats() {
       top5LeastWanted = [...wantsWithStats]
         .sort((a, b) => getWantCount(a) - getWantCount(b))
         .slice(0, 5);
-    }
-    
-    // Render Cheapest html list
-    let cheapestListHtml = '';
-    if (top5Cheapest.length > 0) {
-      top5Cheapest.forEach((x, idx) => {
-        const l = x.listing;
-        const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
-        cheapestListHtml += `
-          <div class="stats-album-layout flex items-center justify-between py-2.5 border-b border-hairline-light font-mono">
-            <div class="stats-album-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;"></div>
-            <div class="stats-album-info ml-3 flex-1 min-w-0 text-left">
-              <span class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate" title="${escapeHTML(w ? w.title : '')}">${idx + 1}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
-              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
-              <div class="flex items-center justify-between mt-1.5 flex-wrap gap-2">
-                <span class="font-mono font-bold text-xs text-emerald-700">${formatPrice(l.priceVal, l.currency)}</span>
-                <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
-                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs"
-                  data-tooltip="Abrir la oferta más accesible de este disco en Discogs" data-tooltip-pos="left">Ver Oferta ↗</a>
-              </div>
-            </div>
-          </div>
-        `;
-      });
-    } else {
-      cheapestListHtml = `<p class="font-mono text-xs text-muted-graphite py-4">No se encontraron ofertas para calcular precios.</p>`;
     }
 
     // Render Expensive html list
@@ -1477,12 +1450,44 @@ function calculateAndRenderStats() {
         <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
         <div class="flex flex-col gap-6">
           
-          <!-- CHEAPEST VINYL -->
-          <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+          <!-- CHEAPEST VINYL (ACCESIBLES RANKING CON PAGINACIÓN E INFINITO) -->
+          <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]" id="card-cheapest-ranking">
             <div class="absolute top-0 left-0 right-0 h-1 bg-prada-emerald"></div>
-            <div class="stats-card-badge text-prada-emerald bg-emerald-50 border-prada-emerald/30">[ MÁS ECONÓMICO ]</div>
-            <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black mb-4">💰 TOP 5 MÁS ACCESIBLES</h3>
-            ${cheapestListHtml}
+            <div class="stats-card-badge text-prada-emerald bg-emerald-50 border-prada-emerald/30">[ MÁS ACCESIBLES ]</div>
+            
+            <div class="mb-3 pr-28">
+              <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black flex items-center gap-2">
+                <span>💰 MÁS ACCESIBLES</span>
+                <span class="text-xs font-mono font-normal text-muted-graphite">(${allCheapestReleases.length})</span>
+              </h3>
+              <p class="font-mono text-[11px] text-muted-graphite mt-0.5 leading-relaxed">
+                Ranking de menor a mayor precio de entrada. Navega o despliega todo para priorizar tus compras.
+              </p>
+            </div>
+
+            <!-- Filter & Page Size Selector Bar -->
+            <div class="flex items-center justify-between gap-2 mb-2.5 pb-2.5 border-b border-hairline-light flex-wrap font-mono text-[10px]">
+              <div class="flex items-center gap-1">
+                <span class="text-muted-graphite uppercase font-bold text-[9px] mr-0.5">VER:</span>
+                <button type="button" class="btn-cheapest-size px-2 py-0.5 border border-pitch-black bg-pitch-black text-pure-white font-bold cursor-pointer transition-colors shadow-2xs" data-size="5">5</button>
+                <button type="button" class="btn-cheapest-size px-2 py-0.5 border border-hairline-dark bg-pure-white text-pitch-black font-semibold hover:border-pitch-black cursor-pointer transition-colors shadow-2xs" data-size="10">10</button>
+                <button type="button" class="btn-cheapest-size px-2 py-0.5 border border-hairline-dark bg-pure-white text-pitch-black font-semibold hover:border-pitch-black cursor-pointer transition-colors shadow-2xs" data-size="25">25</button>
+                <button type="button" class="btn-cheapest-size px-2 py-0.5 border border-hairline-dark bg-pure-white text-pitch-black font-semibold hover:border-pitch-black cursor-pointer transition-colors shadow-2xs" data-size="all" data-tooltip="Ver todos los discos en una lista continua con scroll" data-tooltip-pos="top">TODOS ∞</button>
+              </div>
+              <div class="relative min-w-[130px] flex-1 sm:flex-initial">
+                <input type="text" id="cheapest-filter-input" placeholder="🔍 FILTRAR DISCO..." class="w-full text-[10px] uppercase font-mono px-2 py-1 border border-hairline-dark bg-pure-white text-pitch-black placeholder:text-muted-graphite focus:border-pitch-black focus:outline-none shadow-2xs" />
+              </div>
+            </div>
+
+            <!-- List of items -->
+            <div id="cheapest-list-container" class="flex flex-col">
+              <!-- Rendered dynamically -->
+            </div>
+
+            <!-- Pagination Bar -->
+            <div id="cheapest-pagination-bar" class="flex items-center justify-between mt-3 pt-2.5 border-t border-hairline-light font-mono text-[10px]">
+              <!-- Rendered dynamically -->
+            </div>
           </div>
           
           <!-- MOST EXPENSIVE VINYL -->
@@ -1588,6 +1593,144 @@ function calculateAndRenderStats() {
         }
       });
     }
+
+    // Dynamic Pagination & Search for "MÁS ACCESIBLES"
+    let cheapestState = {
+      page: 1,
+      pageSize: 5,
+      query: ''
+    };
+
+    function updateCheapestList() {
+      const container = statsView.querySelector('#cheapest-list-container');
+      const paginationBar = statsView.querySelector('#cheapest-pagination-bar');
+      if (!container || !paginationBar) return;
+
+      const q = cheapestState.query.trim().toLowerCase();
+      let filtered = allCheapestReleases;
+      if (q) {
+        filtered = allCheapestReleases.filter(x => {
+          const title = (x.want?.title || '').toLowerCase();
+          const artist = (x.want?.artist || '').toLowerCase();
+          return title.includes(q) || artist.includes(q);
+        });
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<p class="font-mono text-xs text-muted-graphite py-6 text-center">No se encontraron discos que coincidan con la búsqueda.</p>`;
+        paginationBar.innerHTML = '';
+        return;
+      }
+
+      const totalItems = filtered.length;
+      const isAll = cheapestState.pageSize === 'all';
+      const pageSize = isAll ? totalItems : parseInt(cheapestState.pageSize, 10);
+      const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+      if (cheapestState.page > totalPages) cheapestState.page = totalPages;
+      if (cheapestState.page < 1) cheapestState.page = 1;
+
+      const startIdx = (cheapestState.page - 1) * pageSize;
+      const endIdx = isAll ? totalItems : Math.min(startIdx + pageSize, totalItems);
+      const pageItems = filtered.slice(startIdx, endIdx);
+
+      // If showing many or all, add a max-height with smooth scroll
+      if (pageSize > 10 || isAll) {
+        container.className = 'flex flex-col max-h-[480px] overflow-y-auto pr-1 gap-1';
+      } else {
+        container.className = 'flex flex-col gap-1';
+      }
+
+      let rowsHtml = '';
+      pageItems.forEach((x, i) => {
+        const globalRank = startIdx + i + 1;
+        const l = x.listing;
+        const w = x.want || allWants.find(item => String(item.id) === String(l.releaseId)) || { title: 'Unknown', artist: 'Unknown', image: '' };
+        rowsHtml += `
+          <div class="stats-album-layout flex items-center justify-between py-2 border-b border-hairline-light font-mono hover:bg-ivory-warm/70 px-1.5 transition-colors">
+            <div class="stats-album-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;"></div>
+            <div class="stats-album-info ml-3 flex-1 min-w-0 text-left">
+              <span class="font-sans font-bold text-xs uppercase tracking-tight text-pitch-black block truncate" title="${escapeHTML(w ? w.title : '')}">${globalRank}. ${escapeHTML(w ? w.title : 'Desconocido')}</span>
+              <span class="text-[10px] text-muted-graphite uppercase tracking-wider block truncate mt-0.5" title="${escapeHTML(w ? w.artist : '')}">${escapeHTML(w ? w.artist : 'Desconocido')}</span>
+              <div class="flex items-center justify-between mt-1 flex-wrap gap-2">
+                <span class="font-mono font-bold text-xs text-emerald-700">${formatPrice(l.priceVal, l.currency)}</span>
+                <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs"
+                  data-tooltip="Abrir la oferta más accesible de este disco en Discogs" data-tooltip-pos="left">Ver Oferta ↗</a>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+      container.innerHTML = rowsHtml;
+
+      // Render Pagination Bar
+      if (totalPages <= 1) {
+        paginationBar.innerHTML = `
+          <span class="uppercase text-[10px] text-muted-graphite">Mostrando ${totalItems} discos</span>
+          <span class="text-emerald-700 font-bold uppercase text-[10px]">PRECIOS MÁS ACCESIBLES</span>
+        `;
+      } else {
+        paginationBar.innerHTML = `
+          <div class="flex items-center gap-1.5">
+            <button type="button" id="btn-cheapest-prev" class="px-2 py-1 border border-hairline-dark bg-pure-white text-pitch-black hover:border-pitch-black cursor-pointer font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] shadow-2xs" ${cheapestState.page <= 1 ? 'disabled' : ''}>
+              &larr; ANTERIOR
+            </button>
+            <button type="button" id="btn-cheapest-next" class="px-2 py-1 border border-hairline-dark bg-pure-white text-pitch-black hover:border-pitch-black cursor-pointer font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-[10px] shadow-2xs" ${cheapestState.page >= totalPages ? 'disabled' : ''}>
+              SIGUIENTE &rarr;
+            </button>
+          </div>
+          <span class="font-mono font-bold text-pitch-black text-[10px]">
+            PÁG. ${cheapestState.page} / ${totalPages} <span class="text-muted-graphite font-normal">(${startIdx + 1}–${endIdx} de ${totalItems})</span>
+          </span>
+        `;
+
+        const btnPrev = paginationBar.querySelector('#btn-cheapest-prev');
+        const btnNext = paginationBar.querySelector('#btn-cheapest-next');
+        if (btnPrev) {
+          btnPrev.addEventListener('click', () => {
+            if (cheapestState.page > 1) {
+              cheapestState.page--;
+              updateCheapestList();
+            }
+          });
+        }
+        if (btnNext) {
+          btnNext.addEventListener('click', () => {
+            if (cheapestState.page < totalPages) {
+              cheapestState.page++;
+              updateCheapestList();
+            }
+          });
+        }
+      }
+    }
+
+    // Page size selector listeners
+    statsView.querySelectorAll('.btn-cheapest-size').forEach(btn => {
+      btn.addEventListener('click', () => {
+        statsView.querySelectorAll('.btn-cheapest-size').forEach(b => {
+          b.className = 'btn-cheapest-size px-2 py-0.5 border border-hairline-dark bg-pure-white text-pitch-black font-semibold hover:border-pitch-black cursor-pointer transition-colors shadow-2xs';
+        });
+        btn.className = 'btn-cheapest-size px-2 py-0.5 border border-pitch-black bg-pitch-black text-pure-white font-bold cursor-pointer transition-colors shadow-2xs';
+        cheapestState.pageSize = btn.dataset.size;
+        cheapestState.page = 1;
+        updateCheapestList();
+      });
+    });
+
+    // Real-time search filter input
+    const filterInput = statsView.querySelector('#cheapest-filter-input');
+    if (filterInput) {
+      filterInput.addEventListener('input', (e) => {
+        cheapestState.query = e.target.value;
+        cheapestState.page = 1;
+        updateCheapestList();
+      });
+    }
+
+    // Initial render of cheapest list
+    updateCheapestList();
   } catch (err) {
     console.error('[calculateAndRenderStats Error]', err);
     statsView.innerHTML = `

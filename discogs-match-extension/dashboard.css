@@ -2850,16 +2850,20 @@ body.dark .smart-candidate-badge-rec {
   flex: none !important;
 }
 
-.not-for-sale-list::-webkit-scrollbar {
+.not-for-sale-list::-webkit-scrollbar,
+#cheapest-list-container::-webkit-scrollbar {
   width: 6px;
 }
-.not-for-sale-list::-webkit-scrollbar-track {
+.not-for-sale-list::-webkit-scrollbar-track,
+#cheapest-list-container::-webkit-scrollbar-track {
   background: #F4F4F5;
 }
-.not-for-sale-list::-webkit-scrollbar-thumb {
+.not-for-sale-list::-webkit-scrollbar-thumb,
+#cheapest-list-container::-webkit-scrollbar-thumb {
   background: #A1A1AA;
 }
-.not-for-sale-list::-webkit-scrollbar-thumb:hover {
+.not-for-sale-list::-webkit-scrollbar-thumb:hover,
+#cheapest-list-container::-webkit-scrollbar-thumb:hover {
   background: #111111;
 }
 
