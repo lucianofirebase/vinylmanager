@@ -1216,7 +1216,7 @@ function calculateAndRenderStats() {
         : `<a href="https://www.discogs.com/release/${w ? w.id : ''}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver ficha técnica en Discogs"><span>FICHA DISCOGS</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`;
 
       return `
-        <div class="not-for-sale-row flex items-center justify-between p-3 border border-hairline-light bg-pure-white hover:border-pitch-black transition-all shadow-2xs font-mono" data-category="${isBlocked ? 'blocked' : 'zero'}">
+        <div class="not-for-sale-row shrink-0 flex items-center justify-between p-3 border border-hairline-light bg-pure-white hover:border-pitch-black transition-all shadow-2xs font-mono" data-category="${isBlocked ? 'blocked' : 'zero'}">
           <div class="not-for-sale-info flex items-center gap-3 min-w-0 flex-1">
             <div class="not-for-sale-cover w-11 h-11 border border-hairline-dark bg-bone shrink-0 overflow-hidden relative shadow-2xs" style="background-image: url('${(w && w.image) ? w.image : ''}'); background-size: cover; background-position: center;">
               ${(!w || !w.image) ? `<span class="flex items-center justify-center h-full text-muted-graphite"><span class="material-symbols-outlined text-lg">album</span></span>` : ''}
@@ -1502,33 +1502,39 @@ function calculateAndRenderStats() {
         </div>
         
         <!-- COLUMN 2: NOT FOR SALE / RESTRICTED SHIPPING -->
-        <div class="flex flex-col gap-6">
-          <div class="stats-card-rich flex-grow relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+        <div class="flex flex-col gap-6 h-full">
+          <div class="stats-card-rich flex-grow flex flex-col relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] h-full">
             <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
-            <div class="mb-4">
+            <div class="mb-4 shrink-0">
               <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black">⚠️ DISCOS SIN STOCK DIRECTO (${wantsNotForSale.length})</h3>
               <p class="font-mono text-xs text-muted-graphite mt-1 leading-relaxed">
                 Filtra entre vinilos con <strong>stock existente sin envío</strong> a ${escapeHTML(buyerCountryVal)} y vinilos <strong>agotados a nivel mundial</strong>.
               </p>
             </div>
 
-            <!-- Filter tabs -->
-            <div class="not-for-sale-tabs flex gap-2 mb-3 flex-wrap font-mono">
-              <button type="button" class="not-for-sale-tab-btn active cursor-pointer" data-filter="all"
-                data-tooltip="Mostrar todos los vinilos sin envío directo disponible" data-tooltip-pos="top">
-                TODOS (${wantsNotForSale.length})
-              </button>
-              <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="blocked"
-                data-tooltip="Ver vinilos con copias disponibles pero bloqueados para envío a ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
-                🌍 NO ENVÍAN A ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
-              </button>
-              <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="zero"
-                data-tooltip="Ver discos que ninguna tienda en el mundo tiene actualmente en venta" data-tooltip-pos="top">
-                🚫 AGOTADOS MUNDIALMENTE (${wantsTrulyUnavailable.length})
+            <!-- Filter tabs & Expand Toggle -->
+            <div class="flex items-center justify-between gap-2 mb-3 flex-wrap font-mono shrink-0">
+              <div class="not-for-sale-tabs flex gap-2 flex-wrap font-mono">
+                <button type="button" class="not-for-sale-tab-btn active cursor-pointer" data-filter="all"
+                  data-tooltip="Mostrar todos los vinilos sin envío directo disponible" data-tooltip-pos="top">
+                  TODOS (${wantsNotForSale.length})
+                </button>
+                <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="blocked"
+                  data-tooltip="Ver vinilos con copias disponibles pero bloqueados para envío a ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
+                  🌍 NO ENVÍAN A ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
+                </button>
+                <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="zero"
+                  data-tooltip="Ver discos que ninguna tienda en el mundo tiene actualmente en venta" data-tooltip-pos="top">
+                  🚫 AGOTADOS MUNDIALMENTE (${wantsTrulyUnavailable.length})
+                </button>
+              </div>
+              <button type="button" id="btn-toggle-not-for-sale-height" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs cursor-pointer ml-auto" data-tooltip="Alternar entre ajustar la lista al alto del bloque o desplegar todos los discos hacia abajo" data-tooltip-pos="top">
+                <span class="material-symbols-outlined text-[14px]">unfold_more</span>
+                <span class="btn-toggle-text">DESPLEGAR TODO</span>
               </button>
             </div>
             
-            <div class="not-for-sale-list max-h-[560px] overflow-y-auto flex flex-col gap-2">
+            <div class="not-for-sale-list flex-1 min-h-[520px] overflow-y-auto flex flex-col gap-2 pr-1">
               ${wantsNotForSale.length > 0 ? (
                 [...wantsBlockedByShipping.map(w => renderNotForSaleItem(w, true)),
                  ...wantsTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
@@ -1550,9 +1556,9 @@ function calculateAndRenderStats() {
       btn.addEventListener('click', () => switchTab('sellers'));
     });
 
-    statsView.querySelectorAll('.not-for-sale-tab-btn').forEach(btn => {
+    statsView.querySelectorAll('.not-for-sale-tab-btn[data-filter]').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        statsView.querySelectorAll('.not-for-sale-tab-btn').forEach(b => b.classList.remove('active'));
+        statsView.querySelectorAll('.not-for-sale-tab-btn[data-filter]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const filter = btn.dataset.filter;
         statsView.querySelectorAll('.not-for-sale-row').forEach(row => {
@@ -1564,6 +1570,24 @@ function calculateAndRenderStats() {
         });
       });
     });
+
+    // Expand / Collapse toggle for not-for-sale-list
+    const toggleHeightBtn = statsView.querySelector('#btn-toggle-not-for-sale-height');
+    const nfsList = statsView.querySelector('.not-for-sale-list');
+    if (toggleHeightBtn && nfsList) {
+      toggleHeightBtn.addEventListener('click', () => {
+        const isExpanded = nfsList.classList.toggle('is-expanded');
+        const icon = toggleHeightBtn.querySelector('.material-symbols-outlined');
+        const text = toggleHeightBtn.querySelector('.btn-toggle-text');
+        if (isExpanded) {
+          if (icon) icon.textContent = 'unfold_less';
+          if (text) text.textContent = 'AJUSTAR A BLOQUE';
+        } else {
+          if (icon) icon.textContent = 'unfold_more';
+          if (text) text.textContent = 'DESPLEGAR TODO';
+        }
+      });
+    }
   } catch (err) {
     console.error('[calculateAndRenderStats Error]', err);
     statsView.innerHTML = `

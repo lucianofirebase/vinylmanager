@@ -2828,14 +2828,43 @@ body.dark .smart-candidate-badge-rec {
 }
 
 .not-for-sale-list {
-  max-height: 480px !important;
+  flex: 1 1 0% !important;
+  min-height: 520px !important;
+  max-height: none !important;
   overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
   gap: 8px !important;
+  padding-right: 4px !important;
+}
+
+@media (max-width: 1023px) {
+  .not-for-sale-list:not(.is-expanded) {
+    max-height: 650px !important;
+  }
+}
+
+.not-for-sale-list.is-expanded {
+  overflow-y: visible !important;
+  max-height: none !important;
+  flex: none !important;
+}
+
+.not-for-sale-list::-webkit-scrollbar {
+  width: 6px;
+}
+.not-for-sale-list::-webkit-scrollbar-track {
+  background: #F4F4F5;
+}
+.not-for-sale-list::-webkit-scrollbar-thumb {
+  background: #A1A1AA;
+}
+.not-for-sale-list::-webkit-scrollbar-thumb:hover {
+  background: #111111;
 }
 
 .not-for-sale-row {
+  flex-shrink: 0 !important;
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;

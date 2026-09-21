@@ -601,7 +601,8 @@
 }
 
 .not-for-sale-list {
-  max-height: 400px;
+  flex: 1 1 0%;
+  min-height: 520px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -609,6 +610,7 @@
 }
 
 .not-for-sale-row {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
