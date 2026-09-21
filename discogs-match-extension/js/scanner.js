@@ -1134,5 +1134,204 @@ async function clearScanCache() {
 
 
 
+
+// ==========================================
+// Discogs User Collection (Purchased Records) Sync
+// ==========================================
+
+async function syncDiscogsCollection(silent = false) {
+  const user = (state.username || localStorage.getItem('discogs_username') || '').trim();
+  if (!user) {
+    if (typeof showToast === 'function') {
+      showToast('Ingresa o conecta tu usuario de Discogs para sincronizar tu colección.', 'warning');
+    }
+    return [];
+  }
+
+  if (typeof showToast === 'function' && !silent) {
+    showToast(`🔄 Sincronizando colección de '${user}' desde Discogs...`, 'info', 4000);
+  }
+  log(`Iniciando sincronización de discos comprados (colección) de @${user}...`);
+
+  const syncBtn = document.getElementById('btn-sync-collection');
+  const syncBtnIcon = syncBtn ? syncBtn.querySelector('.material-symbols-outlined') : null;
+  if (syncBtn) {
+    syncBtn.disabled = true;
+    if (syncBtnIcon) syncBtnIcon.classList.add('animate-spin');
+  }
+
+  let fetchedReleases = [];
+  const savedToken = localStorage.getItem('discogs_token') || '';
+  const tokenParam = savedToken ? `&token=${encodeURIComponent(savedToken)}` : '';
+
+  try {
+    let page = 1;
+    let totalPages = 1;
+
+    do {
+      log(`Cargando página ${page} de colección oficial de Discogs...`);
+      const endpoint = `https://api.discogs.com/users/${encodeURIComponent(user)}/collection/folders/0/releases?page=${page}&per_page=100&sort=added&sort_order=desc${tokenParam}`;
+      
+      let jsonText = '';
+      try {
+        jsonText = await fetchThroughTab(endpoint);
+      } catch (proxyErr) {
+        console.log(`[CollectionAPI] Proxy error, intentando fetchDirect...`, proxyErr.message);
+        jsonText = await fetchDirect(endpoint);
+      }
+
+      const data = JSON.parse(jsonText);
+      if (data && data.releases && data.releases.length > 0) {
+        totalPages = (data.pagination && data.pagination.pages) ? data.pagination.pages : 1;
+        
+        const pageItems = data.releases.map(item => {
+          const info = item.basic_information || {};
+          const artistsStr = (info.artists && info.artists.length > 0)
+            ? info.artists.map(a => a.name).join(', ')
+            : 'Artista Desconocido';
+          const formatsStr = (info.formats && info.formats.length > 0)
+            ? info.formats.map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(', ')
+            : 'Vinyl';
+          const labelsStr = (info.labels && info.labels.length > 0)
+            ? info.labels.map(l => l.name + (l.catno ? ` - ${l.catno}` : '')).join(', ')
+            : '';
+
+          return {
+            id: item.id || info.id,
+            instance_id: item.instance_id || null,
+            title: (info.title || 'Sin Título').trim(),
+            artist: artistsStr.trim(),
+            year: info.year || '',
+            image: info.cover_image || info.thumb || '',
+            format: formatsStr,
+            label: labelsStr,
+            dateAdded: item.date_added || new Date().toISOString(),
+            rating: item.rating || 0,
+            notes: (item.notes && item.notes.length > 0) ? item.notes.map(n => n.value).join('; ') : ''
+          };
+        });
+
+        fetchedReleases.push(...pageItems);
+        page++;
+
+        if (page <= totalPages) {
+          await new Promise(r => setTimeout(r, 1100));
+        }
+      } else {
+        break;
+      }
+    } while (page <= totalPages);
+
+    log(`Colección de Discogs sincronizada vía API con éxito (${fetchedReleases.length} discos).`, 'success');
+  } catch (apiErr) {
+    console.warn('[CollectionSync] Error en API Discogs, intentando raspado web de colección...', apiErr.message);
+    log(`Aviso API: ${apiErr.message}. Intentando raspado HTML de colección...`, 'warning');
+    
+    try {
+      let page = 1;
+      let hasMore = true;
+      const seenIds = new Set();
+
+      while (hasMore && page <= 5) { // up to 5 pages web fallback
+        const collectionWebUrl = `https://www.discogs.com/user/${encodeURIComponent(user)}/collection?page=${page}&limit=50`;
+        let html = '';
+        try {
+          html = await fetchThroughTab(collectionWebUrl);
+        } catch (e) {
+          html = await fetchDirect(collectionWebUrl);
+        }
+
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        const rows = doc.querySelectorAll('table.cards_list tr, .collection-table tr, tr[data-release-id]');
+        
+        let foundThisPage = 0;
+        rows.forEach(tr => {
+          const relId = tr.getAttribute('data-release-id') || tr.querySelector('a[href*="/release/"]')?.getAttribute('href')?.match(/\/release\/(\d+)/)?.[1];
+          if (!relId || seenIds.has(relId)) return;
+          seenIds.add(relId);
+
+          const titleEl = tr.querySelector('.title, .release_title, a[href*="/release/"]');
+          const artistEl = tr.querySelector('.artist, .artist_title');
+          const imgEl = tr.querySelector('img.thumbnail, img[src*="discogs-images"]');
+          const formatEl = tr.querySelector('.format');
+          const yearEl = tr.querySelector('.year');
+
+          fetchedReleases.push({
+            id: relId,
+            title: titleEl ? titleEl.textContent.trim() : 'Sin Título',
+            artist: artistEl ? artistEl.textContent.trim() : 'Artista',
+            year: yearEl ? yearEl.textContent.trim() : '',
+            image: imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '') : '',
+            format: formatEl ? formatEl.textContent.trim() : 'Vinyl',
+            label: '',
+            dateAdded: new Date().toISOString(),
+            rating: 0,
+            notes: ''
+          });
+          foundThisPage++;
+        });
+
+        if (foundThisPage === 0 || !doc.querySelector('.pagination_next, a[rel="next"]')) {
+          hasMore = false;
+        } else {
+          page++;
+          await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+    } catch (scrapingErr) {
+      console.error('[CollectionSync] Falló también el raspado HTML:', scrapingErr);
+    }
+  }
+
+  // Merge with existing local collection to keep any manual notes/additions
+  const currentCollection = state.collection || loadUserCollection(user) || [];
+  const currentMap = new Map();
+  currentCollection.forEach(item => {
+    if (item.id) currentMap.set(String(item.id), item);
+  });
+
+  // Add/update with newly fetched releases
+  fetchedReleases.forEach(newItem => {
+    const existing = currentMap.get(String(newItem.id));
+    if (existing) {
+      // Retain custom user fields like pricePaid or custom notes
+      currentMap.set(String(newItem.id), {
+        ...newItem,
+        pricePaid: existing.pricePaid || null,
+        notes: existing.notes || newItem.notes || ''
+      });
+    } else {
+      currentMap.set(String(newItem.id), newItem);
+    }
+  });
+
+  const merged = Array.from(currentMap.values());
+  state.collection = merged;
+  saveUserCollection(merged, user);
+
+  if (syncBtn) {
+    syncBtn.disabled = false;
+    if (syncBtnIcon) syncBtnIcon.classList.remove('animate-spin');
+  }
+
+  if (typeof showToast === 'function') {
+    showToast(`✓ ¡Colección sincronizada! ${merged.length} discos comprados registrados.`, 'success', 4000);
+  }
+
+  // Re-render collection view if currently visible
+  if (typeof renderCollectionView === 'function') {
+    renderCollectionView(true);
+  }
+
+  // Also re-render wants list to update any "[COMPRADO]" status badges
+  if (typeof renderWantsListInManager === 'function' && document.getElementById('wantlist-manager')?.style.display !== 'none') {
+    renderWantsListInManager();
+  }
+
+  return merged;
+}
+
 window.startMarketplaceScan = startMarketplaceScan;
 window.loadWantlist = loadWantlist;
+window.syncDiscogsCollection = syncDiscogsCollection;

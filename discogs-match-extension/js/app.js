@@ -53,6 +53,7 @@ function navigateToView(viewName, pushHistory = true) {
   const headerNavRow = document.getElementById('header-nav-row');
   const statsView = document.getElementById('stats-view');
   const localView = document.getElementById('local-view');
+  const collectionView = document.getElementById('collection-view');
   const filterToolbar = document.getElementById('filter-toolbar');
 
   if (viewName.startsWith('wizard')) {
@@ -66,6 +67,7 @@ function navigateToView(viewName, pushHistory = true) {
     if (headerNavRow) headerNavRow.style.display = 'none';
     if (statsView) statsView.style.display = 'none';
     if (localView) localView.style.display = 'none';
+    if (collectionView) collectionView.style.display = 'none';
     if (filterToolbar) filterToolbar.style.display = 'none';
     
     if (emptyState) {
@@ -95,6 +97,7 @@ function navigateToView(viewName, pushHistory = true) {
     if (headerNavRow) headerNavRow.style.display = 'none';
     if (statsView) statsView.style.display = 'none';
     if (localView) localView.style.display = 'none';
+    if (collectionView) collectionView.style.display = 'none';
     if (filterToolbar) filterToolbar.style.display = 'none';
 
     if (wantlistManager) {
@@ -680,17 +683,20 @@ function switchTab(tabName, pushHistory = false) {
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
+  const tabBtnCollection = document.getElementById('tab-btn-collection');
   const btnBackToWants = document.getElementById('btn-back-to-wants');
   const resultsGrid = document.getElementById('results-grid');
   const statsView = document.getElementById('stats-view');
   const localView = document.getElementById('local-view');
+  const collectionView = document.getElementById('collection-view');
   const smartPurchaseCard = document.getElementById('smart-purchase-card');
 
   // Update button active styling
   const buttons = [
     { name: 'sellers', el: tabBtnSellers },
     { name: 'local', el: tabBtnLocal },
-    { name: 'stats', el: tabBtnStats }
+    { name: 'stats', el: tabBtnStats },
+    { name: 'collection', el: tabBtnCollection }
   ];
 
   let activeBtnEl = null;
@@ -752,12 +758,23 @@ function switchTab(tabName, pushHistory = false) {
       localView.style.opacity = '1';
     }
   }
+  if (collectionView) {
+    collectionView.style.display = tabName === 'collection' ? 'block' : 'none';
+    if (tabName === 'collection') {
+      collectionView.classList.remove('scroll-reveal');
+      collectionView.classList.add('visible');
+      collectionView.style.opacity = '1';
+    }
+  }
 
   if (tabName === 'stats' && typeof calculateAndRenderStats === 'function') {
     calculateAndRenderStats();
   }
   if (tabName === 'local' && typeof renderLocalMatches === 'function') {
     renderLocalMatches();
+  }
+  if (tabName === 'collection' && typeof renderCollectionView === 'function') {
+    renderCollectionView();
   }
 
   if (pushHistory) {
@@ -773,6 +790,8 @@ function checkUrlHashAction() {
     switchTab('local');
   } else if (hash === '#stats') {
     switchTab('stats');
+  } else if (hash === '#collection') {
+    switchTab('collection');
   }
 }
 window.addEventListener('hashchange', checkUrlHashAction);
@@ -839,6 +858,11 @@ async function initApp() {
       }
     }
 
+    // Load saved purchased collection cache if available for this user
+    if (typeof loadUserCollection === 'function') {
+      loadUserCollection(savedUser);
+    }
+
     updateForwardAndBackButtons();
   } catch (error) {
     console.error('Session detection error:', error);
@@ -873,9 +897,70 @@ document.addEventListener('DOMContentLoaded', () => {
   const tabBtnSellers = document.getElementById('tab-btn-sellers');
   const tabBtnLocal = document.getElementById('tab-btn-local');
   const tabBtnStats = document.getElementById('tab-btn-stats');
+  const tabBtnCollection = document.getElementById('tab-btn-collection');
   if (tabBtnSellers) tabBtnSellers.addEventListener('click', () => switchTab('sellers', true));
   if (tabBtnLocal) tabBtnLocal.addEventListener('click', () => switchTab('local', true));
   if (tabBtnStats) tabBtnStats.addEventListener('click', () => switchTab('stats', true));
+  if (tabBtnCollection) tabBtnCollection.addEventListener('click', () => switchTab('collection', true));
+
+  // Add Collection Modal Handlers
+  const addColModal = document.getElementById('add-collection-modal');
+  const btnCloseColModal = document.getElementById('btn-close-collection-modal');
+  const btnCancelColModal = document.getElementById('btn-cancel-collection-modal');
+  const formAddCol = document.getElementById('form-add-collection');
+
+  const closeAddColModal = () => {
+    if (addColModal) addColModal.style.display = 'none';
+    if (formAddCol) formAddCol.reset();
+  };
+
+  if (btnCloseColModal) btnCloseColModal.addEventListener('click', closeAddColModal);
+  if (btnCancelColModal) btnCancelColModal.addEventListener('click', closeAddColModal);
+
+  if (formAddCol) {
+    formAddCol.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('input-col-title')?.value.trim();
+      const artist = document.getElementById('input-col-artist')?.value.trim();
+      const year = document.getElementById('input-col-year')?.value.trim();
+      const format = document.getElementById('select-col-format')?.value;
+      const label = document.getElementById('input-col-label')?.value.trim();
+      const price = document.getElementById('input-col-price')?.value.trim();
+      const image = document.getElementById('input-col-image')?.value.trim();
+      const notes = document.getElementById('input-col-notes')?.value.trim();
+
+      if (!title || !artist) {
+        if (typeof showToast === 'function') {
+          showToast('Por favor completa el título y artista del disco.', 'warning');
+        }
+        return;
+      }
+
+      if (typeof markAsPurchased === 'function') {
+        markAsPurchased({
+          title,
+          artist,
+          year,
+          format,
+          label,
+          pricePaid: price,
+          image,
+          notes
+        });
+      }
+
+      if (typeof showToast === 'function') {
+        showToast(`✓ ¡Disco '${title}' agregado a tu colección!`, 'success');
+      }
+      closeAddColModal();
+      if (typeof renderCollectionView === 'function') {
+        renderCollectionView(true);
+      }
+      if (typeof renderWantsListInManager === 'function' && document.getElementById('wantlist-manager')?.style.display !== 'none') {
+        renderWantsListInManager();
+      }
+    });
+  }
   
   // Controls
   loadWantsBtn.addEventListener('click', loadWantlist);

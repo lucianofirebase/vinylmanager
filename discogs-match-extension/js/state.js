@@ -11,6 +11,7 @@ window.currentAppView = currentAppView;
 let state = {
   username: '',
   wants: [],
+  collection: [],
   allListings: [],
   groupedSellers: [],
   isScanning: false,
@@ -464,6 +465,126 @@ function normalizeText(str) {
     .trim();
 }
 
+// ==========================================
+// User Purchased Collection Helpers
+// ==========================================
+
+function getCollectionStorageKey(username) {
+  const userKey = (username || state.username || 'user').toLowerCase().trim();
+  return `discogs_collection_cache_${userKey}`;
+}
+
+function loadUserCollection(username) {
+  try {
+    const key = getCollectionStorageKey(username);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        state.collection = parsed;
+        updateCollectionBadge();
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.warn('[Collection] Error loading collection from localStorage:', err);
+  }
+  state.collection = [];
+  updateCollectionBadge();
+  return [];
+}
+
+function saveUserCollection(collectionToSave, username) {
+  try {
+    const items = collectionToSave || state.collection || [];
+    const key = getCollectionStorageKey(username);
+    localStorage.setItem(key, JSON.stringify(items));
+    state.collection = items;
+    updateCollectionBadge();
+  } catch (err) {
+    console.warn('[Collection] Error saving collection to localStorage:', err);
+  }
+}
+
+function updateCollectionBadge() {
+  try {
+    const badge = document.getElementById('badge-collection-count');
+    if (badge) {
+      const count = (state.collection || []).length;
+      badge.textContent = count;
+      badge.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+  } catch (e) {}
+}
+
+function isReleasePurchased(releaseId, title, artist) {
+  if (!state.collection || state.collection.length === 0) return false;
+  if (releaseId) {
+    const numericId = String(releaseId).replace(/[^\d]/g, '');
+    const foundById = state.collection.some(item => String(item.id || item.release_id || '').replace(/[^\d]/g, '') === numericId);
+    if (foundById) return true;
+  }
+  if (title && artist) {
+    const normT = normalizeText(title);
+    const normA = normalizeText(artist);
+    return state.collection.some(item => {
+      return normalizeText(item.title) === normT && (
+        normalizeText(item.artist).includes(normA) || normA.includes(normalizeText(item.artist))
+      );
+    });
+  }
+  return false;
+}
+
+function markAsPurchased(item) {
+  if (!item) return false;
+  if (!state.collection) state.collection = [];
+  
+  const existingIdx = state.collection.findIndex(p => {
+    if (item.id && p.id && String(item.id) === String(p.id)) return true;
+    if (item.release_id && p.id && String(item.release_id) === String(p.id)) return true;
+    return normalizeText(item.title) === normalizeText(p.title) && normalizeText(item.artist) === normalizeText(p.artist);
+  });
+
+  if (existingIdx >= 0) {
+    return false; // Already purchased
+  }
+
+  const purchasedRecord = {
+    id: item.id || item.release_id || Date.now(),
+    instance_id: item.instance_id || null,
+    title: (item.title || 'Sin Título').trim(),
+    artist: (item.artist || 'Artista Desconocido').trim(),
+    year: item.year || '',
+    image: item.image || item.cover_image || item.thumb || '',
+    format: item.format || (item.formats && item.formats[0]?.name) || 'Vinyl',
+    label: item.label || (item.labels && item.labels[0]?.name) || '',
+    dateAdded: new Date().toISOString(),
+    rating: item.rating || 0,
+    pricePaid: item.pricePaid || null,
+    notes: item.notes || ''
+  };
+
+  state.collection.unshift(purchasedRecord);
+  saveUserCollection();
+  return true;
+}
+
+function unmarkPurchased(idOrTitle) {
+  if (!state.collection) return false;
+  const initialLen = state.collection.length;
+  state.collection = state.collection.filter(item => {
+    if (String(item.id) === String(idOrTitle)) return false;
+    if (normalizeText(item.title) === normalizeText(idOrTitle)) return false;
+    return true;
+  });
+  if (state.collection.length !== initialLen) {
+    saveUserCollection();
+    return true;
+  }
+  return false;
+}
+
 // Expose on global window for clean cross-module access
 window.state = state;
 window.IS_EXTENSION = IS_EXTENSION;
@@ -481,3 +602,9 @@ window.renderGoldmineTag = renderGoldmineTag;
 window.getConditionRank = getConditionRank;
 window.upgradeDiscogsImageUrl = upgradeDiscogsImageUrl;
 window.normalizeText = normalizeText;
+window.loadUserCollection = loadUserCollection;
+window.saveUserCollection = saveUserCollection;
+window.updateCollectionBadge = updateCollectionBadge;
+window.isReleasePurchased = isReleasePurchased;
+window.markAsPurchased = markAsPurchased;
+window.unmarkPurchased = unmarkPurchased;

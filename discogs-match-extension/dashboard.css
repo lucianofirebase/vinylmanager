@@ -5030,3 +5030,105 @@ select option {
   }
 }
 
+/* ==========================================
+   PERSONAL COLLECTION (PURCHASED RECORDS) PRADA STYLES
+   ========================================== */
+
+.collection-view-container {
+  width: 100%;
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.collection-vinyl-card {
+  position: relative;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.collection-vinyl-card:hover {
+  transform: translateY(-2px);
+  border-color: #000000 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 3px 3px 0px rgba(0, 0, 0, 0.08) !important;
+}
+
+.collection-sleeve-wrapper {
+  position: relative;
+  overflow: hidden;
+  background-color: #F8FAFD;
+}
+
+/* Turntable Vinyl disc sliding peek effect on card hover */
+.collection-vinyl-disc {
+  position: absolute;
+  top: 6%;
+  right: -30%;
+  width: 88%;
+  height: 88%;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #181818 0%, #111111 25%, #242424 45%, #141414 70%, #080808 100%);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  opacity: 0;
+  transform: translateX(0) rotate(0deg);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.collection-vinyl-disc::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32%;
+  height: 32%;
+  border-radius: 50%;
+  background-color: #E02B20;
+  border: 2px solid #FFFFFF;
+}
+
+.collection-vinyl-card:hover .collection-vinyl-disc {
+  opacity: 0.95;
+  transform: translateX(24%) rotate(30deg);
+}
+
+.collection-cover-img {
+  position: relative;
+  z-index: 2;
+}
+
+/* Purchased action button on wantlist cards */
+.record-purchased-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #D4D4D8;
+  background: #FFFFFF;
+  color: #71717A;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.record-purchased-btn:hover {
+  background: #000000;
+  color: #10B981;
+  border-color: #000000;
+}
+
+.record-purchased-btn.active {
+  background: #000000;
+  color: #10B981;
+  border-color: #000000;
+  box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.4);
+}
+
+.record-card.is-purchased-card {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+
+.record-purchased-overlay-tag {
+  backdrop-filter: blur(4px);
+}
+

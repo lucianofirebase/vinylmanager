@@ -304,6 +304,13 @@
           data-tooltip="Ver estadísticas globales, vinilos sin envío y objetos de deseo" data-tooltip-pos="top">
           ESTADÍSTICAS DE LISTA
         </button>
+        <button id="tab-btn-collection"
+          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer"
+          data-tooltip="Ver tu colección de discos comprados y biblioteca personal" data-tooltip-pos="top">
+          DISCOS COMPRADOS <span id="badge-collection-count"
+            class="ml-1.5 text-[9px] bg-pitch-black text-pure-white font-mono font-bold px-1.5 py-0.5 shadow-xs"
+            style="display: none;">0</span>
+        </button>
         <button id="btn-back-to-wants"
           class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer"
           data-tooltip="Volver al catálogo para marcar o desmarcar favoritos ★" data-tooltip-pos="top">
@@ -1036,6 +1043,11 @@
           <!-- Dynamically populated local sheet comparison -->
         </div>
 
+        <!-- PERSONAL COLLECTION / PURCHASED RECORDS VIEW CONTAINER -->
+        <div class="collection-view-container" id="collection-view" style="display: none;">
+          <!-- Dynamically populated collection showcase -->
+        </div>
+
       </div>
       <!-- Spacer so mobile content isn't hidden behind the bottom bar -->
       <div class="lg:hidden h-20" id="mobile-bar-spacer"></div>
@@ -1613,6 +1625,100 @@
           CANCELAR
         </button>
       </div>
+    </div>
+  </div>
+
+  <!-- ADD TO COLLECTION MODAL -->
+  <div class="modal-overlay fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+    id="add-collection-modal" style="display: none;">
+    <div
+      class="modal-content border border-hairline-dark bg-pure-white p-6 md:p-8 max-w-lg w-full shadow-2xl relative font-mono">
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+      <div class="flex items-center justify-between pb-3 border-b border-hairline-light mb-5">
+        <div>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-0.5">[ ARCHIVO PRIVADO ]</span>
+          <h2 class="font-sans font-extrabold text-xl uppercase tracking-tight text-pitch-black">AGREGAR DISCO COMPRADO</h2>
+        </div>
+        <button id="btn-close-collection-modal" type="button"
+          class="text-muted-graphite hover:text-pitch-black p-1 transition-colors cursor-pointer"
+          data-tooltip="Cerrar ventana" data-tooltip-pos="left">
+          <span class="material-symbols-outlined text-[20px]">close</span>
+        </button>
+      </div>
+
+      <form id="form-add-collection" class="space-y-4 text-xs font-mono">
+        <div>
+          <label class="block uppercase font-bold text-pitch-black mb-1">Título del Disco *</label>
+          <input id="input-col-title" type="text" required placeholder="Ej. OK Computer"
+            class="w-full border border-hairline-dark px-3 py-2 text-xs font-sans tracking-wide uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+        </div>
+
+        <div>
+          <label class="block uppercase font-bold text-pitch-black mb-1">Artista o Banda *</label>
+          <input id="input-col-artist" type="text" required placeholder="Ej. Radiohead"
+            class="w-full border border-hairline-dark px-3 py-2 text-xs font-sans tracking-wide uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block uppercase font-bold text-pitch-black mb-1">Año de Edición</label>
+            <input id="input-col-year" type="text" placeholder="Ej. 1997" maxlength="4"
+              class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+          </div>
+          <div>
+            <label class="block uppercase font-bold text-pitch-black mb-1">Formato</label>
+            <select id="select-col-format"
+              class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black cursor-pointer">
+              <option value="Vinyl, LP">VINILO LP</option>
+              <option value="Vinyl, 12&quot;">VINILO 12&quot;</option>
+              <option value="Vinyl, 7&quot;">VINILO 7&quot;</option>
+              <option value="2xLP, Album">DOBLE LP (2xLP)</option>
+              <option value="CD, Album">CD ÁLBUM</option>
+              <option value="Cassette">CASSETTE</option>
+              <option value="Box Set">BOX SET / ESPECIAL</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block uppercase font-bold text-pitch-black mb-1">Sello / Catálogo</label>
+            <input id="input-col-label" type="text" placeholder="Ej. Parlophone - 7243 8"
+              class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+          </div>
+          <div>
+            <label class="block uppercase font-bold text-pitch-black mb-1">Precio Pagado / Moneda</label>
+            <input id="input-col-price" type="text" placeholder="Ej. $35 USD o $U 1.400"
+              class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+          </div>
+        </div>
+
+        <div>
+          <label class="block uppercase font-bold text-pitch-black mb-1">URL de Carátula (opcional)</label>
+          <input id="input-col-image" type="url" placeholder="https://..."
+            class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
+        </div>
+
+        <div>
+          <label class="block uppercase font-bold text-pitch-black mb-1">Notas Personales / Disquería</label>
+          <textarea id="input-col-notes" rows="2" placeholder="Comprado en feria Tristán Narvaja, edición original con OBI..."
+            class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black resize-none"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-3 border-t border-hairline-light">
+          <button id="btn-cancel-collection-modal" type="button"
+            class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider transition-colors cursor-pointer text-xs"
+            data-tooltip="Cancelar y cerrar" data-tooltip-pos="top">
+            CANCELAR
+          </button>
+          <button type="submit"
+            class="bg-pitch-black hover:bg-prada-red text-pure-white px-6 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer text-xs flex items-center gap-1.5"
+            data-tooltip="Guardar disco en tu archivo de colección" data-tooltip-pos="top">
+            <span class="material-symbols-outlined text-[16px]">save</span>
+            <span>GUARDAR EN COLECCIÓN</span>
+          </button>
+        </div>
+      </form>
     </div>
   </div>
 

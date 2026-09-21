@@ -16,7 +16,8 @@ function closeAllModals() {
     document.getElementById('private-wantlist-modal'),
     document.getElementById('resume-modal'),
     document.getElementById('scan-cache-modal'),
-    document.getElementById('settings-modal')
+    document.getElementById('settings-modal'),
+    document.getElementById('add-collection-modal')
   ];
   let closedAny = false;
   modals.forEach(m => {

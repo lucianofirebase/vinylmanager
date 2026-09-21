@@ -155,7 +155,9 @@ function renderWantsListInManager(resetPage = false) {
     }
     displayArtist = displayArtist.replace(/\s*\d+\s*(?:en venta|for sale)\s*(?:desde|from)\s*.*$/i, '').trim();
 
-    card.className = `record-card record-card-animated bg-pure-white border border-hairline-dark p-2.5 flex flex-col items-center relative transition-all duration-200 hover:shadow-md cursor-pointer ${item.isPriority ? 'active-priority' : ''}`;
+    const isPurchased = typeof isReleasePurchased === 'function' && isReleasePurchased(item.id, displayTitle, displayArtist);
+
+    card.className = `record-card record-card-animated bg-pure-white border border-hairline-dark p-2.5 flex flex-col items-center relative transition-all duration-200 hover:shadow-md cursor-pointer ${item.isPriority ? 'active-priority' : ''} ${isPurchased ? 'is-purchased-card' : ''}`;
     card.style.animationDelay = `${Math.min(index * 0.02, 0.5)}s`;
     card.dataset.title = displayTitle.toLowerCase();
     card.dataset.artist = displayArtist.toLowerCase();
@@ -165,12 +167,22 @@ function renderWantsListInManager(resetPage = false) {
         <p class="font-bold mb-0.5 leading-snug">${escapeHTML(displayTitle)}</p>
         <p class="text-zinc-400 text-[10px] leading-tight">${escapeHTML(displayArtist)}</p>
       </div>
-      <button type="button" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" data-tooltip="${item.isPriority ? 'Quitar de prioritarios' : 'Destacar disco favorito'}" data-tooltip-pos="top">
-        <span class="material-symbols-outlined star-icon" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0};">star</span>
-      </button>
+      <div class="record-card-top-actions absolute top-2 right-2 flex items-center gap-1 z-10">
+        <button type="button" class="record-purchased-btn ${isPurchased ? 'active' : ''}" aria-label="Marcar como comprado" data-tooltip="${isPurchased ? 'En tu colección (Click para quitar)' : 'Marcar como ya comprado'}" data-tooltip-pos="top">
+          <span class="material-symbols-outlined purchased-icon text-[15px]">${isPurchased ? 'check_circle' : 'shopping_bag'}</span>
+        </button>
+        <button type="button" class="record-star-btn ${item.isPriority ? 'active' : ''}" aria-label="Priorizar disco" data-tooltip="${item.isPriority ? 'Quitar de prioritarios' : 'Destacar disco favorito'}" data-tooltip-pos="top">
+          <span class="material-symbols-outlined star-icon" style="font-variation-settings: 'FILL' ${item.isPriority ? 1 : 0};">star</span>
+        </button>
+      </div>
       <input type="checkbox" id="${starId}" class="star-checkbox sr-only" ${isChecked}>
       <div class="record-cover-wrapper w-full aspect-square bg-surface-low mb-2 overflow-hidden border border-hairline-light flex items-center justify-center relative shadow-xs">
         ${item.image ? `<img src="${upgradeDiscogsImageUrl(item.image)}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none transition-transform duration-300 hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">` : `<span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>`}
+        ${isPurchased ? `
+          <div class="record-purchased-overlay-tag absolute bottom-1 left-1 bg-pitch-black/90 text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 tracking-wider uppercase border border-white/20 flex items-center gap-1 shadow-sm">
+            <span class="w-1.5 h-1.5 bg-emerald-400"></span> COMPRADO
+          </div>
+        ` : ''}
       </div>
       <div class="w-full text-center px-0.5">
         <p class="font-sans font-extrabold text-[11px] uppercase tracking-tight text-pitch-black truncate w-full leading-tight mb-1" title="${escapeHTML(displayTitle)}">
@@ -196,6 +208,38 @@ function renderWantsListInManager(resetPage = false) {
     const starBtn = card.querySelector('.record-star-btn');
     const starIcon = card.querySelector('.record-star-btn .star-icon');
     const starCheckbox = card.querySelector('.star-checkbox');
+    const purchasedBtn = card.querySelector('.record-purchased-btn');
+
+    // Handle toggle purchased status
+    if (purchasedBtn) {
+      purchasedBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const currentlyPurchased = isReleasePurchased(item.id, displayTitle, displayArtist);
+        if (currentlyPurchased) {
+          unmarkPurchased(item.id || displayTitle);
+          if (typeof showToast === 'function') {
+            showToast(`Disco removido de 'Comprados': ${displayTitle}`, 'info');
+          }
+        } else {
+          markAsPurchased({
+            id: item.id,
+            title: displayTitle,
+            artist: displayArtist,
+            year: item.year || '',
+            image: item.image || '',
+            format: 'Vinyl'
+          });
+          if (typeof showToast === 'function') {
+            showToast(`✓ ¡Añadido a 'Discos Comprados'!: ${displayTitle}`, 'success');
+          }
+        }
+        renderWantsListInManager();
+        if (typeof renderCollectionView === 'function' && document.getElementById('collection-view')?.style.display !== 'none') {
+          renderCollectionView();
+        }
+      });
+    }
 
     const toggleStar = (e) => {
       if (e) {
@@ -228,7 +272,7 @@ function renderWantsListInManager(resetPage = false) {
       starBtn.addEventListener('click', (e) => toggleStar(e));
     }
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.record-star-btn')) return;
+      if (e.target.closest('.record-star-btn') || e.target.closest('.record-purchased-btn')) return;
       toggleStar(e);
     });
 
@@ -1851,3 +1895,592 @@ window.setGridDensity = setGridDensity;
 window.renderResults = renderResults;
 window.showToast = showToast;
 window.showWantlistManager = showWantlistManager;
+
+// ==========================================
+// PERSONAL COLLECTION (PURCHASED RECORDS) RUNWAY
+// ==========================================
+
+let collectionCurrentPage = 1;
+let collectionPageSize = 24;
+let collectionSearchQuery = '';
+let collectionFormatFilter = 'all';
+let collectionSortBy = 'recent';
+
+function renderCollectionView(resetPage = false) {
+  if (resetPage) collectionCurrentPage = 1;
+  const collectionView = document.getElementById('collection-view');
+  if (!collectionView) return;
+
+  const currentItems = state.collection || loadUserCollection() || [];
+  updateCollectionBadge();
+
+  // Filter items
+  const query = (collectionSearchQuery || '').toLowerCase().trim();
+  const formatFilter = collectionFormatFilter || 'all';
+
+  let filtered = currentItems.filter(item => {
+    // Format filter
+    if (formatFilter !== 'all') {
+      const fmt = (item.format || '').toLowerCase();
+      if (formatFilter === 'vinyl' && !fmt.includes('vin') && !fmt.includes('lp') && !fmt.includes('12"') && !fmt.includes('7"')) return false;
+      if (formatFilter === 'lp' && !fmt.includes('lp')) return false;
+      if (formatFilter === '12' && !fmt.includes('12')) return false;
+      if (formatFilter === '7' && !fmt.includes('7')) return false;
+      if (formatFilter === 'cd' && !fmt.includes('cd')) return false;
+      if (formatFilter === 'cassette' && !fmt.includes('cassette') && !fmt.includes('casset')) return false;
+    }
+
+    // Search query
+    if (query) {
+      const t = (item.title || '').toLowerCase();
+      const a = (item.artist || '').toLowerCase();
+      const y = String(item.year || '').toLowerCase();
+      const l = (item.label || '').toLowerCase();
+      const n = (item.notes || '').toLowerCase();
+      if (!t.includes(query) && !a.includes(query) && !y.includes(query) && !l.includes(query) && !n.includes(query)) {
+        return false;
+      }
+    }
+    return true;
+  });
+
+  // Sort items
+  filtered.sort((a, b) => {
+    if (collectionSortBy === 'artist-asc') {
+      return (a.artist || '').localeCompare(b.artist || '') || (a.title || '').localeCompare(b.title || '');
+    }
+    if (collectionSortBy === 'title-asc') {
+      return (a.title || '').localeCompare(b.title || '');
+    }
+    if (collectionSortBy === 'year-desc') {
+      return (parseInt(b.year, 10) || 0) - (parseInt(a.year, 10) || 0);
+    }
+    if (collectionSortBy === 'year-asc') {
+      return (parseInt(a.year, 10) || 9999) - (parseInt(b.year, 10) || 9999);
+    }
+    // Default: 'recent'
+    const dateA = a.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+    const dateB = b.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+    return dateB - dateA;
+  });
+
+  // Calculate statistics
+  const totalCount = currentItems.length;
+  const uniqueArtists = new Set(currentItems.map(i => (i.artist || '').trim()).filter(Boolean)).size;
+  const validYears = currentItems.map(i => parseInt(i.year, 10)).filter(y => y && y > 1900 && y < 2099);
+  const minYear = validYears.length > 0 ? Math.min(...validYears) : null;
+  const maxYear = validYears.length > 0 ? Math.max(...validYears) : null;
+  const yearsRangeStr = minYear && maxYear ? (minYear === maxYear ? `${minYear}` : `${minYear} — ${maxYear}`) : '—';
+  
+  // Format breakdown
+  const vinylCount = currentItems.filter(i => {
+    const f = (i.format || '').toLowerCase();
+    return f.includes('vin') || f.includes('lp') || f.includes('12"') || f.includes('7"');
+  }).length;
+  const formatsSummary = totalCount > 0 ? `${vinylCount} vinilos (${Math.round((vinylCount / totalCount) * 100)}%)` : 'Catálogo vacío';
+
+  // Build View HTML
+  collectionView.innerHTML = `
+    <div class="w-full flex flex-col gap-6 mb-12">
+      <!-- SECTION 1: RUNWAY BENTO HEADER (Prada Luxury Archival Header) -->
+      <section class="flex flex-col gap-4">
+        <div class="flex flex-wrap items-baseline justify-between border-b-2 border-pitch-black pb-2">
+          <div class="flex items-baseline gap-4">
+            <span class="font-mono text-xs font-bold tracking-widest text-prada-red uppercase">[ VAULT • COLECCIÓN ]</span>
+            <h1 class="font-sans font-extrabold text-2xl uppercase tracking-widest text-pitch-black">MIS DISCOS COMPRADOS</h1>
+            <span class="text-prada-blue text-xs font-mono tracking-wider font-semibold">// ARCHIVO PERSONAL Y BIBLIOTECA DE VINILOS</span>
+          </div>
+          <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+            <button id="btn-sync-collection" type="button"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pure-white hover:bg-surface-low border border-hairline-dark hover:border-pitch-black px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-pitch-black"
+              data-tooltip="Sincronizar discos de tu colección oficial de Discogs" data-tooltip-pos="top">
+              <span class="material-symbols-outlined text-[15px] text-prada-red">sync</span>
+              <span>SINCRONIZAR DISCOGS</span>
+            </button>
+            <button id="btn-add-collection-manual" type="button"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pitch-black text-pure-white hover:bg-prada-red px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              data-tooltip="Registrar una compra externa o disco manual" data-tooltip-pos="top">
+              <span class="material-symbols-outlined text-[15px]">add</span>
+              <span>AGREGAR DISCO</span>
+            </button>
+            <button id="btn-export-collection-csv" type="button"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-graphite hover:text-pitch-black underline px-2 py-1 cursor-pointer"
+              data-tooltip="Exportar tu archivo de colección a planilla CSV" data-tooltip-pos="top">
+              EXPORTAR CSV
+            </button>
+          </div>
+        </div>
+
+        <!-- Bento Stats Bar -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></div>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">TOTAL COMPRADOS</p>
+            <p class="font-sans font-black text-2xl text-pitch-black mt-1">${totalCount}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">${formatsSummary}</p>
+          </div>
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-pitch-black"></div>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">ARTISTAS ÚNICOS</p>
+            <p class="font-sans font-black text-2xl text-pitch-black mt-1">${uniqueArtists}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">En catálogo personal</p>
+          </div>
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-prada-blue"></div>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">RANGO TEMPORAL</p>
+            <p class="font-sans font-black text-2xl text-pitch-black mt-1">${yearsRangeStr}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">Años de prensado</p>
+          </div>
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500"></div>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">ESTADO DE ARCHIVO</p>
+            <p class="font-sans font-black text-2xl text-emerald-700 mt-1">${totalCount > 0 ? 'SINCRONIZADO' : 'PENDIENTE'}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">${totalCount > 0 ? 'Caché activa' : 'Requiere sincronizar'}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: COLLECTION TOOLBAR (Search, Format Filter, Sort) -->
+      <section class="border border-hairline-dark bg-pure-white p-3 shadow-xs flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
+        <div class="flex flex-wrap items-center gap-3 flex-1">
+          <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-xs w-full sm:w-80">
+            <span class="material-symbols-outlined text-[16px] text-prada-red mr-2 shrink-0">search</span>
+            <input id="collection-search-input" type="text" value="${escapeHTML(collectionSearchQuery)}" placeholder="BUSCAR EN TUS COMPRADOS..." class="bg-transparent text-xs font-mono tracking-wide uppercase placeholder:text-muted-graphite focus:outline-none text-pitch-black w-full">
+            ${collectionSearchQuery ? `<button id="btn-clear-collection-search" class="text-muted-graphite hover:text-pitch-black text-xs font-bold ml-1 cursor-pointer">✕</button>` : ''}
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] uppercase font-bold text-muted-graphite">FORMATO:</span>
+            <select id="collection-filter-format" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none cursor-pointer">
+              <option value="all" ${collectionFormatFilter === 'all' ? 'selected' : ''}>TODOS LOS FORMATOS</option>
+              <option value="vinyl" ${collectionFormatFilter === 'vinyl' ? 'selected' : ''}>VINILO (LP/12"/7")</option>
+              <option value="lp" ${collectionFormatFilter === 'lp' ? 'selected' : ''}>LP</option>
+              <option value="12" ${collectionFormatFilter === '12' ? 'selected' : ''}>12"</option>
+              <option value="7" ${collectionFormatFilter === '7' ? 'selected' : ''}>7"</option>
+              <option value="cd" ${collectionFormatFilter === 'cd' ? 'selected' : ''}>CD</option>
+              <option value="cassette" ${collectionFormatFilter === 'cassette' ? 'selected' : ''}>CASSETTE</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-[10px] uppercase font-bold text-muted-graphite">ORDEN:</span>
+            <select id="collection-sort-by" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none cursor-pointer">
+              <option value="recent" ${collectionSortBy === 'recent' ? 'selected' : ''}>MÁS RECIENTES PRIMERO</option>
+              <option value="artist-asc" ${collectionSortBy === 'artist-asc' ? 'selected' : ''}>ARTISTA (A - Z)</option>
+              <option value="title-asc" ${collectionSortBy === 'title-asc' ? 'selected' : ''}>TÍTULO (A - Z)</option>
+              <option value="year-desc" ${collectionSortBy === 'year-desc' ? 'selected' : ''}>AÑO (MÁS NUEVO)</option>
+              <option value="year-asc" ${collectionSortBy === 'year-asc' ? 'selected' : ''}>AÑO (MÁS ANTIGUO)</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 text-[11px] text-muted-graphite font-mono">
+          <span>MOSTRANDO: <strong class="text-pitch-black font-bold">${filtered.length}</strong> DE ${totalCount} DISCOS</span>
+        </div>
+      </section>
+
+      <!-- SECTION 3: COLLECTION VINYL GRID OR EMPTY STATE -->
+      ${totalCount === 0 ? `
+        <div class="border border-hairline-dark bg-pure-white p-12 text-center shadow-xs relative font-mono my-4">
+          <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
+          <div class="w-16 h-16 bg-ivory-warm border border-hairline-dark flex items-center justify-center mx-auto mb-4 shadow-xs">
+            <span class="material-symbols-outlined text-3xl text-prada-red">album</span>
+          </div>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1.5">[ VAULT VACÍO ]</span>
+          <h2 class="font-sans font-extrabold text-2xl uppercase tracking-tight text-pitch-black mb-2">Aún no tienes discos comprados registrados</h2>
+          <p class="text-muted-graphite text-xs font-mono mb-6 max-w-md mx-auto leading-relaxed">
+            Sincroniza directamente tu colección personal de Discogs o agrega manualmente vinilos que ya poseas o hayas adquirido.
+          </p>
+          <div class="flex flex-wrap items-center justify-center gap-3 font-mono text-xs">
+            <button id="btn-sync-empty-state" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-6 py-2.5 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer flex items-center gap-1.5" data-tooltip="Conectar y sincronizar tu colección desde la API de Discogs" data-tooltip-pos="top">
+              <span class="material-symbols-outlined text-[16px]">sync</span>
+              <span>SINCRONIZAR DESDE DISCOGS</span>
+            </button>
+            <button id="btn-add-manual-empty-state" class="px-5 py-2.5 border border-hairline-dark bg-pure-white hover:bg-surface-low font-bold uppercase tracking-wider text-pitch-black transition-colors cursor-pointer flex items-center gap-1.5" data-tooltip="Registrar un disco manualmente en tu colección" data-tooltip-pos="top">
+              <span class="material-symbols-outlined text-[16px]">add</span>
+              <span>AGREGAR DISCO MANUALMENTE</span>
+            </button>
+          </div>
+        </div>
+      ` : (filtered.length === 0 ? `
+        <div class="border border-hairline-dark bg-pure-white p-8 text-center shadow-xs font-mono text-xs text-muted-graphite">
+          No se encontraron discos comprados que coincidan con los filtros aplicados.
+          <button id="btn-reset-col-filters" class="text-prada-red underline font-bold uppercase ml-2 cursor-pointer">Restablecer filtros</button>
+        </div>
+      ` : `
+        <!-- Populated Grid -->
+        <div id="collection-items-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-3.5">
+          <!-- Cards injected below -->
+        </div>
+
+        <!-- Pagination Bar -->
+        <div id="collection-pagination-container" class="mt-4"></div>
+      `)}
+    </div>
+  `;
+
+  // Bind toolbar and action listeners
+  bindCollectionToolbarEvents();
+
+  if (filtered.length > 0) {
+    // Pagination slicing
+    const totalItems = filtered.length;
+    const isAll = collectionPageSize === 'all';
+    const pageSizeNum = isAll ? totalItems : (parseInt(collectionPageSize, 10) || 24);
+    const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / pageSizeNum));
+
+    if (collectionCurrentPage > totalPages) collectionCurrentPage = totalPages;
+    if (collectionCurrentPage < 1) collectionCurrentPage = 1;
+
+    const startIndex = isAll ? 0 : (collectionCurrentPage - 1) * pageSizeNum;
+    const endIndex = isAll ? totalItems : Math.min(startIndex + pageSizeNum, totalItems);
+    const pageItems = filtered.slice(startIndex, endIndex);
+
+    const gridContainer = document.getElementById('collection-items-grid');
+    if (gridContainer) {
+      gridContainer.innerHTML = '';
+      pageItems.forEach((record, idx) => {
+        const card = createCollectionVinylCard(record, idx);
+        gridContainer.appendChild(card);
+      });
+    }
+
+    const paginationContainer = document.getElementById('collection-pagination-container');
+    if (paginationContainer) {
+      renderCollectionPagination(paginationContainer, totalItems, totalPages, startIndex, endIndex);
+    }
+  }
+}
+
+function createCollectionVinylCard(record, index) {
+  const card = document.createElement('div');
+  card.className = 'collection-vinyl-card bg-pure-white border border-hairline-dark p-2.5 flex flex-col relative transition-all duration-200 hover:shadow-md cursor-pointer group';
+  card.style.animationDelay = `${Math.min(index * 0.02, 0.4)}s`;
+
+  const displayTitle = (record.title || 'Sin Título').trim();
+  const displayArtist = (record.artist || 'Artista Desconocido').trim();
+  const displayYear = record.year || '';
+  const displayFormat = record.format || 'Vinyl';
+  const displayImage = record.image ? upgradeDiscogsImageUrl(record.image) : '';
+  const discogsUrl = record.id ? `https://www.discogs.com/release/${record.id}` : null;
+
+  card.innerHTML = `
+    <!-- Top Action Row (Remove / Edit) -->
+    <div class="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+      <button type="button" class="btn-remove-collection w-6 h-6 bg-pure-white/95 hover:bg-prada-red hover:text-pure-white border border-hairline-dark text-pitch-black flex items-center justify-center transition-colors shadow-xs cursor-pointer" title="Eliminar de mi colección" data-tooltip="Quitar de mi colección" data-tooltip-pos="top">
+        <span class="material-symbols-outlined text-[13px]">delete</span>
+      </button>
+    </div>
+
+    <!-- Vinyl Sleeve with Turntable Peek Effect -->
+    <div class="collection-sleeve-wrapper w-full aspect-square bg-surface-low mb-2 overflow-hidden border border-hairline-light flex items-center justify-center relative shadow-xs group-hover:border-hairline-dark">
+      <!-- Vinyl record peek behind sleeve -->
+      <div class="collection-vinyl-disc" aria-hidden="true"></div>
+
+      <!-- High-res sleeve cover -->
+      ${displayImage ? `
+        <img src="${displayImage}" referrerpolicy="no-referrer" class="collection-cover-img w-full h-full object-cover select-none transition-transform duration-300 group-hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">
+      ` : `
+        <span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>
+      `}
+
+      <!-- Status Tag -->
+      <div class="absolute bottom-1 left-1 bg-pitch-black/90 text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 tracking-wider uppercase border border-white/20 flex items-center gap-1 shadow-sm">
+        <span class="w-1.5 h-1.5 bg-emerald-400"></span>
+        <span>COMPRADO</span>
+      </div>
+
+      ${displayYear ? `
+        <div class="absolute top-1 left-1 bg-pure-white/90 text-pitch-black text-[9px] font-mono font-bold px-1 py-0.5 border border-hairline-dark shadow-xs">
+          ${escapeHTML(displayYear)}
+        </div>
+      ` : ''}
+    </div>
+
+    <!-- Album & Artist Typography -->
+    <div class="w-full text-center px-0.5 flex-1 flex flex-col justify-between">
+      <div>
+        <p class="font-sans font-extrabold text-[11px] uppercase tracking-tight text-pitch-black truncate w-full leading-tight mb-1" title="${escapeHTML(displayTitle)}">
+          ${escapeHTML(displayTitle)}
+        </p>
+        <p class="font-mono text-[10px] uppercase tracking-wider text-muted-graphite truncate w-full leading-tight font-medium mb-1" title="${escapeHTML(displayArtist)}">
+          ${escapeHTML(displayArtist)}
+        </p>
+      </div>
+
+      <!-- Format & Details pill -->
+      <div class="pt-1.5 border-t border-hairline-light flex items-center justify-between text-[9px] font-mono text-muted-graphite">
+        <span class="truncate max-w-[80px]" title="${escapeHTML(displayFormat)}">${escapeHTML(displayFormat)}</span>
+        ${discogsUrl ? `
+          <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer" class="text-prada-blue hover:text-prada-red flex items-center gap-0.5 uppercase font-bold" data-tooltip="Ver release oficial en Discogs" data-tooltip-pos="top" onclick="event.stopPropagation();">
+            <span>DISCOGS</span>
+            <span class="material-symbols-outlined text-[10px]">open_in_new</span>
+          </a>
+        ` : '<span>PROPIO</span>'}
+      </div>
+    </div>
+  `;
+
+  // Handle image error fallback
+  const img = card.querySelector('.collection-cover-img');
+  if (img) {
+    img.addEventListener('error', function() {
+      this.style.display = 'none';
+      const wrapper = this.closest('.collection-sleeve-wrapper');
+      if (wrapper && !wrapper.querySelector('.material-symbols-outlined')) {
+        wrapper.insertAdjacentHTML('beforeend', '<span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>');
+      }
+    });
+  }
+
+  // Remove button action
+  const removeBtn = card.querySelector('.btn-remove-collection');
+  if (removeBtn) {
+    removeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      if (confirm(`¿Quitar '${displayTitle}' de tus discos comprados?`)) {
+        unmarkPurchased(record.id || displayTitle);
+        if (typeof showToast === 'function') {
+          showToast(`Disco removido de colección: ${displayTitle}`, 'info');
+        }
+        renderCollectionView();
+        if (typeof renderWantsListInManager === 'function' && document.getElementById('wantlist-manager')?.style.display !== 'none') {
+          renderWantsListInManager();
+        }
+      }
+    });
+  }
+
+  return card;
+}
+
+function bindCollectionToolbarEvents() {
+  // Sync buttons
+  const btnSync = document.getElementById('btn-sync-collection');
+  const btnSyncEmpty = document.getElementById('btn-sync-empty-state');
+  const handleSync = () => {
+    if (typeof syncDiscogsCollection === 'function') {
+      syncDiscogsCollection();
+    }
+  };
+  if (btnSync) btnSync.addEventListener('click', handleSync);
+  if (btnSyncEmpty) btnSyncEmpty.addEventListener('click', handleSync);
+
+  // Add manual modal open
+  const btnAdd = document.getElementById('btn-add-collection-manual');
+  const btnAddEmpty = document.getElementById('btn-add-manual-empty-state');
+  const modal = document.getElementById('add-collection-modal');
+  const openAddModal = () => {
+    if (modal) modal.style.display = 'flex';
+  };
+  if (btnAdd) btnAdd.addEventListener('click', openAddModal);
+  if (btnAddEmpty) btnAddEmpty.addEventListener('click', openAddModal);
+
+  // Search input live
+  const searchInput = document.getElementById('collection-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      collectionSearchQuery = e.target.value;
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  }
+
+  // Clear search
+  const btnClearSearch = document.getElementById('btn-clear-collection-search');
+  if (btnClearSearch) {
+    btnClearSearch.addEventListener('click', () => {
+      collectionSearchQuery = '';
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  }
+
+  // Reset filters
+  const btnReset = document.getElementById('btn-reset-col-filters');
+  if (btnReset) {
+    btnReset.addEventListener('click', () => {
+      collectionSearchQuery = '';
+      collectionFormatFilter = 'all';
+      collectionSortBy = 'recent';
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  }
+
+  // Format filter
+  const formatSelect = document.getElementById('collection-filter-format');
+  if (formatSelect) {
+    formatSelect.addEventListener('change', (e) => {
+      collectionFormatFilter = e.target.value;
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  }
+
+  // Sort by
+  const sortSelect = document.getElementById('collection-sort-by');
+  if (sortSelect) {
+    sortSelect.addEventListener('change', (e) => {
+      collectionSortBy = e.target.value;
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  }
+
+  // Export CSV
+  const btnExport = document.getElementById('btn-export-collection-csv');
+  if (btnExport) {
+    btnExport.addEventListener('click', exportCollectionToCSV);
+  }
+}
+
+function renderCollectionPagination(container, totalItems, totalPages, startIndex, endIndex) {
+  if (totalItems <= 0) {
+    container.innerHTML = '';
+    return;
+  }
+
+  const pagesToShow = [];
+  if (totalPages <= 7) {
+    for (let p = 1; p <= totalPages; p++) pagesToShow.push(p);
+  } else {
+    pagesToShow.push(1);
+    if (collectionCurrentPage > 3) pagesToShow.push('ellipsis-1');
+    const windowStart = Math.max(2, collectionCurrentPage - 1);
+    const windowEnd = Math.min(totalPages - 1, collectionCurrentPage + 1);
+    for (let p = windowStart; p <= windowEnd; p++) {
+      if (!pagesToShow.includes(p)) pagesToShow.push(p);
+    }
+    if (collectionCurrentPage < totalPages - 2) pagesToShow.push('ellipsis-2');
+    if (!pagesToShow.includes(totalPages)) pagesToShow.push(totalPages);
+  }
+
+  const chipsHtml = pagesToShow.map(p => {
+    if (typeof p === 'string' && p.startsWith('ellipsis')) {
+      return `<span class="w-6 h-8 flex items-center justify-center text-muted-graphite font-mono text-xs select-none">…</span>`;
+    }
+    if (p === collectionCurrentPage) {
+      return `
+        <button type="button" class="w-8 h-8 flex items-center justify-center bg-pitch-black text-pure-white font-mono font-extrabold text-xs border border-pitch-black shadow-xs cursor-default relative">
+          <span class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></span>
+          ${p}
+        </button>
+      `;
+    }
+    return `
+      <button type="button" class="col-page-btn w-8 h-8 flex items-center justify-center bg-pure-white hover:bg-surface-low text-pitch-black font-mono font-semibold text-xs border border-hairline-dark hover:border-pitch-black transition-colors cursor-pointer" data-page="${p}">
+        ${p}
+      </button>
+    `;
+  }).join('');
+
+  const sizes = [24, 48, 96, 'all'];
+  const sizeButtonsHtml = sizes.map(s => {
+    const isSelected = String(collectionPageSize) === String(s);
+    const label = s === 'all' ? 'TODOS' : s;
+    return `
+      <button type="button" class="col-size-btn px-2.5 py-1 text-xs font-mono font-bold uppercase transition-colors cursor-pointer ${isSelected ? 'bg-pitch-black text-pure-white' : 'bg-pure-white text-muted-graphite hover:text-pitch-black border border-hairline-dark'}" data-size="${s}">
+        ${label}
+      </button>
+    `;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="border border-hairline-dark bg-pure-white px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4 font-mono text-xs shadow-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-muted-graphite uppercase font-bold text-[10px]">VER:</span>
+        <div class="flex items-center gap-1">${sizeButtonsHtml}</div>
+      </div>
+      <div class="flex items-center gap-1">
+        <button type="button" id="col-page-prev" class="px-3 py-1.5 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black font-bold uppercase text-xs flex items-center gap-1 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" ${collectionCurrentPage <= 1 ? 'disabled' : ''}>
+          <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+          <span>ANTERIOR</span>
+        </button>
+        <div class="flex items-center gap-1">${chipsHtml}</div>
+        <button type="button" id="col-page-next" class="px-3 py-1.5 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black font-bold uppercase text-xs flex items-center gap-1 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed" ${collectionCurrentPage >= totalPages ? 'disabled' : ''}>
+          <span>SIGUIENTE</span>
+          <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+        </button>
+      </div>
+    </div>
+  `;
+
+  // Page click listeners
+  container.querySelectorAll('.col-page-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      collectionCurrentPage = parseInt(btn.dataset.page, 10);
+      renderCollectionView();
+    });
+  });
+
+  const prevBtn = container.querySelector('#col-page-prev');
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      if (collectionCurrentPage > 1) {
+        collectionCurrentPage--;
+        renderCollectionView();
+      }
+    });
+  }
+
+  const nextBtn = container.querySelector('#col-page-next');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      if (collectionCurrentPage < totalPages) {
+        collectionCurrentPage++;
+        renderCollectionView();
+      }
+    });
+  }
+
+  // Size buttons
+  container.querySelectorAll('.col-size-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      collectionPageSize = btn.dataset.size;
+      collectionCurrentPage = 1;
+      renderCollectionView();
+    });
+  });
+}
+
+function exportCollectionToCSV() {
+  const items = state.collection || [];
+  if (items.length === 0) {
+    if (typeof showToast === 'function') {
+      showToast('No hay discos en tu colección para exportar.', 'warning');
+    }
+    return;
+  }
+
+  const headers = ['ID_Discogs', 'Titulo', 'Artista', 'Ano', 'Formato', 'Sello', 'Fecha_Agregado', 'Precio_Pagado', 'Notas', 'Discogs_URL'];
+  const rows = items.map(i => [
+    `"${String(i.id || '').replace(/"/g, '""')}"`,
+    `"${String(i.title || '').replace(/"/g, '""')}"`,
+    `"${String(i.artist || '').replace(/"/g, '""')}"`,
+    `"${String(i.year || '').replace(/"/g, '""')}"`,
+    `"${String(i.format || '').replace(/"/g, '""')}"`,
+    `"${String(i.label || '').replace(/"/g, '""')}"`,
+    `"${String(i.dateAdded || '').replace(/"/g, '""')}"`,
+    `"${String(i.pricePaid || '').replace(/"/g, '""')}"`,
+    `"${String(i.notes || '').replace(/"/g, '""')}"`,
+    `"https://www.discogs.com/release/${i.id || ''}"`
+  ]);
+
+  const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const user = state.username || 'usuario';
+  a.href = url;
+  a.download = `coleccion_discos_comprados_${user}_${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  if (typeof showToast === 'function') {
+    showToast(`✓ Colección exportada a CSV (${items.length} discos)`, 'success');
+  }
+}
+
+window.renderCollectionView = renderCollectionView;
+window.exportCollectionToCSV = exportCollectionToCSV;
