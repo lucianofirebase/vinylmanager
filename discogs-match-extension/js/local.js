@@ -583,7 +583,7 @@ function renderLocalMatches() {
   if (matches.length === 0) {
     localView.innerHTML = `
       <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
-        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs" data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[15px]">arrow_back</span>
           <span>VOLVER A VENDEDORES MARKETPLACE</span>
         </button>
@@ -595,7 +595,7 @@ function renderLocalMatches() {
         <p class="font-mono text-xs text-muted-graphite max-w-md mx-auto mb-6 leading-relaxed">
           Pegá las celdas o subí el archivo del catálogo de cualquier disquería local (Google Sheets o Excel) para cruzarlo automáticamente con tu Wantlist.
         </p>
-        <button id="btn-open-local-modal-empty" class="bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-6 py-3 transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2">
+        <button id="btn-open-local-modal-empty" class="bg-pitch-black hover:bg-prada-red text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-6 py-3 transition-colors cursor-pointer shadow-xs inline-flex items-center gap-2" data-tooltip="Abrir ventana para pegar o subir planilla de stock de disquería local" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[16px]">cloud_download</span>
           <span>CARGAR PLANILLA LOCAL</span>
         </button>
@@ -614,7 +614,7 @@ function renderLocalMatches() {
   
   let html = `
     <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
-      <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+      <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs" data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
         <span class="material-symbols-outlined text-[15px]">arrow_back</span>
         <span>VOLVER A VENDEDORES MARKETPLACE</span>
       </button>
@@ -641,11 +641,11 @@ function renderLocalMatches() {
         </p>
       </div>
       <div class="flex items-center gap-3 shrink-0 flex-wrap">
-        <button id="btn-reopen-local-modal" class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs">
+        <button id="btn-reopen-local-modal" class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs" data-tooltip="Importar o mapear otra planilla de catálogo local" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[15px]">sync</span>
           <span>CARGAR OTRA PLANILLA</span>
         </button>
-        <button id="btn-copy-local-matches" class="bg-emerald-700 hover:bg-emerald-800 text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs">
+        <button id="btn-copy-local-matches" class="bg-emerald-700 hover:bg-emerald-800 text-pure-white font-mono font-bold text-xs uppercase tracking-wider px-4 py-2.5 transition-colors cursor-pointer flex items-center gap-2 shadow-xs" data-tooltip="Copiar al portapapeles todos los discos coincidentes para enviar a la disquería" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[15px]">content_copy</span>
           <span>COPIAR LISTA DE PEDIDO</span>
         </button>

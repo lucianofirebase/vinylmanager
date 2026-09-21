@@ -419,7 +419,10 @@ function renderGoldmineTag(cond, isSleeve) {
     bg = 'border-hairline-light bg-stone-100 text-muted-graphite';
     displayCond = 'GENÉRICA';
   }
-  return `<span class="border ${bg} px-2 py-0.5 text-[9px] font-mono uppercase shadow-2xs">${escapeHTML(displayCond || (isSleeve ? 'GENÉRICA' : 'VG+'))}</span>`;
+  const typeLabel = isSleeve ? 'Funda / Portada' : 'Disco / Vinilo';
+  const val = displayCond || (isSleeve ? 'GENÉRICA' : 'VG+');
+  const tooltipText = `Estado Goldmine del ${typeLabel}: ${val}`;
+  return `<span class="border ${bg} px-2 py-0.5 text-[9px] font-mono uppercase shadow-2xs cursor-help" data-tooltip="${escapeHTML(tooltipText)}" data-tooltip-pos="top">${escapeHTML(val)}</span>`;
 }
 
 function getConditionRank(cond) {

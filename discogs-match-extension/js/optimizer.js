@@ -387,15 +387,15 @@ function renderSmartPurchase(filteredSellers) {
 
           <!-- Financial Breakdown Tabular Receipt -->
           <div class="grid grid-cols-3 border border-hairline-dark py-3 font-mono bg-ivory-warm px-3 shadow-xs">
-            <div>
+            <div class="cursor-help" data-tooltip="Suma total de los discos disponibles en este lote" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">SUBTOTAL DISCOS</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(subtotalA, sellerA.currency)}</span>
             </div>
-            <div class="border-l border-hairline-light pl-4">
+            <div class="border-l border-hairline-light pl-4 cursor-help" data-tooltip="Costo de envío agrupando todo en un único paquete" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">ENVÍO CONSOLIDADO</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostA, sellerA.currency)}</span>
             </div>
-            <div class="border-l border-hairline-light pl-4 bg-prada-red-bg px-2 py-0.5">
+            <div class="border-l border-hairline-light pl-4 bg-prada-red-bg px-2 py-0.5 cursor-help" data-tooltip="Ahorro estimado respecto a comprar discos individualmente con envíos separados" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-prada-red font-bold block">AHORRO EN FLETE</span>
               <span class="font-bold text-base sm:text-lg tracking-tight text-prada-red">-$${estSavingsA.toFixed(2)} <span class="text-[11px] font-normal">USD</span></span>
             </div>
@@ -403,11 +403,11 @@ function renderSmartPurchase(filteredSellers) {
         </div>
 
         <div class="flex items-center gap-3 pt-5 mt-4">
-          <button class="btn-scroll-to-seller flex-1 bg-prada-red text-pure-white hover:bg-prada-red-dark text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerA.name)}" type="button">
+          <button class="btn-scroll-to-seller flex-1 bg-prada-red text-pure-white hover:bg-prada-red-dark text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerA.name)}" type="button" data-tooltip="Desplazarse directamente al vendedor en el ranking para ver sus vinilos" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[16px]">inventory_2</span>
             <span>EXAMINAR LOTE (${sellerA.listings.length} DISCOS)</span>
           </button>
-          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerA.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerA.name)} en Discogs">
+          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerA.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerA.name)} en Discogs" data-tooltip="Abrir la tienda de este vendedor con tus discos en Discogs" data-tooltip-pos="top">
             <span>VER EN DISCOGS</span>
             <span class="material-symbols-outlined text-[14px]">open_in_new</span>
           </a>
@@ -459,19 +459,19 @@ function renderSmartPurchase(filteredSellers) {
 
           <!-- Financial Metrics Grid -->
           <div class="grid grid-cols-4 border border-hairline-dark py-3 font-mono bg-ivory-warm px-3 shadow-xs">
-            <div>
+            <div class="cursor-help" data-tooltip="Costo promedio final por cada vinilo incluyendo envío prorrateado" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">MEDIA / PIEZA</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-emerald-800">${formatPrice(avgCostPerPieceB, sellerB.currency)}</span>
             </div>
-            <div class="border-l border-hairline-light pl-3">
+            <div class="border-l border-hairline-light pl-3 cursor-help" data-tooltip="Suma total del valor de los discos de este lote" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">SUBTOTAL</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(subtotalB, sellerB.currency)}</span>
             </div>
-            <div class="border-l border-hairline-light pl-3">
+            <div class="border-l border-hairline-light pl-3 cursor-help" data-tooltip="Costo de envío estimado del paquete completo" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">FLETE</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostB, sellerB.currency)}</span>
             </div>
-            <div class="border-l border-hairline-light pl-3 bg-blue-50/60 px-2 py-0.5">
+            <div class="border-l border-hairline-light pl-3 bg-blue-50/60 px-2 py-0.5 cursor-help" data-tooltip="Costo total estimado (Subtotal discos + Flete)" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-prada-blue font-bold block">TOTAL LOTE</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black">${formatPrice(totalCostB, sellerB.currency)}</span>
             </div>
@@ -487,11 +487,11 @@ function renderSmartPurchase(filteredSellers) {
         </div>
 
         <div class="flex items-center gap-3 pt-5 mt-4">
-          <button class="btn-scroll-to-seller flex-1 bg-prada-blue-night hover:bg-prada-blue text-pure-white text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerB.name)}" type="button">
+          <button class="btn-scroll-to-seller flex-1 bg-prada-blue-night hover:bg-prada-blue text-pure-white text-xs font-mono font-bold py-3 uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer" data-scroll-to="${escapeHTML(sellerB.name)}" type="button" data-tooltip="Desplazarse directamente al vendedor en el ranking para ver sus vinilos" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[16px]">inventory_2</span>
             <span>EXAMINAR LOTE (${sellerB.listings.length} DISCOS)</span>
           </button>
-          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerB.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerB.name)} en Discogs">
+          <a class="border-2 border-pitch-black text-pitch-black hover:bg-surface-low px-5 py-3 text-xs font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 font-bold cursor-pointer shrink-0" href="https://www.discogs.com/seller/${encodeURIComponent(sellerB.name)}/mywants" target="_blank" rel="noreferrer" title="Abrir perfil de ${escapeHTML(sellerB.name)} en Discogs" data-tooltip="Abrir la tienda de este vendedor con tus discos en Discogs" data-tooltip-pos="top">
             <span>VER EN DISCOGS</span>
             <span class="material-symbols-outlined text-[14px]">open_in_new</span>
           </a>

@@ -282,14 +282,16 @@ function renderWantsPaginationBar(container, totalItems, totalPages, startIndex,
     }
     if (p === wantsCurrentPage) {
       return `
-        <button type="button" class="w-8 h-8 flex items-center justify-center bg-pitch-black text-pure-white font-mono font-extrabold text-xs border border-pitch-black shadow-xs cursor-default relative">
+        <button type="button" class="w-8 h-8 flex items-center justify-center bg-pitch-black text-pure-white font-mono font-extrabold text-xs border border-pitch-black shadow-xs cursor-default relative"
+          data-tooltip="Página actual (${p})" data-tooltip-pos="top">
           <span class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></span>
           ${p}
         </button>
       `;
     }
     return `
-      <button type="button" class="wants-page-btn w-8 h-8 flex items-center justify-center bg-pure-white hover:bg-surface-low text-pitch-black font-mono font-semibold text-xs border border-hairline-dark hover:border-pitch-black transition-colors cursor-pointer" data-page="${p}" title="Ir a la página ${p}">
+      <button type="button" class="wants-page-btn w-8 h-8 flex items-center justify-center bg-pure-white hover:bg-surface-low text-pitch-black font-mono font-semibold text-xs border border-hairline-dark hover:border-pitch-black transition-colors cursor-pointer" data-page="${p}" title="Ir a la página ${p}"
+        data-tooltip="Ir a la página ${p}" data-tooltip-pos="top">
         ${p}
       </button>
     `;
@@ -300,9 +302,10 @@ function renderWantsPaginationBar(container, totalItems, totalPages, startIndex,
     const label = s === 'all' ? 'TODOS' : s;
     const isSelected = wantsPageSize === s || (s === 'all' && wantsPageSize === 'all');
     if (isSelected) {
-      return `<span class="bg-pitch-black text-pure-white font-mono font-bold text-[10px] px-2.5 py-1 uppercase tracking-wider select-none">${label}</span>`;
+      return `<span class="bg-pitch-black text-pure-white font-mono font-bold text-[10px] px-2.5 py-1 uppercase tracking-wider select-none" data-tooltip="Mostrando actualmente ${s === 'all' ? 'todos los' : s} discos por página" data-tooltip-pos="top">${label}</span>`;
     }
-    return `<button type="button" class="wants-size-btn bg-pure-white hover:bg-surface-low text-pitch-black font-mono text-[10px] font-semibold px-2.5 py-1 uppercase tracking-wider border-l border-hairline-dark transition-colors cursor-pointer" data-size="${s}">${label}</button>`;
+    return `<button type="button" class="wants-size-btn bg-pure-white hover:bg-surface-low text-pitch-black font-mono text-[10px] font-semibold px-2.5 py-1 uppercase tracking-wider border-l border-hairline-dark transition-colors cursor-pointer" data-size="${s}"
+      data-tooltip="Mostrar ${s === 'all' ? 'todos los' : s} discos por página" data-tooltip-pos="top">${label}</button>`;
   }).join('');
 
   container.innerHTML = `
@@ -318,12 +321,14 @@ function renderWantsPaginationBar(container, totalItems, totalPages, startIndex,
       <!-- Center: Navigation Buttons (Previous, Chips, Next) -->
       <div class="flex items-center gap-1.5 flex-wrap justify-center">
         <!-- First Page -->
-        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="1" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Primera página">
+        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="1" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Primera página"
+          data-tooltip="Ir a la primera página" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[16px] leading-none">first_page</span>
         </button>
 
         <!-- Previous -->
-        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage - 1}" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Página anterior">
+        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage - 1}" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Página anterior"
+          data-tooltip="Página anterior" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[15px] leading-none">chevron_left</span>
           <span class="hidden sm:inline text-[10px] tracking-wider">ANT</span>
         </button>
@@ -332,13 +337,15 @@ function renderWantsPaginationBar(container, totalItems, totalPages, startIndex,
         ${chipsHtml}
 
         <!-- Next -->
-        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage + 1}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Página siguiente">
+        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage + 1}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Página siguiente"
+          data-tooltip="Página siguiente" data-tooltip-pos="top">
           <span class="hidden sm:inline text-[10px] tracking-wider">SIG</span>
           <span class="material-symbols-outlined text-[15px] leading-none">chevron_right</span>
         </button>
 
         <!-- Last Page -->
-        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="${totalPages}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Última página (${totalPages})">
+        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="${totalPages}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Última página (${totalPages})"
+          data-tooltip="Ir a la última página (${totalPages})" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[16px] leading-none">last_page</span>
         </button>
       </div>
@@ -678,15 +685,20 @@ function renderResults() {
         const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
         const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
 
+        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
+        const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
+
         listingsHtml += `
           <div class="seller-listing-row grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
             <div class="col-span-5 flex items-center gap-3">
-              <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0" type="checkbox"/>
+              <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0 cursor-pointer" type="checkbox"
+                data-tooltip="Incluir o excluir este disco del cálculo de subtotal y envío" data-tooltip-pos="top"/>
               <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img">
                 ${imgHtml}
               </div>
               <div class="flex flex-col min-w-0 font-mono">
-                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors">
+                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors"
+                  data-tooltip="Ver ficha técnica de esta edición en Discogs" data-tooltip-pos="top">
                   ${starHtml}${escapeHTML(artistLabel)} — ${escapeHTML(titleLabel)}
                 </a>
                 <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
@@ -700,11 +712,12 @@ function renderResults() {
               <span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>
             </div>
             <div class="col-span-2 text-right font-mono text-[11px]">
-              <span class="text-muted-graphite line-through text-[10px] block">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
-              <span class="font-bold text-prada-emerald block">LOTE: ${formatPrice(bundleItemShipping, seller.currency)}</span>
+              <span class="text-muted-graphite line-through text-[10px] block" data-tooltip="Costo de envío individual estándar sin consolidar" data-tooltip-pos="top">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
+              <span class="font-bold text-prada-emerald block" data-tooltip="Costo prorrateado de envío por disco comprando este lote agrupado" data-tooltip-pos="top">LOTE: ${formatPrice(bundleItemShipping, seller.currency)}</span>
             </div>
             <div class="col-span-1 flex justify-center">
-              <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="w-7 h-7 border border-hairline-light hover:border-prada-blue hover:text-prada-blue flex items-center justify-center text-pitch-black transition-colors" title="Ver Oferta">
+              <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="w-7 h-7 border border-hairline-light hover:border-prada-blue hover:text-prada-blue flex items-center justify-center text-pitch-black transition-colors" title="Ver Oferta"
+                data-tooltip="Abrir esta oferta específica del vendedor en Discogs" data-tooltip-pos="left">
                 <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
               </a>
             </div>
@@ -713,7 +726,7 @@ function renderResults() {
       });
       
       const sellerShippingWarning = seller.isShippingEstimated 
-        ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío estimado por seguridad.">⚠️</span>` 
+        ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío estimado por seguridad." data-tooltip="Envío estimado automáticamente según tarifas de la región" data-tooltip-pos="top">⚠️</span>` 
         : '';
       
       card.innerHTML = `
@@ -723,37 +736,44 @@ function renderResults() {
         <!-- Collapsed Header Strip -->
         <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
           <div class="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
-            <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30 shrink-0">#${rankNumber}</span>
+            <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30 shrink-0 cursor-help"
+              data-tooltip="Posición #${rankNumber} en el ranking global de mejores vendedores" data-tooltip-pos="top">#${rankNumber}</span>
             <div class="flex flex-col min-w-0">
               <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
                 <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black truncate max-w-[180px] sm:max-w-none">${escapeHTML(seller.name)}</span>
-                <span class="border border-emerald-300 bg-prada-emerald-bg px-1.5 py-0.5 text-[9px] font-mono uppercase text-emerald-900 font-bold">${seller.rating}%</span>
-                <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
+                <span class="border border-emerald-300 bg-prada-emerald-bg px-1.5 py-0.5 text-[9px] font-mono uppercase text-emerald-900 font-bold cursor-help"
+                  data-tooltip="Porcentaje de valoraciones positivas del vendedor en Discogs" data-tooltip-pos="top">${seller.rating}%</span>
+                <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold cursor-help"
+                  data-tooltip="País de origen desde donde despacha este vendedor" data-tooltip-pos="top">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
               </div>
               <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-wider mt-0.5 truncate">${seller.ratingCount > 0 ? `${seller.ratingCount.toLocaleString()} CALIFICACIONES • ` : ''}${seller.isDomestic ? 'ENVÍO AUTOMATIZADO (NACIONAL)' : (seller.isEUToEU ? 'ENVÍO INTRA-UE' : 'TIENDA VERIFICADA DISCOGS')}</span>
             </div>
           </div>
           <!-- Architectural Commercial Metrics Pod -->
           <div class="metrics-pod flex items-center divide-x divide-hairline-light border border-hairline-light bg-ivory-warm/50 px-2 py-2 font-mono shadow-2xs">
-            <div class="px-3 sm:px-5 text-right">
+            <div class="px-3 sm:px-5 text-right cursor-help"
+              data-tooltip="Cantidad de vinilos de tu lista que tiene a la venta esta tienda (${matchPct}% de tu lista)" data-tooltip-pos="top">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">COINCIDENCIAS</span>
               <span class="font-bold text-prada-red text-xs sm:text-[13px] whitespace-nowrap block">
                 ${activeListings.length} DE ${state.wants.length} <span class="text-muted-graphite font-normal text-[10px]">(${matchPct}%)</span>
               </span>
             </div>
-            <div class="px-3 sm:px-5 text-right">
+            <div class="px-3 sm:px-5 text-right cursor-help"
+              data-tooltip="Suma del valor de los vinilos seleccionados de este vendedor" data-tooltip-pos="top">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">SUBTOTAL</span>
               <span class="font-bold text-pitch-black text-xs sm:text-[13px] whitespace-nowrap block">
                 ${formatPrice(activeSubtotal, seller.currency)}
               </span>
             </div>
-            <div class="px-3 sm:px-5 text-right">
-              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">ENVÍO A UY</span>
+            <div class="px-3 sm:px-5 text-right cursor-help"
+              data-tooltip="Costo de envío estimado consolidando el paquete hacia ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
+              <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">ENVÍO A ${escapeHTML(buyerCountryCode)}</span>
               <span class="font-bold text-prada-blue text-xs sm:text-[13px] whitespace-nowrap block">
                 ${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}
               </span>
             </div>
-            <div class="pl-3 sm:pl-5 pr-3 sm:pr-4 text-right min-w-[105px] sm:min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light">
+            <div class="pl-3 sm:pl-5 pr-3 sm:pr-4 text-right min-w-[105px] sm:min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light cursor-help"
+              data-tooltip="Precio final estimado (Subtotal + Envío total consolidado)" data-tooltip-pos="top">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">TOTAL EST.</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black whitespace-nowrap block">
                 ${formatPrice(activeTotalPrice, seller.currency)}
@@ -761,11 +781,13 @@ function renderResults() {
             </div>
           </div>
           <div class="flex items-center gap-2 font-mono">
-            <a class="border border-hairline-light hover:border-prada-blue px-4 py-2 text-[10px] uppercase tracking-widest text-pitch-black hover:text-prada-blue transition-colors flex items-center gap-1 font-semibold" href="https://www.discogs.com/seller/${encodeURIComponent(seller.name)}/mywants" target="_blank" rel="noreferrer">
+            <a class="border border-hairline-light hover:border-prada-blue px-4 py-2 text-[10px] uppercase tracking-widest text-pitch-black hover:text-prada-blue transition-colors flex items-center gap-1 font-semibold cursor-pointer" href="https://www.discogs.com/seller/${encodeURIComponent(seller.name)}/mywants" target="_blank" rel="noreferrer"
+              data-tooltip="Abrir los discos de tu Wantlist en la tienda de Discogs de este vendedor" data-tooltip-pos="top">
               <span>DISCOGS</span>
               <span class="material-symbols-outlined text-[13px]">open_in_new</span>
             </a>
-            <button aria-label="Expandir" class="btn-collapse w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer" data-seller="${seller.name}" type="button">
+            <button aria-label="Expandir" class="btn-collapse w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer" data-seller="${seller.name}" type="button"
+              data-tooltip="Ver / Ocultar el inventario de vinilos disponibles de este vendedor" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[16px] pointer-events-none">expand_more</span>
             </button>
           </div>
@@ -798,13 +820,15 @@ function renderResults() {
                 MOSTRANDO <span class="seller-page-range font-bold text-pitch-black">1–${Math.min(10, activeListings.length)}</span> DE <span class="font-bold text-pitch-black">${activeListings.length}</span> DISCOS
               </div>
               <div class="flex items-center gap-1.5">
-                <button type="button" class="btn-seller-prev w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" disabled title="Página anterior">
+                <button type="button" class="btn-seller-prev w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" disabled title="Página anterior"
+                  data-tooltip="Página anterior de vinilos de este vendedor" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[14px]">chevron_left</span>
                 </button>
                 <div class="seller-page-btn-group flex items-center gap-1">
                   ${buildSellerPageButtonsHtml(seller.name, 1, totalPages)}
                 </div>
-                <button type="button" class="btn-seller-next w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" ${totalPages <= 1 ? 'disabled' : ''} title="Página siguiente">
+                <button type="button" class="btn-seller-next w-7 h-7 flex items-center justify-center border border-hairline-light bg-pure-white hover:border-pitch-black text-pitch-black transition-colors disabled:opacity-30 disabled:pointer-events-none cursor-pointer" ${totalPages <= 1 ? 'disabled' : ''} title="Página siguiente"
+                  data-tooltip="Página siguiente de vinilos de este vendedor" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                 </button>
               </div>
@@ -1308,7 +1332,8 @@ function calculateAndRenderStats() {
               <div class="flex items-center justify-between mt-1.5 flex-wrap gap-2">
                 <span class="font-mono font-bold text-xs text-emerald-700">${formatPrice(l.priceVal, l.currency)}</span>
                 <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
-                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs">Ver Oferta ↗</a>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs"
+                  data-tooltip="Abrir la oferta más accesible de este disco en Discogs" data-tooltip-pos="left">Ver Oferta ↗</a>
               </div>
             </div>
           </div>
@@ -1333,7 +1358,8 @@ function calculateAndRenderStats() {
               <div class="flex items-center justify-between mt-1.5 flex-wrap gap-2">
                 <span class="font-mono font-bold text-xs text-prada-blue">${formatPrice(l.priceVal, l.currency)}</span>
                 <span class="text-[9px] text-muted-graphite uppercase">👤 ${escapeHTML(l.sellerName || 'Vendedor')} (${escapeHTML(l.shipsFrom || 'N/A')})</span>
-                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs">Ver Oferta ↗</a>
+                <a href="${l.listingUrl || (l.listingId ? 'https://www.discogs.com/sell/item/' + l.listingId : 'https://www.discogs.com/release/' + l.releaseId)}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black text-[9px] font-mono font-bold uppercase px-2 py-0.5 transition-colors shadow-2xs"
+                  data-tooltip="Abrir esta joya de colección en Discogs" data-tooltip-pos="left">Ver Oferta ↗</a>
               </div>
             </div>
           </div>
@@ -1405,7 +1431,8 @@ function calculateAndRenderStats() {
     let html = `
       <!-- Top Sub-View Header & Navigation Bar -->
       <div class="flex items-center justify-between mb-6 pb-3 border-b border-hairline-light flex-wrap gap-3 font-mono">
-        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs">
+        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+          data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
           <span class="material-symbols-outlined text-[15px]">arrow_back</span>
           <span>VOLVER A VENDEDORES MARKETPLACE</span>
         </button>
@@ -1414,28 +1441,32 @@ function calculateAndRenderStats() {
 
       <!-- Top metrics bar -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 font-mono">
-        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] cursor-help"
+          data-tooltip="Discos de tu Wantlist con tiendas verificadas enviando a ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
           <div class="absolute top-0 left-0 right-0 h-1 bg-prada-emerald"></div>
           <span class="text-[10px] text-muted-graphite uppercase tracking-widest font-bold block mb-1">DISPONIBLES PARA TI</span>
           <span class="font-sans font-black text-2xl text-prada-emerald block">${wantsForSale.length} / ${totalWantsCount}</span>
           <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">ENVÍAN A ${escapeHTML(buyerCountryVal)}</span>
         </div>
         
-        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] cursor-help"
+          data-tooltip="Discos con stock en Discogs pero cuyas tiendas no envían hacia ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
           <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
           <span class="text-[10px] text-amber-700 uppercase tracking-widest font-bold block mb-1">🌍 EN VENTA (SIN ENVÍO A TI)</span>
           <span class="font-sans font-black text-2xl text-amber-600 block">${wantsBlockedByShipping.length}</span>
           <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">HAY COPIAS EN OTROS PAÍSES</span>
         </div>
 
-        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] cursor-help"
+          data-tooltip="Discos de tu Wantlist sin una sola copia a la venta en todo el marketplace global de Discogs" data-tooltip-pos="top">
           <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red"></div>
           <span class="text-[10px] text-prada-red uppercase tracking-widest font-bold block mb-1">🚫 TOTALMENTE AGOTADOS</span>
           <span class="font-sans font-black text-2xl text-prada-red block">${wantsTrulyUnavailable.length}</span>
           <span class="text-[10px] text-muted-graphite block mt-1 uppercase font-semibold">0 COPIAS EN TODO DISCOGS</span>
         </div>
         
-        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]">
+        <div class="stats-card-rich p-4 relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] cursor-help"
+          data-tooltip="Total de copias individuales identificadas y cotejadas en el marketplace" data-tooltip-pos="top">
           <div class="absolute top-0 left-0 right-0 h-1 bg-prada-blue"></div>
           <span class="text-[10px] text-prada-blue uppercase tracking-widest font-bold block mb-1">TOTAL DE OFERTAS</span>
           <span class="font-sans font-black text-2xl text-prada-blue block">${allListings.length}</span>
@@ -1484,13 +1515,16 @@ function calculateAndRenderStats() {
 
             <!-- Filter tabs -->
             <div class="not-for-sale-tabs flex gap-2 mb-3 flex-wrap font-mono">
-              <button type="button" class="not-for-sale-tab-btn active" data-filter="all">
+              <button type="button" class="not-for-sale-tab-btn active cursor-pointer" data-filter="all"
+                data-tooltip="Mostrar todos los vinilos sin envío directo disponible" data-tooltip-pos="top">
                 TODOS (${wantsNotForSale.length})
               </button>
-              <button type="button" class="not-for-sale-tab-btn" data-filter="blocked">
+              <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="blocked"
+                data-tooltip="Ver vinilos con copias disponibles pero bloqueados para envío a ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
                 🌍 NO ENVÍAN A ${escapeHTML(buyerCountryVal)} (${wantsBlockedByShipping.length})
               </button>
-              <button type="button" class="not-for-sale-tab-btn" data-filter="zero">
+              <button type="button" class="not-for-sale-tab-btn cursor-pointer" data-filter="zero"
+                data-tooltip="Ver discos que ninguna tienda en el mundo tiene actualmente en venta" data-tooltip-pos="top">
                 🚫 AGOTADOS MUNDIALMENTE (${wantsTrulyUnavailable.length})
               </button>
             </div>

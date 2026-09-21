@@ -103,7 +103,8 @@
         </div>
 
         <button id="start-scan-btn"
-          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer">
+          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-4 py-1.5 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-sm disabled:opacity-50 cursor-pointer"
+          data-tooltip="Escanear ofertas de vendedores en Discogs para tu lista" data-tooltip-pos="bottom">
           <span class="material-symbols-outlined text-[15px]">radar</span>
           <span>2. INICIAR ANÁLISIS</span>
         </button>
@@ -133,7 +134,8 @@
         <div
           class="hidden sm:flex items-center border border-hairline-light bg-pure-white divide-x divide-hairline-light shadow-sm">
           <div
-            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-pitch-black">
+            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-pitch-black"
+            data-tooltip="País del comprador para calcular tarifas de envío y aduanas" data-tooltip-pos="bottom">
             <span class="material-symbols-outlined text-[13px] text-prada-blue shrink-0">location_on</span>
             <select id="buyer-country"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none appearance-none">
@@ -160,7 +162,8 @@
             <span class="material-symbols-outlined text-[12px] pointer-events-none text-muted-graphite shrink-0 ml-0.5">expand_more</span>
           </div>
           <div
-            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-prada-emerald font-bold bg-prada-emerald-bg">
+            class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-prada-emerald font-bold bg-prada-emerald-bg"
+            data-tooltip="Moneda de visualización para conversión de precios" data-tooltip-pos="bottom">
             <select id="display-currency"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none text-emerald-900 appearance-none">
               <option value="USD" selected>$ USD</option>
@@ -187,7 +190,8 @@
           <div class="relative">
             <div
               class="flex items-center gap-2 border border-hairline-light bg-pure-white px-3 py-1 shadow-sm cursor-pointer hover:border-hairline-dark transition-colors"
-              id="user-card" title="Gestionar cuenta de Discogs (Testing y Sesión)">
+              id="user-card" title="Gestionar cuenta de Discogs (Testing y Sesión)"
+              data-tooltip="Gestionar usuario y sesión activa de Discogs" data-tooltip-pos="bottom">
               <span class="w-1.5 h-1.5 bg-prada-red" id="connection-status-dot"></span>
               <span class="text-[10px] tracking-widest uppercase font-semibold text-pitch-black truncate max-w-[95px]"
                 id="username-display">—</span>
@@ -279,21 +283,25 @@
       style="display: none;">
       <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0 -mx-1 px-1" id="tab-navigation">
         <button id="tab-btn-sellers"
-          class="shrink-0 whitespace-nowrap bg-prada-blue-night text-pure-white px-4 py-2 font-bold border-b-2 border-prada-red tracking-wider cursor-pointer shadow-xs">
+          class="shrink-0 whitespace-nowrap bg-prada-blue-night text-pure-white px-4 py-2 font-bold border-b-2 border-prada-red tracking-wider cursor-pointer shadow-xs"
+          data-tooltip="Ver tiendas y vendedores ordenados por mayor stock de tu lista" data-tooltip-pos="bottom">
           VENDEDORES MARKETPLACE
         </button>
         <button id="tab-btn-local"
-          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer"
+          data-tooltip="Ver coincidencias encontradas en planillas de disquerías locales (Google Drive)" data-tooltip-pos="bottom">
           COINCIDENCIAS LOCAL (SHEETS) <span id="badge-local-count"
             class="ml-1.5 text-[9px] bg-prada-red text-pure-white font-mono font-bold px-1.5 py-0.5 shadow-xs"
             style="display: none;">0</span>
         </button>
         <button id="tab-btn-stats"
-          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer"
+          data-tooltip="Ver estadísticas globales, vinilos sin envío y objetos de deseo" data-tooltip-pos="bottom">
           ESTADÍSTICAS DE LISTA
         </button>
         <button id="btn-back-to-wants"
-          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer">
+          class="shrink-0 whitespace-nowrap px-4 py-2 text-muted-graphite hover:text-pitch-black hover:border-hairline-dark border border-transparent transition-all font-semibold cursor-pointer"
+          data-tooltip="Volver al catálogo para marcar o desmarcar favoritos ★" data-tooltip-pos="bottom">
           LISTA DE DESEOS (CRATE)
         </button>
       </nav>
@@ -329,7 +337,8 @@
           FILTRADO TÉCNICO:
         </span>
         <!-- Dropdown 1: Min Discs -->
-        <div class="border border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs">
+        <div class="border border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs"
+          data-tooltip="Mostrar solo tiendas que tengan como mínimo esta cantidad de tus vinilos" data-tooltip-pos="bottom">
           <span class="text-muted-graphite font-semibold text-xs shrink-0">LOTE MÍN:</span>
           <select id="filter-min-matches"
             class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
@@ -345,7 +354,8 @@
         </div>
         <!-- Dropdown 2: Condition -->
         <div
-          class="border border-emerald-600 bg-prada-emerald-bg px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          class="border border-emerald-600 bg-prada-emerald-bg px-2.5 py-1 flex items-center gap-1 shadow-xs"
+          data-tooltip="Filtrar por estado del vinilo según escala Goldmine (VG+, NM, Mint)" data-tooltip-pos="bottom">
           <span class="text-emerald-800 font-semibold text-xs shrink-0">ESTADO:</span>
           <select id="filter-min-condition"
             class="bg-transparent text-emerald-950 font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
@@ -358,7 +368,8 @@
           <span class="material-symbols-outlined text-[14px] pointer-events-none text-emerald-700 shrink-0 ml-0.5">expand_more</span>
         </div>
         <!-- Dropdown 3: Origin -->
-        <div class="border border-blue-600 bg-blue-50 px-2.5 py-1 flex items-center gap-1 shadow-xs">
+        <div class="border border-blue-600 bg-blue-50 px-2.5 py-1 flex items-center gap-1 shadow-xs"
+          data-tooltip="Filtrar por país de origen del vendedor o región" data-tooltip-pos="bottom">
           <span class="text-prada-blue font-semibold text-xs shrink-0">ORIGEN:</span>
           <select id="filter-country"
             class="bg-transparent text-prada-blue-night font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
@@ -372,7 +383,8 @@
           <span class="material-symbols-outlined text-[14px] pointer-events-none text-prada-blue shrink-0 ml-0.5">expand_more</span>
         </div>
         <!-- Dropdown 4: Merchant Reputation -->
-        <div class="border border-amber-600 bg-prada-ochre-bg px-2.5 py-1 flex items-center gap-1 shadow-xs">
+        <div class="border border-amber-600 bg-prada-ochre-bg px-2.5 py-1 flex items-center gap-1 shadow-xs"
+          data-tooltip="Filtrar por reputación y valoraciones positivas del vendedor" data-tooltip-pos="bottom">
           <span class="text-amber-900 font-semibold text-xs shrink-0">REPUTACIÓN:</span>
           <select id="filter-rating"
             class="bg-transparent text-amber-950 font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
@@ -385,7 +397,8 @@
         </div>
         <!-- Dropdown 5: Sort Order -->
         <div
-          class="border-2 border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs">
+          class="border-2 border-hairline-dark bg-pure-white px-2.5 py-1 flex items-center gap-1 shadow-xs"
+          data-tooltip="Criterio de ordenación de los resultados de vendedores" data-tooltip-pos="bottom">
           <span class="text-prada-blue font-bold text-xs shrink-0">ORDEN:</span>
           <select id="sort-by"
             class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-xs appearance-none">
@@ -398,7 +411,8 @@
       </div>
 
       <div class="flex items-center gap-4 text-muted-graphite w-full md:w-auto">
-        <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-xs w-full md:w-auto">
+        <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-xs w-full md:w-auto"
+          data-tooltip="Filtrar en vivo por título de disco o nombre de artista" data-tooltip-pos="bottom">
           <span class="material-symbols-outlined text-[16px] text-prada-red mr-2 shrink-0">search</span>
           <input id="filter-search-release" type="text" placeholder="BUSCAR DISCO O ARTISTA..."
             class="bg-transparent text-xs font-mono tracking-wide uppercase placeholder:text-muted-graphite focus:outline-none text-pitch-black w-full sm:w-64">
@@ -553,7 +567,8 @@
               
               <!-- LOGO / TARJETA 1: EN DISCOGS -->
               <button id="choice-btn-discogs" type="button"
-                class="choice-card choice-card-discogs w-full text-left p-6 sm:p-8 flex flex-col justify-between relative">
+                class="choice-card choice-card-discogs w-full text-left p-6 sm:p-8 flex flex-col justify-between relative"
+                data-tooltip="Conecta con tu perfil de Discogs y sincroniza tu Wantlist oficial en la nube" data-tooltip-pos="top">
                 <div class="choice-stripe absolute top-0 left-0 right-0 h-1 bg-transparent"></div>
 
                 <div>
@@ -592,7 +607,8 @@
 
               <!-- LOGO / TARJETA 2: EN UNA PLANILLA -->
               <button id="choice-btn-sheet" type="button"
-                class="choice-card choice-card-sheet w-full text-left p-6 sm:p-8 flex flex-col justify-between relative">
+                class="choice-card choice-card-sheet w-full text-left p-6 sm:p-8 flex flex-col justify-between relative"
+                data-tooltip="Pega celdas o importa archivos Excel / CSV para comparar catálogos" data-tooltip-pos="top">
                 <div class="choice-stripe absolute top-0 left-0 right-0 h-1 bg-transparent"></div>
 
                 <div>
@@ -632,7 +648,8 @@
           <div id="onboard-pane-discogs" class="w-full max-w-xl mx-auto text-left font-mono" style="display: none;">
             <div class="flex items-center justify-between pb-4 mb-6 border-b border-hairline-light">
               <button id="btn-back-to-choice-discogs" type="button"
-                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer">
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                data-tooltip="Volver a la pantalla de selección de origen" data-tooltip-pos="bottom">
                 <span class="material-symbols-outlined text-[15px]">arrow_back</span>
                 <span>Cambiar origen</span>
               </button>
@@ -656,20 +673,24 @@
                     <span class="material-symbols-outlined text-[15px] text-prada-red animate-spin">sync</span>
                     Detectando sesión...
                   </span>
-                  <button id="btn-change-username-toggle" type="button" class="text-[9px] text-prada-blue underline uppercase cursor-pointer hover:text-pitch-black">Cambiar</button>
+                  <button id="btn-change-username-toggle" type="button" class="text-[9px] text-prada-blue underline uppercase cursor-pointer hover:text-pitch-black"
+                    data-tooltip="Cambiar manualmente de usuario para pruebas" data-tooltip-pos="left">Cambiar</button>
                 </div>
                 <div id="wizard-input-fallback" class="mt-2 flex flex-col gap-1.5" style="display: none;">
                   <input type="text" id="wizard-manual-username" placeholder="NOMBRE DE USUARIO"
-                    class="w-full bg-pure-white border border-hairline-dark p-2 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red">
+                    class="w-full bg-pure-white border border-hairline-dark p-2 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red"
+                    data-tooltip="Escribe el nombre de usuario de Discogs a conectar" data-tooltip-pos="top">
                   <button id="wizard-save-username-btn" type="button"
-                    class="bg-pitch-black hover:bg-prada-red text-pure-white py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer">Guardar Usuario</button>
+                    class="bg-pitch-black hover:bg-prada-red text-pure-white py-1.5 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors cursor-pointer"
+                    data-tooltip="Guardar y vincular este usuario" data-tooltip-pos="top">Guardar Usuario</button>
                 </div>
               </div>
 
               <!-- Shipping destination country -->
               <div>
                 <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite block mb-1">PAÍS DE DESTINO (CALCULAR ENVÍO COMBINADO):</span>
-                <div class="relative border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center justify-between">
+                <div class="relative border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center justify-between"
+                  data-tooltip="Elige el país de destino para calcular envío combinado y aduanas" data-tooltip-pos="top">
                   <div class="flex items-center gap-2 w-full">
                     <span class="material-symbols-outlined text-[15px] text-prada-blue shrink-0 pointer-events-none">location_on</span>
                     <select id="wizard-buyer-country" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
@@ -701,7 +722,8 @@
               <!-- Sync action button -->
               <div class="pt-2 flex flex-col gap-2">
                 <button id="wizard-sync-btn" type="button"
-                  class="w-full bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                  class="w-full bg-prada-red hover:bg-prada-red-dark text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                  data-tooltip="Descargar carátulas, precios y lista completa de deseos desde Discogs" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[16px]">sync</span>
                   <span>SINCRONIZAR Y CARGAR DISCOS</span>
                 </button>
@@ -713,7 +735,8 @@
 
                 <button id="wizard-resume-wants-btn-1" type="button"
                   class="w-full border border-prada-blue/40 bg-blue-50/60 text-prada-blue font-mono text-xs font-semibold uppercase tracking-wider hover:bg-prada-blue hover:text-white py-2 px-3 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                  style="display: none;">
+                  style="display: none;"
+                  data-tooltip="Continuar con la lista que ya tenías guardada en memoria" data-tooltip-pos="top">
                   <span id="wizard-resume-wants-text-1">Continuar con lista ya guardada</span>
                   <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                 </button>
@@ -725,7 +748,8 @@
           <div id="onboard-pane-sheet" class="w-full max-w-xl mx-auto text-left font-mono" style="display: none;">
             <div class="flex items-center justify-between pb-4 mb-6 border-b border-hairline-light">
               <button id="btn-back-to-choice-sheet" type="button"
-                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer">
+                class="px-3 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 transition-colors cursor-pointer"
+                data-tooltip="Volver a la pantalla de selección de origen" data-tooltip-pos="bottom">
                 <span class="material-symbols-outlined text-[15px]">arrow_back</span>
                 <span>Cambiar origen</span>
               </button>
@@ -745,10 +769,12 @@
                 <label class="text-[9px] font-bold uppercase tracking-wider text-pitch-black block mb-1.5">PEGAR FILAS COPIADAS DE GOOGLE SHEETS O EXCEL:</label>
                 <textarea id="onboard-sheet-paste-area"
                   placeholder="Copia las filas en tu Sheet o Excel (ej: Artista | Título | Año...) y pégalas aquí..."
-                  class="w-full h-32 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite/70 focus:outline-none focus:border-prada-blue"></textarea>
+                  class="w-full h-32 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite/70 focus:outline-none focus:border-prada-blue"
+                  data-tooltip="Pega filas con columnas de Artista y Título copiadas de tu planilla" data-tooltip-pos="top"></textarea>
               </div>
 
-              <div class="flex items-center justify-between gap-2 p-2.5 bg-surface-low border border-hairline-light">
+              <div class="flex items-center justify-between gap-2 p-2.5 bg-surface-low border border-hairline-light"
+                data-tooltip="Subir archivo .xlsx, .xls o .csv desde tu computadora" data-tooltip-pos="top">
                 <label class="text-xs text-muted-graphite cursor-pointer hover:text-pitch-black flex items-center gap-1.5">
                   <span class="material-symbols-outlined text-[16px] text-prada-blue">upload_file</span>
                   <span class="font-bold">O subir archivo (.xlsx, .xls, .csv):</span>
@@ -760,14 +786,14 @@
               <!-- Action button for Spreadsheet -->
               <div class="pt-2 flex flex-col gap-2">
                 <button id="onboard-sheet-analyze-btn" type="button"
-                  class="w-full bg-pitch-black hover:bg-prada-blue text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3.5 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                  class="w-full bg-pitch-black hover:bg-prada-blue text-pure-white font-mono text-xs font-bold uppercase tracking-widest py-3.5 px-4 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-2"
+                  data-tooltip="Importar filas y buscar ofertas en el marketplace de Discogs" data-tooltip-pos="top">
                   <span class="material-symbols-outlined text-[16px]">cloud_upload</span>
                   <span>IMPORTAR Y CHEQUEAR VENDEDORES</span>
                 </button>
                 <p class="text-[10px] text-muted-graphite font-mono text-center">
                   Mapeo guiado de columnas • Cruce inmediato sin ventanas divididas
                 </p>
-              </div>
             </div>
           </div>
 
@@ -945,7 +971,8 @@
                 <span>|</span>
                 <button id="btn-export-results-csv"
                   class="text-prada-red underline hover:text-prada-red-dark uppercase font-bold cursor-pointer"
-                  type="button">EXPORTAR CSV</button>
+                  type="button"
+                  data-tooltip="Descargar tabla de vendedores y coincidencias en archivo CSV" data-tooltip-pos="top">EXPORTAR CSV</button>
               </div>
             </div>
 
@@ -970,11 +997,13 @@
           <p class="text-muted-graphite text-xs font-mono mb-6 max-w-md mx-auto leading-relaxed">Prueba reduciendo la cantidad de discos mínimos, eliminando el filtro de país o limpiando la búsqueda.</p>
           <div class="flex flex-wrap items-center justify-center gap-3">
             <button id="btn-reset-filters"
-              class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-6 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors shadow-sm cursor-pointer">
+              class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-6 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+              data-tooltip="Quitar todos los filtros activos para ver la totalidad de vendedores encontrados" data-tooltip-pos="top">
               Mostrar todos los vendedores
             </button>
             <button id="btn-back-to-wants-from-no-results"
-              class="px-5 py-2.5 border border-hairline-dark bg-pure-white hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider text-pitch-black transition-colors inline-flex items-center gap-1.5 cursor-pointer">
+              class="px-5 py-2.5 border border-hairline-dark bg-pure-white hover:bg-surface-low font-mono font-bold text-xs uppercase tracking-wider text-pitch-black transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+              data-tooltip="Regresar a tu lista de deseos para ajustar favoritos" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[15px] text-pitch-black">arrow_back</span>
               <span>Volver a Lista de Deseos</span>
             </button>
@@ -1015,9 +1044,11 @@
       </div>
       <div class="flex justify-end gap-3 font-mono text-xs">
         <button id="btn-discard-session"
-          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">Descartar</button>
+          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          data-tooltip="Descartar la búsqueda anterior y comenzar desde cero" data-tooltip-pos="top">Descartar</button>
         <button id="btn-resume-session"
-          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">Reanudar Búsqueda</button>
+          class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+          data-tooltip="Continuar el escaneo desde donde se interrumpió" data-tooltip-pos="top">Reanudar Búsqueda</button>
       </div>
     </div>
   </div>
@@ -1041,7 +1072,8 @@
       <div class="bg-ivory-warm p-4 border border-hairline-dark space-y-3 mb-6 text-xs font-mono">
         <p class="font-bold text-pitch-black uppercase text-[11px]">1. Abrí tus ajustes de privacidad:</p>
         <a href="https://www.discogs.com/settings/privacy" target="_blank"
-          class="inline-flex items-center gap-2 bg-pitch-black hover:bg-prada-red text-pure-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-xs">
+          class="inline-flex items-center gap-2 bg-pitch-black hover:bg-prada-red text-pure-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-xs"
+          data-tooltip="Abrir configuración de privacidad de tu perfil en Discogs" data-tooltip-pos="top">
           <span>Abrir Privacidad en Discogs</span>
           <span class="material-symbols-outlined text-[13px]">open_in_new</span>
         </a>
@@ -1049,8 +1081,10 @@
       </div>
       <div class="flex justify-end gap-3 font-mono text-xs">
         <button id="btn-close-private-modal"
-          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
-        <button id="btn-sync-again" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">Volver a Intentar</button>
+          class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          data-tooltip="Cerrar esta ventana informativa" data-tooltip-pos="top">Cerrar</button>
+        <button id="btn-sync-again" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+          data-tooltip="Volver a intentar conectar tu lista pública en Discogs" data-tooltip-pos="top">Volver a Intentar</button>
       </div>
     </div>
   </div>
@@ -1070,22 +1104,23 @@
           <h2 class="font-sans text-xl font-extrabold uppercase tracking-tight text-pitch-black">Exportar a Sheets / Excel</h2>
           <p class="text-xs text-muted-graphite font-mono mt-1">Exporta tu Wantlist para comparar con catálogos locales o almacenar tu registro.</p>
         </div>
-        <button id="btn-close-export-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
+        <button id="btn-close-export-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono"
+          data-tooltip="Cerrar modal de exportación" data-tooltip-pos="left">&times;</button>
       </div>
 
       <div class="space-y-4 mb-6">
         <div class="bg-ivory-warm p-4 border border-hairline-dark space-y-3">
           <label class="font-bold text-xs uppercase tracking-wider text-pitch-black block">1. ALCANCE DE EXPORTACIÓN:</label>
           <div class="space-y-2 text-xs">
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer" data-tooltip="Exportar todos los vinilos de tu lista de deseos actual" data-tooltip-pos="top">
               <input type="radio" name="export-scope" value="all" checked class="accent-prada-red">
               <span class="text-pitch-black">TODA LA WANTLIST (<strong id="export-count-all" class="text-prada-red">0</strong> DISCOS)</span>
             </label>
-            <label class="flex items-center gap-2 cursor-pointer">
+            <label class="flex items-center gap-2 cursor-pointer" data-tooltip="Exportar únicamente los discos marcados como favoritos con estrella" data-tooltip-pos="top">
               <input type="radio" name="export-scope" value="priority" class="accent-prada-red">
               <span class="text-pitch-black">SOLO FAVORITOS ★ (<strong id="export-count-priority" class="text-prada-red">0</strong> DISCOS)</span>
             </label>
-            <label id="export-scope-offers-label" class="flex items-center gap-2 cursor-pointer opacity-50">
+            <label id="export-scope-offers-label" class="flex items-center gap-2 cursor-pointer opacity-50" data-tooltip="Exportar los resultados de ofertas encontrados en el marketplace" data-tooltip-pos="top">
               <input type="radio" name="export-scope" value="offers" id="radio-export-offers" disabled class="accent-prada-red">
               <span class="text-muted-graphite">OFERTAS DEL MARKETPLACE (<strong id="export-count-offers" class="text-prada-blue">0</strong> OFERTAS)</span>
             </label>
@@ -1094,12 +1129,14 @@
 
         <div class="flex flex-col sm:flex-row gap-3">
           <button id="btn-copy-sheets-action"
-            class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-pure-white py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+            class="flex-1 bg-emerald-700 hover:bg-emerald-800 text-pure-white py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            data-tooltip="Copiar datos tabulares directamente para pegar con Ctrl+V en Google Sheets" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[15px]">content_copy</span>
             <span>COPIAR PARA SHEETS (1-CLIC)</span>
           </button>
           <button id="btn-download-csv-action"
-            class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer">
+            class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black py-3 px-4 font-bold text-xs uppercase tracking-wider transition-colors flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+            data-tooltip="Descargar archivo en formato CSV compatible con Microsoft Excel y Apple Numbers" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[15px]">download</span>
             <span>DESCARGAR CSV</span>
           </button>
@@ -1113,7 +1150,8 @@
 
       <div class="flex justify-end pt-3 border-t border-hairline-light">
         <button id="btn-close-export-modal"
-          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
+          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          data-tooltip="Cerrar modal" data-tooltip-pos="top">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1154,14 +1192,16 @@
           <div class="space-y-1.5">
             <label class="font-bold text-pitch-black uppercase text-[10.5px] block">Modo de Búsqueda Predeterminado:</label>
             <div class="grid grid-cols-2 gap-2">
-              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors">
+              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors"
+                data-tooltip="Búsqueda 5x más rápida reutilizando precios recientes guardados en memoria" data-tooltip-pos="top">
                 <input type="radio" name="settings-cache-mode" value="cache" id="settings-cache-turbo" checked class="mt-0.5 accent-prada-red">
                 <div>
                   <span class="font-bold block text-pitch-black text-[11px]">⚡ CACHÉ TURBO</span>
                   <span class="text-[10px] text-muted-graphite leading-tight block">5x más veloz. Usa datos recientes guardados.</span>
                 </div>
               </label>
-              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors">
+              <label class="border border-hairline-dark p-2.5 flex items-start gap-2 bg-pure-white cursor-pointer hover:border-prada-red transition-colors"
+                data-tooltip="Consulta directamente a Discogs para cada disco, obteniendo datos en tiempo real" data-tooltip-pos="top">
                 <input type="radio" name="settings-cache-mode" value="live" id="settings-cache-live" class="mt-0.5 accent-prada-red">
                 <div>
                   <span class="font-bold block text-pitch-black text-[11px]">🌐 SIEMPRE EN VIVO</span>
@@ -1169,7 +1209,8 @@
                 </div>
               </label>
             </div>
-            <label class="flex items-center gap-2 pt-1 cursor-pointer">
+            <label class="flex items-center gap-2 pt-1 cursor-pointer"
+              data-tooltip="Guardar esta preferencia para omitir el cuadro de confirmación en futuros análisis" data-tooltip-pos="top">
               <input type="checkbox" id="settings-remember-cache" class="accent-prada-red">
               <span class="text-muted-graphite text-[10.5px]">Recordar siempre mi elección sin abrir el cuadro de diálogo</span>
             </label>
@@ -1181,7 +1222,8 @@
               <span class="font-bold text-pitch-black text-[11px] block">Lote Mínimo para Destacar Vendedor:</span>
               <span class="text-[10px] text-muted-graphite">Amortiza el costo de envío agrupando vinilos</span>
             </div>
-            <select id="settings-min-matches" class="border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs cursor-pointer outline-none">
+            <select id="settings-min-matches" class="border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs cursor-pointer outline-none"
+              data-tooltip="Cantidad mínima de discos para considerar rentable a un vendedor" data-tooltip-pos="left">
               <option value="1">1+ Vinilos (Cualquiera)</option>
               <option value="2" selected>2+ Vinilos (Recomendado)</option>
               <option value="3">3+ Vinilos</option>
@@ -1203,7 +1245,8 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Estado Mínimo del Vinilo:</label>
-              <select id="settings-min-condition" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+              <select id="settings-min-condition" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+                data-tooltip="Descartar copias por debajo de este estado en la escala Goldmine" data-tooltip-pos="top">
                 <option value="any">Cualquier condición</option>
                 <option value="VG+" selected>VG+ o Superior (Recomendado)</option>
                 <option value="NM">NM / Mint / Unplayed</option>
@@ -1213,7 +1256,8 @@
             </div>
             <div>
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Reputación Mínima del Vendedor:</label>
-              <select id="settings-min-rating" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+              <select id="settings-min-rating" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+                data-tooltip="Filtrar por porcentaje histórico de valoraciones positivas del vendedor" data-tooltip-pos="top">
                 <option value="0">Cualquier reputación</option>
                 <option value="95">≥ 95.0% Positivo</option>
                 <option value="98">≥ 98.0% Positivo</option>
@@ -1237,7 +1281,8 @@
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Moneda Principal:</label>
-              <select id="settings-currency" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+              <select id="settings-currency" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+                data-tooltip="Moneda en la que se calcularán y mostrarán todos los precios de la app" data-tooltip-pos="top">
                 <option value="USD" selected>$ USD (Dólar estadounidense)</option>
                 <option value="UYU">UYU ($U Pesos uruguayos)</option>
                 <option value="ARS">ARS ($ Pesos argentinos)</option>
@@ -1257,7 +1302,8 @@
             </div>
             <div>
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">País del Comprador (Envío):</label>
-              <select id="settings-country" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
+              <select id="settings-country" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+                data-tooltip="País del comprador para determinar si los envíos son nacionales o internacionales" data-tooltip-pos="top">
                 <option value="Uruguay" selected>Uruguay (UY)</option>
                 <option value="Argentina">Argentina (AR)</option>
                 <option value="Brazil">Brasil (BR)</option>
@@ -1287,7 +1333,8 @@
               <span id="settings-rate-title" class="font-bold text-pitch-black text-[11px] block">Cotización Dólar (UYU por 1 USD):</span>
               <span id="settings-rate-subtitle" class="text-[10px] text-muted-graphite">Usado para convertir precios en pesos uruguayos</span>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-1.5"
+              data-tooltip="Introduce cuántas unidades de tu moneda local equivalen a 1 USD" data-tooltip-pos="left">
               <span id="settings-rate-symbol" class="font-bold text-xs text-pitch-black font-mono">$U</span>
               <input type="number" id="settings-rate-uyu" step="any" min="0.0001" value="40"
                 class="w-28 border border-hairline-dark bg-pure-white px-2.5 py-1 font-bold text-xs text-right outline-none font-mono">
@@ -1310,8 +1357,10 @@
               <span class="text-[10px] text-muted-graphite">Tamaño de las tarjetas en la lista de deseos</span>
             </div>
             <div class="flex border border-hairline-dark bg-pure-white overflow-hidden shadow-xs">
-              <button type="button" id="settings-density-standard" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pitch-black text-pure-white">Estándar</button>
-              <button type="button" id="settings-density-compact" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pure-white text-muted-graphite hover:text-pitch-black">Compacta</button>
+              <button type="button" id="settings-density-standard" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pitch-black text-pure-white"
+                data-tooltip="Vista estándar con carátulas grandes" data-tooltip-pos="top">Estándar</button>
+              <button type="button" id="settings-density-compact" class="px-3 py-1 font-bold text-[10px] uppercase cursor-pointer bg-pure-white text-muted-graphite hover:text-pitch-black"
+                data-tooltip="Vista compacta con mayor densidad por pantalla" data-tooltip-pos="top">Compacta</button>
             </div>
           </div>
         </div>
@@ -1329,7 +1378,8 @@
             Consola externa en vivo para inspeccionar pods, eventos, dispositivos (iPhone / Chrome) y trazas de error en tiempo real.
           </p>
           <a href="monitor.html" target="_blank"
-            class="inline-flex items-center justify-center gap-2 bg-purple-900 hover:bg-purple-950 text-white w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider transition-colors shadow-xs">
+            class="inline-flex items-center justify-center gap-2 bg-purple-900 hover:bg-purple-950 text-white w-full py-2.5 px-4 font-bold text-xs uppercase tracking-wider transition-colors shadow-xs"
+            data-tooltip="Abrir consola de observabilidad en vivo en una pestaña nueva" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[16px]">open_in_new</span>
             <span>ABRIR CONSOLA VINYL OPS (LIVE STREAM)</span>
           </a>
@@ -1345,12 +1395,14 @@
           </div>
           <div class="flex flex-col sm:flex-row gap-2.5">
             <button type="button" id="btn-clear-scan-cache"
-              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-rose-50 hover:border-rose-300 hover:text-rose-800 text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-rose-50 hover:border-rose-300 hover:text-rose-800 text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              data-tooltip="Eliminar todas las páginas y ofertas cacheadas en el navegador" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
               <span>Limpiar Caché de Escaneo</span>
             </button>
             <button type="button" id="btn-reset-default-settings"
-              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-muted-graphite hover:text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5">
+              class="flex-1 border border-hairline-dark bg-pure-white hover:bg-surface-low text-muted-graphite hover:text-pitch-black py-2 px-3 font-bold text-[10.5px] uppercase tracking-wider transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+              data-tooltip="Restablecer filtros, moneda y país a sus valores de fábrica" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[14px]">restart_alt</span>
               <span>Restablecer Ajustes</span>
             </button>
@@ -1364,11 +1416,13 @@
         <span class="text-[10px] text-muted-graphite">Los cambios se guardan automáticamente.</span>
         <div class="flex gap-2">
           <button id="btn-close-settings-modal-bottom"
-            class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer">
+            class="px-4 py-2 border border-hairline-dark hover:bg-surface-low text-pitch-black font-bold uppercase tracking-wider transition-colors cursor-pointer"
+            data-tooltip="Cerrar ventana sin aplicar" data-tooltip-pos="top">
             CERRAR
           </button>
           <button id="btn-save-settings"
-            class="bg-pitch-black hover:bg-prada-red text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer flex items-center gap-1.5">
+            class="bg-pitch-black hover:bg-prada-red text-pure-white px-5 py-2 font-bold uppercase tracking-wider transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+            data-tooltip="Guardar todos los cambios y recalcular precios en vivo" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[15px]">check</span>
             <span>APLICAR</span>
           </button>
@@ -1391,7 +1445,8 @@
           <h2 id="local-modal-title" class="font-sans text-xl md:text-2xl font-extrabold uppercase tracking-tight text-pitch-black">Cruzar Planilla Local (Drive / Excel)</h2>
           <p id="local-modal-desc" class="text-xs text-muted-graphite font-mono mt-1">Copia el stock de disquerías locales uruguayas para encontrar coincidencias inmediatas con tu Wantlist.</p>
         </div>
-        <button id="btn-close-local-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono">&times;</button>
+        <button id="btn-close-local-modal-top" class="w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono"
+          data-tooltip="Cerrar modal" data-tooltip-pos="left">&times;</button>
       </div>
 
       <div class="space-y-5 mb-6">
@@ -1399,15 +1454,18 @@
           <label class="font-mono font-bold text-xs uppercase tracking-wider text-pitch-black block mb-2">1. Pegá aquí las celdas copiadas del Google Sheet / Excel:</label>
           <textarea id="local-sheet-paste-area"
             placeholder="Copiar filas directamente de Google Sheets o Excel (ej: Artista | Título | Precio | Estado...) y pegarlas aquí..."
-            class="w-full h-36 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite focus:outline-none focus:border-pitch-black"></textarea>
+            class="w-full h-36 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite focus:outline-none focus:border-pitch-black"
+            data-tooltip="Pega aquí las filas copiadas desde Google Drive, Excel o LibreOffice" data-tooltip-pos="top"></textarea>
 
           <div class="flex flex-wrap items-center justify-between mt-3 gap-3">
             <div class="flex items-center gap-2 text-xs text-muted-graphite">
               <span class="font-bold uppercase tracking-wider">O subí archivo:</span>
-              <input type="file" id="local-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs font-mono cursor-pointer">
+              <input type="file" id="local-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs font-mono cursor-pointer"
+                data-tooltip="Cargar archivo de planilla (.xlsx, .xls, .csv o .tsv)" data-tooltip-pos="top">
             </div>
             <button id="btn-analyze-local-paste"
-              class="bg-pitch-black text-pure-white hover:bg-prada-red px-5 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-sm">
+              class="bg-pitch-black text-pure-white hover:bg-prada-red px-5 py-2.5 font-mono font-bold text-xs uppercase tracking-wider transition-colors cursor-pointer shadow-sm"
+              data-tooltip="Procesar y detectar las columnas de la planilla pegada" data-tooltip-pos="top">
               Analizar Filas
             </button>
           </div>
@@ -1435,8 +1493,10 @@
           </div>
           <div class="flex justify-end gap-3 pt-2">
             <button id="btn-back-local-step-1"
-              class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Atrás</button>
-            <button id="btn-run-local-match" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer">
+              class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+              data-tooltip="Volver al paso de pegado de datos" data-tooltip-pos="top">Atrás</button>
+            <button id="btn-run-local-match" class="bg-prada-red hover:bg-prada-red-dark text-pure-white px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors shadow-sm cursor-pointer"
+              data-tooltip="Ejecutar cruce inteligente entre tu Wantlist y el catálogo local" data-tooltip-pos="top">
               🔍 Cruzar con mi Wantlist
             </button>
           </div>
@@ -1445,7 +1505,8 @@
 
       <div class="flex justify-end pt-3 border-t border-hairline-light">
         <button id="btn-close-local-modal"
-          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer">Cerrar</button>
+          class="border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black px-5 py-2 text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer"
+          data-tooltip="Cerrar modal" data-tooltip-pos="top">Cerrar</button>
       </div>
     </div>
   </div>
@@ -1461,7 +1522,7 @@
         <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase">[ MODO DE ESCANEO
           ]</span>
         <button id="btn-close-scan-cache-modal"
-          class="text-muted-graphite hover:text-pitch-black p-1 cursor-pointer transition-colors" data-tooltip="Cerrar">
+          class="text-muted-graphite hover:text-pitch-black p-1 cursor-pointer transition-colors" data-tooltip="Cerrar ventana de escaneo" data-tooltip-pos="left">
           <span class="material-symbols-outlined text-[20px]">close</span>
         </button>
       </div>
@@ -1478,7 +1539,8 @@
       <div class="space-y-3 mb-6 font-mono">
         <!-- Option 1: Cached (Fast) -->
         <button id="btn-scan-with-cache"
-          class="w-full text-left p-4 border-2 border-pitch-black bg-surface-low hover:bg-pure-white hover:border-prada-red transition-all cursor-pointer group shadow-xs flex items-start gap-3.5">
+          class="w-full text-left p-4 border-2 border-pitch-black bg-surface-low hover:bg-pure-white hover:border-prada-red transition-all cursor-pointer group shadow-xs flex items-start gap-3.5"
+          data-tooltip="Iniciar análisis instantáneo usando ofertas recientes en caché" data-tooltip-pos="top">
           <div
             class="w-10 h-10 border border-hairline-dark bg-pure-white flex items-center justify-center text-prada-red shrink-0 group-hover:bg-prada-red group-hover:text-pure-white transition-colors">
             <span class="material-symbols-outlined text-[20px]">bolt</span>
@@ -1500,7 +1562,8 @@
 
         <!-- Option 2: Live Discogs Scan -->
         <button id="btn-scan-live-direct"
-          class="w-full text-left p-4 border border-hairline-dark bg-pure-white hover:border-pitch-black hover:bg-surface-low transition-all cursor-pointer group shadow-xs flex items-start gap-3.5">
+          class="w-full text-left p-4 border border-hairline-dark bg-pure-white hover:border-pitch-black hover:bg-surface-low transition-all cursor-pointer group shadow-xs flex items-start gap-3.5"
+          data-tooltip="Consultar Discogs en tiempo real para obtener las ofertas más actualizadas" data-tooltip-pos="top">
           <div
             class="w-10 h-10 border border-hairline-dark bg-surface-low flex items-center justify-center text-prada-blue shrink-0 group-hover:bg-pitch-black group-hover:text-pure-white transition-colors">
             <span class="material-symbols-outlined text-[20px]">travel_explore</span>
@@ -1521,13 +1584,15 @@
 
       <!-- Modal Footer -->
       <div class="flex items-center justify-between pt-4 border-t border-hairline-light font-mono text-xs">
-        <label class="flex items-center gap-2 text-[11px] text-muted-graphite cursor-pointer select-none">
+        <label class="flex items-center gap-2 text-[11px] text-muted-graphite cursor-pointer select-none"
+          data-tooltip="Recordar esta opción en futuros escaneos para no volver a preguntar" data-tooltip-pos="top">
           <input type="checkbox" id="scan-remember-cache-choice"
             class="h-3.5 w-3.5 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer">
           <span>Recordar esta preferencia</span>
         </label>
         <button id="btn-cancel-scan-cache-modal"
-          class="px-4 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider transition-colors cursor-pointer text-[11px]">
+          class="px-4 py-1.5 border border-hairline-dark hover:bg-surface-low text-pitch-black font-semibold uppercase tracking-wider transition-colors cursor-pointer text-[11px]"
+          data-tooltip="Cancelar y volver" data-tooltip-pos="top">
           CANCELAR
         </button>
       </div>
@@ -1540,7 +1605,8 @@
       <!-- Toggle Header Bar -->
       <div class="flex items-center justify-between gap-3">
         <button id="log-accordion-toggle"
-          class="scan-logger-toggle flex items-center justify-between flex-1 cursor-pointer">
+          class="scan-logger-toggle flex items-center justify-between flex-1 cursor-pointer"
+          data-tooltip="Abrir o contraer la consola de registro de eventos técnicos en vivo" data-tooltip-pos="top">
           <div class="flex items-center gap-2.5 overflow-hidden flex-1 mr-3">
             <span class="relative flex h-2 w-2 shrink-0">
               <span
@@ -1570,13 +1636,15 @@
         <div class="flex items-center gap-2 shrink-0">
           <button id="copy-logs-btn"
             class="text-xs font-bold uppercase tracking-wider text-neutral-300 hover:text-pure-white hover:bg-neutral-800 px-3 py-1.5 border border-neutral-700 bg-neutral-900 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Copiar logs al portapapeles">
+            title="Copiar logs al portapapeles"
+            data-tooltip="Copiar registro de eventos técnicos al portapapeles" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[14px]">content_copy</span>
             <span class="hidden md:inline">Copiar</span>
           </button>
           <button id="clear-logs-btn"
             class="text-xs font-bold uppercase tracking-wider text-neutral-300 hover:text-prada-red hover:bg-neutral-800 px-3 py-1.5 border border-neutral-700 bg-neutral-900 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Limpiar registro">
+            title="Limpiar registro"
+            data-tooltip="Limpiar terminal de registro de eventos" data-tooltip-pos="top">
             <span class="material-symbols-outlined text-[14px]">delete_sweep</span>
             <span class="hidden md:inline">Limpiar</span>
           </button>
