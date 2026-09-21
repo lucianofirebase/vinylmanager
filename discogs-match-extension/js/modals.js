@@ -7,7 +7,7 @@
 // UNIFIED SCREEN & NAVIGATION MANAGER
 // ==========================================
 
-let currentAppView = 'wizard-1';
+var currentAppView = window.currentAppView || 'wizard-1';
 
 function closeAllModals() {
   const modals = [

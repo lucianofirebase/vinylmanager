@@ -100,6 +100,9 @@ function restoreSessionAndResume(session) {
 
 
 
+var radarAnimFrameId = null;
+window.radarAnimFrameId = null;
+
 function startRadarShaderCanvas() {
   const canvas = document.getElementById('scan-radar-canvas');
   if (!canvas) return;
