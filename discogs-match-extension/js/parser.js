@@ -673,6 +673,7 @@ function groupListingsBySeller() {
     let isDomestic = shipsFromLower.includes(buyerLower) || buyerLower.includes(shipsFromLower);
     
     // Map common names
+    if (buyerLower === 'argentina' && (shipsFromLower.includes('argentina') || shipsFromLower.includes('ar'))) isDomestic = true;
     if (buyerLower === 'uruguay' && (shipsFromLower.includes('uruguay') || shipsFromLower.includes('uy'))) isDomestic = true;
     if (buyerLower === 'spain' && (shipsFromLower.includes('spain') || shipsFromLower.includes('españa') || shipsFromLower.includes('es'))) isDomestic = true;
     if (buyerLower === 'germany' && (shipsFromLower.includes('germany') || shipsFromLower.includes('deutschland') || shipsFromLower.includes('de'))) isDomestic = true;

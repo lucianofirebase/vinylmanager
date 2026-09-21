@@ -562,10 +562,14 @@ function goToWizardStep(stepNum) {
 
 // Shipping Location destination country update listener
 function onLocationChange() {
-  log(`Ubicación de envío de comprador actualizada a: ${buyerCountry.value}`, 'info');
-  if (state.allListings.length > 0) {
+  const selectedCountry = buyerCountry ? buyerCountry.value : 'Uruguay';
+  log(`Ubicación de envío de comprador actualizada a: ${selectedCountry}`, 'info');
+  if (state.allListings && state.allListings.length > 0) {
     groupListingsBySeller();
     renderResults();
+  }
+  if (typeof calculateAndRenderStats === 'function') {
+    calculateAndRenderStats();
   }
 }
 
