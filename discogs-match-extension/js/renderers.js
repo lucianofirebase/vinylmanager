@@ -663,6 +663,8 @@ function renderResults() {
       const bundleItemShipping = activeShipping / Math.max(activeListings.length, 1);
       const rankNumber = String(idx + 1).padStart(2, '0');
       const matchPct = ((activeListings.length / Math.max(state.wants.length, 1)) * 100).toFixed(1);
+      const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
+      const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
 
       // Generate deep-dive catalog rows
       let listingsHtml = '';
@@ -684,9 +686,6 @@ function renderResults() {
         const artistLabel = wantInfo.artist || list.releaseArtist || list.artist || 'Unknown Artist';
         const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
         const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
-
-        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
-        const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
 
         listingsHtml += `
           <div class="seller-listing-row grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
