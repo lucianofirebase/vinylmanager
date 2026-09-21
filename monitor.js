@@ -826,6 +826,15 @@
     el.btnResetAllFilters.addEventListener('click', resetAllFilters);
     el.btnEmptyResetFilters.addEventListener('click', resetAllFilters);
 
+    // Mobile Facets Toggle
+    const btnToggleFacets = document.getElementById('btn-toggle-facets');
+    const sidebarFacets = document.getElementById('sidebar-facets');
+    if (btnToggleFacets && sidebarFacets) {
+      btnToggleFacets.addEventListener('click', () => {
+        sidebarFacets.classList.toggle('hidden');
+      });
+    }
+
     // Auto-scroll checkbox
     el.checkAutoScroll.addEventListener('change', (e) => {
       state.autoScroll = e.target.checked;

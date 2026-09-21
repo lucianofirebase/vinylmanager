@@ -4765,39 +4765,39 @@ function renderResults() {
         <div class="h-1 bg-prada-red w-full hidden" id="strip-indicator-${seller.name}"></div>
 
         <!-- Collapsed Header Strip -->
-        <div class="px-6 py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
-          <div class="flex items-center gap-6 min-w-[320px]">
-            <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30">#${rankNumber}</span>
-            <div class="flex flex-col">
-              <div class="flex items-center gap-3">
-                <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black">${escapeHTML(seller.name)}</span>
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
+          <div class="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
+            <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30 shrink-0">#${rankNumber}</span>
+            <div class="flex flex-col min-w-0">
+              <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+                <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black truncate max-w-[180px] sm:max-w-none">${escapeHTML(seller.name)}</span>
                 <span class="border border-emerald-300 bg-prada-emerald-bg px-1.5 py-0.5 text-[9px] font-mono uppercase text-emerald-900 font-bold">${seller.rating}%</span>
                 <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
               </div>
-              <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-wider mt-0.5">${seller.ratingCount > 0 ? `${seller.ratingCount.toLocaleString()} CALIFICACIONES • ` : ''}${seller.isDomestic ? 'ENVÍO AUTOMATIZADO (NACIONAL)' : (seller.isEUToEU ? 'ENVÍO INTRA-UE' : 'TIENDA VERIFICADA DISCOGS')}</span>
+              <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-wider mt-0.5 truncate">${seller.ratingCount > 0 ? `${seller.ratingCount.toLocaleString()} CALIFICACIONES • ` : ''}${seller.isDomestic ? 'ENVÍO AUTOMATIZADO (NACIONAL)' : (seller.isEUToEU ? 'ENVÍO INTRA-UE' : 'TIENDA VERIFICADA DISCOGS')}</span>
             </div>
           </div>
           <!-- Architectural Commercial Metrics Pod -->
-          <div class="flex items-center divide-x divide-hairline-light border border-hairline-light bg-ivory-warm/50 px-2 py-2 font-mono shadow-2xs">
-            <div class="px-5 text-right">
+          <div class="metrics-pod flex items-center divide-x divide-hairline-light border border-hairline-light bg-ivory-warm/50 px-2 py-2 font-mono shadow-2xs">
+            <div class="px-3 sm:px-5 text-right">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">COINCIDENCIAS</span>
               <span class="font-bold text-prada-red text-xs sm:text-[13px] whitespace-nowrap block">
                 ${activeListings.length} DE ${state.wants.length} <span class="text-muted-graphite font-normal text-[10px]">(${matchPct}%)</span>
               </span>
             </div>
-            <div class="px-5 text-right">
+            <div class="px-3 sm:px-5 text-right">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">SUBTOTAL</span>
               <span class="font-bold text-pitch-black text-xs sm:text-[13px] whitespace-nowrap block">
                 ${formatPrice(activeSubtotal, seller.currency)}
               </span>
             </div>
-            <div class="px-5 text-right">
+            <div class="px-3 sm:px-5 text-right">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">ENVÍO A UY</span>
               <span class="font-bold text-prada-blue text-xs sm:text-[13px] whitespace-nowrap block">
                 ${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}
               </span>
             </div>
-            <div class="pl-5 pr-4 text-right min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light">
+            <div class="pl-3 sm:pl-5 pr-3 sm:pr-4 text-right min-w-[105px] sm:min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">TOTAL EST.</span>
               <span class="font-bold text-sm sm:text-base tracking-tight text-pitch-black whitespace-nowrap block">
                 ${formatPrice(activeTotalPrice, seller.currency)}
@@ -4815,20 +4815,24 @@ function renderResults() {
           </div>
         </div>
         
-        <!-- Expanded Inventory Details Panel -->
+        <!-- Expanded Inventory Details Panel with Horizontal Scroller for Mobile Safety -->
         <div class="listings-details border-t border-hairline-dark bg-pure-white flex flex-col" id="details-${seller.name}" style="display: none;">
-          <!-- Table Header -->
-          <div class="grid grid-cols-12 gap-4 px-4 py-2.5 bg-ivory-warm border-b border-hairline-light font-mono text-[9px] uppercase tracking-widest text-muted-graphite font-bold">
-            <div class="col-span-5">DISCO / EDICIÓN</div>
-            <div class="col-span-2 text-center">ESTADO (VINILO / TAPA)</div>
-            <div class="col-span-2 text-right">PRECIO ÍTEM</div>
-            <div class="col-span-2 text-right">ENVÍO APROX / LOTE</div>
-            <div class="col-span-1 text-center">ENLACE</div>
-          </div>
-          
-          <!-- Rows container -->
-          <div class="divide-y divide-hairline-light">
-            ${listingsHtml}
+          <div class="overflow-x-auto w-full">
+            <div class="min-w-[620px]">
+              <!-- Table Header -->
+              <div class="grid grid-cols-12 gap-4 px-4 py-2.5 bg-ivory-warm border-b border-hairline-light font-mono text-[9px] uppercase tracking-widest text-muted-graphite font-bold">
+                <div class="col-span-5">DISCO / EDICIÓN</div>
+                <div class="col-span-2 text-center">ESTADO (VINILO / TAPA)</div>
+                <div class="col-span-2 text-right">PRECIO ÍTEM</div>
+                <div class="col-span-2 text-right">ENVÍO APROX / LOTE</div>
+                <div class="col-span-1 text-center">ENLACE</div>
+              </div>
+              
+              <!-- Rows container -->
+              <div class="divide-y divide-hairline-light">
+                ${listingsHtml}
+              </div>
+            </div>
           </div>
 
           <!-- Pagination Bar (if totalPages > 1) -->
