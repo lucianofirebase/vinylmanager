@@ -463,6 +463,16 @@ function populateCountryFilter() {
 }
 
 
+// Highlight matching query text with fluorescent mark
+function highlightQueryText(text, query) {
+  if (!query || !text) return escapeHTML(text || '');
+  const cleanQ = query.trim();
+  if (!cleanQ) return escapeHTML(text || '');
+  const escaped = escapeHTML(text);
+  const regex = new RegExp(`(${cleanQ.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  return escaped.replace(regex, '<mark class="highlight-matched-text">$1</mark>');
+}
+
 // Render dynamic results card matching filters
 function renderResults() {
   if (state.groupedSellers.length === 0) {
@@ -656,7 +666,21 @@ function renderResults() {
       card.className = 'seller-card';
       card.id = 'seller-card-' + seller.name;
       
-      const activeListings = seller.displayListings || seller.listings || [];
+      const activeListings = [...(seller.displayListings || seller.listings || [])];
+      
+      // If search query is active, sort matching listings to the top so they appear immediately
+      if (searchQuery) {
+        activeListings.sort((a, b) => {
+          const wantA = state.wants.find(w => String(w.id) === String(a.releaseId));
+          const wantB = state.wants.find(w => String(w.id) === String(b.releaseId));
+          const strA = `${wantA?.artist || a.artist || ''} ${wantA?.title || a.title || ''} ${a.title || ''}`.toLowerCase();
+          const strB = `${wantB?.artist || b.artist || ''} ${wantB?.title || b.title || ''} ${b.title || ''}`.toLowerCase();
+          const hitA = strA.includes(searchQuery);
+          const hitB = strB.includes(searchQuery);
+          return (hitB ? 1 : 0) - (hitA ? 1 : 0);
+        });
+      }
+
       const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
       const activeShipping = calculateSellerShipping(seller, activeListings);
       const activeTotalPrice = activeSubtotal + activeShipping;
@@ -665,6 +689,7 @@ function renderResults() {
       const matchPct = ((activeListings.length / Math.max(state.wants.length, 1)) * 100).toFixed(1);
       const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
       const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
+      const isAutoExpanded = Boolean(searchQuery);
 
       // Generate deep-dive catalog rows
       let listingsHtml = '';
@@ -687,8 +712,29 @@ function renderResults() {
         const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
         const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
 
+        // Check if this release matches the active search query
+        const combinedText = `${artistLabel} — ${titleLabel}`.toLowerCase();
+        const isSearchHit = Boolean(searchQuery && (
+          combinedText.includes(searchQuery) ||
+          (wantInfo.title && wantInfo.title.toLowerCase().includes(searchQuery)) ||
+          (wantInfo.artist && wantInfo.artist.toLowerCase().includes(searchQuery)) ||
+          (list.title && list.title.toLowerCase().includes(searchQuery)) ||
+          (wantInfo.label && wantInfo.label.toLowerCase().includes(searchQuery)) ||
+          (wantInfo.catno && wantInfo.catno.toLowerCase().includes(searchQuery))
+        ));
+
+        const rowHighlightClass = isSearchHit ? 'is-search-hit' : '';
+        const titleHighlightClass = isSearchHit ? 'highlight-marker-title' : '';
+        const priceHighlightHtml = isSearchHit
+          ? `<span class="highlight-marker-price text-sm tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`
+          : `<span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`;
+
+        const formattedTitle = isSearchHit
+          ? highlightQueryText(`${artistLabel} — ${titleLabel}`, searchQuery)
+          : escapeHTML(`${artistLabel} — ${titleLabel}`);
+
         listingsHtml += `
-          <div class="seller-listing-row grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
+          <div class="seller-listing-row ${rowHighlightClass} grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
             <div class="col-span-5 flex items-center gap-3">
               <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0 cursor-pointer" type="checkbox"
                 data-tooltip="Incluir o excluir este disco del cálculo de subtotal y envío" data-tooltip-pos="top"/>
@@ -696,9 +742,9 @@ function renderResults() {
                 ${imgHtml}
               </div>
               <div class="flex flex-col min-w-0 font-mono">
-                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors"
+                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors ${titleHighlightClass}"
                   data-tooltip="Ver ficha técnica de esta edición en Discogs" data-tooltip-pos="top">
-                  ${starHtml}${escapeHTML(artistLabel)} — ${escapeHTML(titleLabel)}
+                  ${starHtml}${formattedTitle}
                 </a>
                 <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
               </div>
@@ -708,7 +754,7 @@ function renderResults() {
               ${renderGoldmineTag(list.sleeveCondition || 'Generic', true)}
             </div>
             <div class="col-span-2 text-right font-mono">
-              <span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>
+              ${priceHighlightHtml}
             </div>
             <div class="col-span-2 text-right font-mono text-[11px]">
               <span class="text-muted-graphite line-through text-[10px] block" data-tooltip="Costo de envío individual estándar sin consolidar" data-tooltip-pos="top">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
@@ -730,7 +776,7 @@ function renderResults() {
       
       card.innerHTML = `
         <!-- Linea Rossa Strip Indicator (visible when expanded) -->
-        <div class="h-1 bg-prada-red w-full hidden" id="strip-indicator-${seller.name}"></div>
+        <div class="h-1 bg-prada-red w-full ${isAutoExpanded ? '' : 'hidden'}" id="strip-indicator-${seller.name}"></div>
 
         <!-- Collapsed Header Strip -->
         <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
@@ -787,13 +833,13 @@ function renderResults() {
             </a>
             <button aria-label="Expandir" class="btn-collapse w-8 h-8 border border-hairline-light hover:border-pitch-black flex items-center justify-center text-pitch-black transition-colors cursor-pointer" data-seller="${seller.name}" type="button"
               data-tooltip="Ver / Ocultar el inventario de vinilos disponibles de este vendedor" data-tooltip-pos="top">
-              <span class="material-symbols-outlined text-[16px] pointer-events-none">expand_more</span>
+              <span class="material-symbols-outlined text-[16px] pointer-events-none">${isAutoExpanded ? 'expand_less' : 'expand_more'}</span>
             </button>
           </div>
         </div>
         
         <!-- Expanded Inventory Details Panel with Horizontal Scroller for Mobile Safety -->
-        <div class="listings-details border-t border-hairline-dark bg-pure-white flex flex-col" id="details-${seller.name}" style="display: none;">
+        <div class="listings-details border-t border-hairline-dark bg-pure-white flex flex-col" id="details-${seller.name}" style="${isAutoExpanded ? 'display: flex;' : 'display: none;'}">
           <div class="overflow-x-auto w-full">
             <div class="min-w-[620px]">
               <!-- Table Header -->
