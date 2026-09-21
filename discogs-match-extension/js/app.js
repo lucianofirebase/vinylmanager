@@ -152,31 +152,7 @@ function handleHierarchicalBack(pushHistory = true) {
 }
 
 
-function log(message, type = 'info') {
-  console.log(`[Log] ${message}`);
-  logEventCount++;
-  if (logCountBadge) logCountBadge.textContent = `${logEventCount} eventos`;
-  if (logLatestTicker) logLatestTicker.textContent = message;
-
-  if (statusLogs) {
-    const p = document.createElement('p');
-    p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-    if (type === 'error') p.style.color = '#f87171';
-    else if (type === 'success') p.style.color = '#34d399';
-    else p.style.color = '#e2e8f0';
-    statusLogs.appendChild(p);
-    statusLogs.scrollTop = statusLogs.scrollHeight;
-  }
-
-  // Forward to remote Firebase Telemetry logger for iPhone / remote devices
-  if (window.Telemetry) {
-    if (type === 'error') {
-      window.Telemetry.error(message);
-    } else if (type === 'success' || message.includes('Iniciando') || message.includes('cargada') || message.includes('Escaneo') || message.includes('Usuario')) {
-      window.Telemetry.info(message);
-    }
-  }
-}
+// Note: log(message, type) and logEventCount are declared in elements.js for global availability across all modules.
 
 
 function updateUserDropdownInfo() {
