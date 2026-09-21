@@ -48,6 +48,7 @@ const noResultsState = document.getElementById('no-results-state');
 const wantlistManager = document.getElementById('wantlist-manager');
 const wantsSearchInput = document.getElementById('wants-search-input');
 const wantsListGrid = document.getElementById('wants-list-grid');
+const wantsPaginationBar = document.getElementById('wants-pagination-bar');
 const managerStartScanBtn = document.getElementById('manager-start-scan-btn');
 const managerStartScanTopBtn = document.getElementById('manager-start-scan-top-btn');
 

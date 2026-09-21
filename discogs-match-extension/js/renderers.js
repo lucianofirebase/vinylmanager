@@ -93,12 +93,15 @@ function animateCounter(elementId, startVal, endVal, duration = 800) {
 
 
 // Render loaded wants list inside Wantlist Manager for marking favorites (★)
-let wantsRenderLimit = 48;
+// Pagination state for Wantlist Manager
+let wantsCurrentPage = 1;
+let wantsPageSize = 48; // default 48 per page; can be 24, 48, 96, or 'all'
 
-function renderWantsListInManager(resetLimit = true) {
-  if (resetLimit) wantsRenderLimit = 48;
+function renderWantsListInManager(resetPage = false) {
+  if (resetPage) wantsCurrentPage = 1;
   updatePriorityFilterUI();
   const wantsListGrid = document.getElementById('wants-list-grid');
+  const paginationBar = document.getElementById('wants-pagination-bar') || wantsPaginationBar;
   if (!wantsListGrid) return;
   
   wantsListGrid.innerHTML = '';
@@ -110,12 +113,26 @@ function renderWantsListInManager(resetLimit = true) {
   });
 
   if (filteredWants.length === 0) {
-    wantsListGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--tertiary); padding: 30px;" class="text-body-md">No se encontraron vinilos en la búsqueda.</p>`;
+    wantsListGrid.innerHTML = `<p style="grid-column: 1/-1; text-align: center; color: var(--tertiary); padding: 30px;" class="text-body-md font-mono text-xs uppercase text-muted-graphite">No se encontraron vinilos en la búsqueda.</p>`;
+    if (paginationBar) {
+      paginationBar.style.display = 'none';
+      paginationBar.innerHTML = '';
+    }
     return;
   }
 
-  // Safe chunked rendering for mobile performance & memory stability
-  const itemsToRender = filteredWants.slice(0, wantsRenderLimit);
+  // Calculate pagination metrics
+  const totalItems = filteredWants.length;
+  const isAll = wantsPageSize === 'all';
+  const pageSizeNum = isAll ? totalItems : (parseInt(wantsPageSize, 10) || 48);
+  const totalPages = isAll ? 1 : Math.max(1, Math.ceil(totalItems / pageSizeNum));
+
+  if (wantsCurrentPage > totalPages) wantsCurrentPage = totalPages;
+  if (wantsCurrentPage < 1) wantsCurrentPage = 1;
+
+  const startIndex = isAll ? 0 : (wantsCurrentPage - 1) * pageSizeNum;
+  const endIndex = isAll ? totalItems : Math.min(startIndex + pageSizeNum, totalItems);
+  const itemsToRender = filteredWants.slice(startIndex, endIndex);
 
   itemsToRender.forEach((item, index) => {
     const card = document.createElement('div');
@@ -218,36 +235,154 @@ function renderWantsListInManager(resetLimit = true) {
     wantsListGrid.appendChild(card);
   });
 
-  // "Cargar más discos" button if there are more than current chunk
-  if (filteredWants.length > wantsRenderLimit) {
-    const remaining = filteredWants.length - wantsRenderLimit;
-    const loadMoreContainer = document.createElement('div');
-    loadMoreContainer.id = 'wants-load-more-container';
-    loadMoreContainer.className = 'w-full py-6 text-center col-span-full flex flex-col items-center justify-center gap-2';
-    loadMoreContainer.style.gridColumn = '1 / -1';
-    loadMoreContainer.innerHTML = `
-      <button type="button" id="btn-load-more-wants" class="px-6 py-2.5 bg-pitch-black hover:bg-prada-red text-pure-white font-mono text-xs font-bold uppercase tracking-wider shadow-sm transition-colors cursor-pointer flex items-center gap-2">
-        <span class="material-symbols-outlined text-base">expand_more</span>
-        <span>Cargar más discos (${itemsToRender.length} de ${filteredWants.length})</span>
-      </button>
-      <span class="text-[10px] font-mono text-muted-graphite uppercase tracking-wider">+${remaining} discos disponibles en memoria</span>
-    `;
-    wantsListGrid.appendChild(loadMoreContainer);
-
-    const btnLoadMore = loadMoreContainer.querySelector('#btn-load-more-wants');
-    if (btnLoadMore) {
-      btnLoadMore.addEventListener('click', (e) => {
-        e.preventDefault();
-        wantsRenderLimit += 48;
-        renderWantsListInManager(false);
-      });
-    }
+  // Render Archival Pagination Bar
+  if (paginationBar) {
+    renderWantsPaginationBar(paginationBar, totalItems, totalPages, startIndex, endIndex);
   }
 
   // Patch star burst microanimations after render
   if (window.Motion) {
     requestAnimationFrame(() => window.Motion.patchStarCards());
   }
+}
+
+function renderWantsPaginationBar(container, totalItems, totalPages, startIndex, endIndex) {
+  if (totalItems <= 0) {
+    container.style.display = 'none';
+    container.innerHTML = '';
+    return;
+  }
+  container.style.display = 'block';
+
+  // Build page numbers (smart window)
+  const pagesToShow = [];
+  if (totalPages <= 7) {
+    for (let p = 1; p <= totalPages; p++) pagesToShow.push(p);
+  } else {
+    pagesToShow.push(1);
+    if (wantsCurrentPage > 3) {
+      pagesToShow.push('ellipsis-1');
+    }
+    const windowStart = Math.max(2, wantsCurrentPage - 1);
+    const windowEnd = Math.min(totalPages - 1, wantsCurrentPage + 1);
+    for (let p = windowStart; p <= windowEnd; p++) {
+      if (!pagesToShow.includes(p)) pagesToShow.push(p);
+    }
+    if (wantsCurrentPage < totalPages - 2) {
+      pagesToShow.push('ellipsis-2');
+    }
+    if (!pagesToShow.includes(totalPages)) {
+      pagesToShow.push(totalPages);
+    }
+  }
+
+  const chipsHtml = pagesToShow.map(p => {
+    if (typeof p === 'string' && p.startsWith('ellipsis')) {
+      return `<span class="w-6 h-8 flex items-center justify-center text-muted-graphite font-mono text-xs select-none">…</span>`;
+    }
+    if (p === wantsCurrentPage) {
+      return `
+        <button type="button" class="w-8 h-8 flex items-center justify-center bg-pitch-black text-pure-white font-mono font-extrabold text-xs border border-pitch-black shadow-xs cursor-default relative">
+          <span class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></span>
+          ${p}
+        </button>
+      `;
+    }
+    return `
+      <button type="button" class="wants-page-btn w-8 h-8 flex items-center justify-center bg-pure-white hover:bg-surface-low text-pitch-black font-mono font-semibold text-xs border border-hairline-dark hover:border-pitch-black transition-colors cursor-pointer" data-page="${p}" title="Ir a la página ${p}">
+        ${p}
+      </button>
+    `;
+  }).join('');
+
+  const sizes = [24, 48, 96, 'all'];
+  const sizeChipsHtml = sizes.map(s => {
+    const label = s === 'all' ? 'TODOS' : s;
+    const isSelected = wantsPageSize === s || (s === 'all' && wantsPageSize === 'all');
+    if (isSelected) {
+      return `<span class="bg-pitch-black text-pure-white font-mono font-bold text-[10px] px-2.5 py-1 uppercase tracking-wider select-none">${label}</span>`;
+    }
+    return `<button type="button" class="wants-size-btn bg-pure-white hover:bg-surface-low text-pitch-black font-mono text-[10px] font-semibold px-2.5 py-1 uppercase tracking-wider border-l border-hairline-dark transition-colors cursor-pointer" data-size="${s}">${label}</button>`;
+  }).join('');
+
+  container.innerHTML = `
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4 p-4 bg-pure-white border border-hairline-dark font-mono shadow-xs">
+      <!-- Left: Item Count & Range Info -->
+      <div class="flex items-center gap-2 text-xs text-muted-graphite tracking-wide">
+        <span class="inline-block w-2 h-2 bg-prada-red shrink-0 shadow-xs"></span>
+        <span>MOSTRANDO <strong class="text-pitch-black font-bold font-mono">${totalItems === 0 ? 0 : startIndex + 1} - ${endIndex}</strong> DE <strong class="text-pitch-black font-bold font-mono">${totalItems}</strong> DISCOS</span>
+        <span class="text-neutral-400">|</span>
+        <span>PÁGINA <strong class="text-pitch-black font-bold font-mono">${wantsCurrentPage}</strong> DE <strong class="text-pitch-black font-bold font-mono">${totalPages}</strong></span>
+      </div>
+
+      <!-- Center: Navigation Buttons (Previous, Chips, Next) -->
+      <div class="flex items-center gap-1.5 flex-wrap justify-center">
+        <!-- First Page -->
+        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="1" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Primera página">
+          <span class="material-symbols-outlined text-[16px] leading-none">first_page</span>
+        </button>
+
+        <!-- Previous -->
+        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage - 1}" ${wantsCurrentPage === 1 ? 'disabled' : ''} title="Página anterior">
+          <span class="material-symbols-outlined text-[15px] leading-none">chevron_left</span>
+          <span class="hidden sm:inline text-[10px] tracking-wider">ANT</span>
+        </button>
+
+        <!-- Page Chips -->
+        ${chipsHtml}
+
+        <!-- Next -->
+        <button type="button" class="wants-page-btn px-2.5 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center gap-1" data-page="${wantsCurrentPage + 1}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Página siguiente">
+          <span class="hidden sm:inline text-[10px] tracking-wider">SIG</span>
+          <span class="material-symbols-outlined text-[15px] leading-none">chevron_right</span>
+        </button>
+
+        <!-- Last Page -->
+        <button type="button" class="wants-page-btn px-2 h-8 border border-hairline-dark bg-pure-white hover:bg-surface-low text-pitch-black text-xs font-mono font-bold uppercase transition-colors hover:border-pitch-black disabled:opacity-25 disabled:pointer-events-none cursor-pointer flex items-center justify-center" data-page="${totalPages}" ${wantsCurrentPage === totalPages ? 'disabled' : ''} title="Última página (${totalPages})">
+          <span class="material-symbols-outlined text-[16px] leading-none">last_page</span>
+        </button>
+      </div>
+
+      <!-- Right: Page Size Selector -->
+      <div class="flex items-center gap-2 text-xs">
+        <span class="text-muted-graphite uppercase text-[10px] tracking-wider font-mono hidden md:inline">VER:</span>
+        <div class="inline-flex border border-hairline-dark overflow-hidden">
+          ${sizeChipsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Attach click events to page buttons
+  container.querySelectorAll('.wants-page-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const targetPage = parseInt(btn.dataset.page, 10);
+      if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= totalPages && targetPage !== wantsCurrentPage) {
+        wantsCurrentPage = targetPage;
+        renderWantsListInManager(false);
+        const scrollTarget = document.querySelector('.wantlist-toolbar') || document.getElementById('wants-list-grid');
+        if (scrollTarget) {
+          scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    });
+  });
+
+  // Attach click events to size buttons
+  container.querySelectorAll('.wants-size-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const newSize = btn.dataset.size;
+      wantsPageSize = newSize === 'all' ? 'all' : (parseInt(newSize, 10) || 48);
+      wantsCurrentPage = 1;
+      renderWantsListInManager(false);
+      const scrollTarget = document.querySelector('.wantlist-toolbar') || document.getElementById('wants-list-grid');
+      if (scrollTarget) {
+        scrollTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
 }
 
 function filterWantsInManager() {
