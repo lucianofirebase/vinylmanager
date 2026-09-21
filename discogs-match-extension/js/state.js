@@ -3,6 +3,10 @@
  * Global state, currency maps, formatting and text/goldmine utilities
  */
 
+// Global App View State
+var currentAppView = 'wizard-1';
+window.currentAppView = currentAppView;
+
 // State management
 let state = {
   username: '',

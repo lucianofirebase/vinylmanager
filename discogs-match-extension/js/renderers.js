@@ -1531,3 +1531,30 @@ function calculateAndRenderStats() {
     `;
   }
 }
+
+
+function setGridDensity(density) {
+  const wantsGrid = document.getElementById('wants-list-grid');
+  const btnDensityCompact = document.getElementById('btn-density-compact');
+  const btnDensityStandard = document.getElementById('btn-density-standard');
+  if (!wantsGrid) return;
+  localStorage.setItem('wants_grid_density', density);
+  const activeClass = 'px-2.5 py-1 bg-pitch-black text-pure-white font-bold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors shadow-xs';
+  const inactiveClass = 'px-2.5 py-1 bg-transparent text-muted-graphite hover:text-pitch-black font-semibold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors';
+
+  if (density === 'standard') {
+    wantsGrid.classList.remove('density-compact');
+    wantsGrid.classList.add('density-standard');
+    if (btnDensityStandard) btnDensityStandard.className = activeClass;
+    if (btnDensityCompact) btnDensityCompact.className = inactiveClass;
+  } else {
+    wantsGrid.classList.remove('density-standard');
+    wantsGrid.classList.add('density-compact');
+    if (btnDensityCompact) btnDensityCompact.className = activeClass;
+    if (btnDensityStandard) btnDensityStandard.className = inactiveClass;
+  }
+}
+window.setGridDensity = setGridDensity;
+window.renderResults = renderResults;
+window.showToast = showToast;
+window.showWantlistManager = showWantlistManager;

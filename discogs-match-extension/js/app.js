@@ -304,8 +304,8 @@ function disconnectUserSession(showNotification = true) {
   const tickerMatches = document.getElementById('ticker-matches-count');
   if (tickerMatches) tickerMatches.textContent = '0';
   
-  if (typeof goToOnboardChoiceStep === 'function') {
-    goToOnboardChoiceStep();
+  if (typeof window.goToOnboardChoiceStep === 'function') {
+    window.goToOnboardChoiceStep();
   }
   
   if (showNotification) {
@@ -1219,50 +1219,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnCancelScanCacheModal = document.getElementById('btn-cancel-scan-cache-modal');
   const scanRememberCacheChoice = document.getElementById('scan-remember-cache-choice');
 
-  const openScanCacheModal = (e) => {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault();
-    if (!state.wants || state.wants.length === 0) {
-      if (typeof showToast === 'function') {
-        showToast('Tu Wantlist no tiene vinilos cargados. Sincroniza tu lista en el Paso 03 antes de escanear.', 'warning', 4500);
-      } else {
-        alert('Tu Wantlist no tiene vinilos cargados. Carga tus deseos en el Paso 03 antes de escanear.');
-      }
-      return;
-    }
-
-    try {
-      if (window.Telemetry?.track) {
-        window.Telemetry.track('SCAN_MODAL_OPEN', `Usuario abrió modal de escaneo para ${state.wants.length} vinilos`, {
-          wantsCount: state.wants.length,
-          username: state.username
-        });
-      }
-    } catch (e) {}
-
-    // If user previously set "remember choice", execute directly
-    const rememberPref = localStorage.getItem('remember_scan_cache_choice') === 'true';
-    if (rememberPref) {
-      const savedUseCache = localStorage.getItem('use_scan_cache') !== 'false';
-      syncCacheState(savedUseCache);
-      startMarketplaceScan();
-      return;
-    }
-
-    if (scanCacheModal) {
-      scanCacheModal.style.display = 'flex';
-      scanCacheModal.classList.add('open');
-    } else {
-      startMarketplaceScan();
-    }
-  };
-
-  const closeScanCacheModal = () => {
-    if (scanCacheModal) {
-      scanCacheModal.classList.remove('open');
-      scanCacheModal.style.display = 'none';
-    }
-  };
-
+  // Note: openScanCacheModal and closeScanCacheModal are globally managed in modals.js
   if (btnCloseScanCacheModal) btnCloseScanCacheModal.addEventListener('click', closeScanCacheModal);
   if (btnCancelScanCacheModal) btnCancelScanCacheModal.addEventListener('click', closeScanCacheModal);
 
@@ -1299,24 +1256,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Grid Density Switcher (Compact vs Standard with mutually exclusive high-contrast colors)
-  const setGridDensity = (density) => {
-    if (!wantsGrid) return;
-    localStorage.setItem('wants_grid_density', density);
-    const activeClass = 'px-2.5 py-1 bg-pitch-black text-pure-white font-bold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors shadow-xs';
-    const inactiveClass = 'px-2.5 py-1 bg-transparent text-muted-graphite hover:text-pitch-black font-semibold uppercase text-[10px] flex items-center gap-1 cursor-pointer transition-colors';
-
-    if (density === 'standard') {
-      wantsGrid.classList.remove('density-compact');
-      wantsGrid.classList.add('density-standard');
-      if (btnDensityStandard) btnDensityStandard.className = activeClass;
-      if (btnDensityCompact) btnDensityCompact.className = inactiveClass;
-    } else {
-      wantsGrid.classList.remove('density-standard');
-      wantsGrid.classList.add('density-compact');
-      if (btnDensityCompact) btnDensityCompact.className = activeClass;
-      if (btnDensityStandard) btnDensityStandard.className = inactiveClass;
-    }
-  };
+  // Note: setGridDensity is globally managed in renderers.js
 
   // Delegated event listener to guarantee Wantlist Manager buttons always trigger modals and actions
   document.addEventListener('click', (e) => {
@@ -1524,3 +1464,10 @@ document.addEventListener('click', (e) => {
   }
 });
 
+
+
+window.navigateToView = navigateToView;
+window.switchTab = switchTab;
+window.updateForwardAndBackButtons = updateForwardAndBackButtons;
+window.updateUserDropdownInfo = updateUserDropdownInfo;
+window.disconnectUserSession = disconnectUserSession;

@@ -315,7 +315,7 @@ function escapeCSVCell(val) {
   return str;
 }
 
-function generateWantsTSV(items) {
+function generateWantsTSV(items = (state.wants || [])) {
   const headers = ['Artista', 'Título', 'Año', 'Prioritario (★)', 'Discogs ID', 'Imagen Cover', 'URL Discogs'];
   const rows = items.map(item => [
     item.artist || '',
@@ -330,7 +330,7 @@ function generateWantsTSV(items) {
   return [headers.join('\t'), ...rows.map(r => r.join('\t'))].join('\n');
 }
 
-function generateWantsCSV(items) {
+function generateWantsCSV(items = (state.wants || [])) {
   const headers = ['Artista', 'Título', 'Año', 'Prioritario (★)', 'Discogs ID', 'URL Discogs'];
   const rows = items.map(item => [
     escapeCSVCell(item.artist || ''),
@@ -345,7 +345,7 @@ function generateWantsCSV(items) {
   return '\uFEFF' + csvContent;
 }
 
-function generateOffersCSV(listings) {
+function generateOffersCSV(listings = (state.allListings || [])) {
   const headers = ['Vendedor', 'País Vendedor', 'Reputación Vendedor', 'Artista', 'Título', 'Estado Vinilo', 'Estado Tapa', 'Precio', 'Moneda', 'Envío Estimado USD', 'Total Estimado USD', 'Link Oferta'];
   const rows = listings.map(l => [
     escapeCSVCell(l.sellerName || ''),
@@ -479,3 +479,56 @@ window.addEventListener('resize', () => {
 
 
 
+
+
+function openScanCacheModal(e) {
+  if (e && typeof e.preventDefault === 'function') e.preventDefault();
+  const scanCacheModal = document.getElementById('scan-cache-modal');
+  if (!state.wants || state.wants.length === 0) {
+    if (typeof showToast === 'function') {
+      showToast('Tu Wantlist no tiene vinilos cargados. Sincroniza tu lista en el Paso 03 antes de escanear.', 'warning', 4500);
+    } else {
+      alert('Tu Wantlist no tiene vinilos cargados. Carga tus deseos en el Paso 03 antes de escanear.');
+    }
+    return;
+  }
+
+  try {
+    if (window.Telemetry?.track) {
+      window.Telemetry.track('SCAN_MODAL_OPEN', `Usuario abrió modal de escaneo para ${state.wants.length} vinilos`, {
+        wantsCount: state.wants.length,
+        username: state.username
+      });
+    }
+  } catch (err) {}
+
+  const rememberPref = localStorage.getItem('remember_scan_cache_choice') === 'true';
+  if (rememberPref) {
+    const savedUseCache = localStorage.getItem('use_scan_cache') !== 'false';
+    syncCacheState(savedUseCache);
+    startMarketplaceScan();
+    return;
+  }
+
+  if (scanCacheModal) {
+    scanCacheModal.style.display = 'flex';
+    scanCacheModal.classList.add('open');
+  } else {
+    startMarketplaceScan();
+  }
+}
+window.openScanCacheModal = openScanCacheModal;
+
+function closeScanCacheModal() {
+  const scanCacheModal = document.getElementById('scan-cache-modal');
+  if (scanCacheModal) {
+    scanCacheModal.classList.remove('open');
+    scanCacheModal.style.display = 'none';
+  }
+}
+window.closeScanCacheModal = closeScanCacheModal;
+window.openExportSheetsModal = openExportSheetsModal;
+window.closeExportSheetsModal = closeExportSheetsModal;
+window.openSettingsModal = openSettingsModal;
+window.closeSettingsModal = closeSettingsModal;
+window.closeAllModals = closeAllModals;

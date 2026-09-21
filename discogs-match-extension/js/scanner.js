@@ -1132,3 +1132,7 @@ async function clearScanCache() {
   }
 }
 
+
+
+window.startMarketplaceScan = startMarketplaceScan;
+window.loadWantlist = loadWantlist;
