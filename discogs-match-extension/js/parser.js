@@ -666,19 +666,15 @@ function groupListingsBySeller() {
     const listCount = (seller.listings || []).length;
     const subtotal = (seller.listings || []).reduce((sum, item) => sum + (item.priceVal || 0), 0);
     
-    // Determine location relationship defensively
-    const shipsFromLower = (seller.shipsFrom || '').toLowerCase();
-    const buyerLower = (buyerCountryVal || 'uruguay').toLowerCase();
-    
-    let isDomestic = shipsFromLower.includes(buyerLower) || buyerLower.includes(shipsFromLower);
-    
-    // Map common names
-    if (buyerLower === 'argentina' && (shipsFromLower.includes('argentina') || shipsFromLower.includes('ar'))) isDomestic = true;
-    if (buyerLower === 'uruguay' && (shipsFromLower.includes('uruguay') || shipsFromLower.includes('uy'))) isDomestic = true;
-    if (buyerLower === 'spain' && (shipsFromLower.includes('spain') || shipsFromLower.includes('españa') || shipsFromLower.includes('es'))) isDomestic = true;
-    if (buyerLower === 'germany' && (shipsFromLower.includes('germany') || shipsFromLower.includes('deutschland') || shipsFromLower.includes('de'))) isDomestic = true;
-    if (buyerLower === 'united states' && (shipsFromLower.includes('united states') || shipsFromLower.includes('us'))) isDomestic = true;
-    if (buyerLower === 'united kingdom' && (shipsFromLower.includes('united kingdom') || shipsFromLower.includes('uk') || shipsFromLower.includes('great britain'))) isDomestic = true;
+    // Determine location relationship defensively using universal country matching
+    let isDomestic = false;
+    if (typeof isDomesticSeller === 'function') {
+      isDomestic = isDomesticSeller(seller.shipsFrom, buyerCountryVal);
+    } else {
+      const shipsFromLower = (seller.shipsFrom || '').toLowerCase();
+      const buyerLower = (buyerCountryVal || 'uruguay').toLowerCase();
+      isDomestic = shipsFromLower.includes(buyerLower) || buyerLower.includes(shipsFromLower);
+    }
     
     let isEUToEU = false;
     if (!isDomestic && isBuyerEU && isCountryEU(seller.shipsFrom)) {

@@ -564,6 +564,33 @@ function goToWizardStep(stepNum) {
 function onLocationChange() {
   const selectedCountry = buyerCountry ? buyerCountry.value : 'Uruguay';
   log(`Ubicación de envío de comprador actualizada a: ${selectedCountry}`, 'info');
+
+  // Synchronize all country selectors
+  if (wizardBuyerCountry && wizardBuyerCountry.value !== selectedCountry) {
+    wizardBuyerCountry.value = selectedCountry;
+  }
+  const settingsCountry = document.getElementById('settings-country');
+  if (settingsCountry && settingsCountry.value !== selectedCountry) {
+    settingsCountry.value = selectedCountry;
+  }
+  localStorage.setItem('buyer_country', selectedCountry);
+
+  // Automatically adapt the currency to the buyer's country
+  if (typeof getCurrencyForCountry === 'function') {
+    const matchingCurrency = getCurrencyForCountry(selectedCountry);
+    if (displayCurrencySelect && displayCurrencySelect.value !== 'original') {
+      displayCurrencySelect.value = matchingCurrency;
+      localStorage.setItem('display_currency', matchingCurrency);
+    }
+    const settingsCurrency = document.getElementById('settings-currency');
+    if (settingsCurrency && settingsCurrency.value !== 'original') {
+      settingsCurrency.value = matchingCurrency;
+    }
+    if (typeof updateSettingsExchangeRateUI === 'function') {
+      updateSettingsExchangeRateUI(matchingCurrency);
+    }
+  }
+
   if (state.allListings && state.allListings.length > 0) {
     groupListingsBySeller();
     renderResults();
@@ -1353,22 +1380,7 @@ document.addEventListener('DOMContentLoaded', () => {
     filterHasShipping.addEventListener('change', renderResults);
   }
 
-  // Auto currency sync when buyer destination country is changed
-  if (buyerCountry && displayCurrencySelect) {
-    buyerCountry.addEventListener('change', () => {
-      const c = buyerCountry.value;
-      if (c === 'Uruguay') displayCurrencySelect.value = 'UYU';
-      else if (c === 'Spain' || c === 'Germany') displayCurrencySelect.value = 'EUR';
-      else if (c === 'United States') displayCurrencySelect.value = 'USD';
-      else if (c === 'United Kingdom') displayCurrencySelect.value = 'GBP';
-      else if (c === 'Argentina') displayCurrencySelect.value = 'ARS';
-      localStorage.setItem('display_currency', displayCurrencySelect.value);
-      if (state.allListings.length > 0) {
-        groupListingsBySeller();
-        renderResults();
-      }
-    });
-  }
+
 
   // Reset filters button listener
   const btnResetFilters = document.getElementById('btn-reset-filters');

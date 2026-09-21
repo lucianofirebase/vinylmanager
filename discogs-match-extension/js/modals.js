@@ -114,21 +114,46 @@ function openSettingsModal() {
     minRatingSelect.value = localStorage.getItem('filter_min_rating') || (filterRatingEl ? filterRatingEl.value : '99');
   }
 
-  const currSelect = document.getElementById('settings-currency');
-  const displayCurrEl = document.getElementById('display-currency');
-  if (currSelect) {
-    currSelect.value = localStorage.getItem('display_currency') || (displayCurrEl ? displayCurrEl.value : 'USD');
-  }
-
   const countrySelect = document.getElementById('settings-country');
   const buyerCountryEl = document.getElementById('buyer-country');
+  const savedCountry = localStorage.getItem('buyer_country') || (buyerCountryEl ? buyerCountryEl.value : 'Uruguay');
   if (countrySelect) {
-    countrySelect.value = localStorage.getItem('buyer_country') || (buyerCountryEl ? buyerCountryEl.value : 'Uruguay');
+    countrySelect.value = savedCountry;
   }
 
-  const rateInput = document.getElementById('settings-rate-uyu');
-  if (rateInput) {
-    rateInput.value = localStorage.getItem('custom_uyu_rate') || '40';
+  const currSelect = document.getElementById('settings-currency');
+  const displayCurrEl = document.getElementById('display-currency');
+  const savedCurrency = localStorage.getItem('display_currency') || (displayCurrEl ? displayCurrEl.value : (typeof getCurrencyForCountry === 'function' ? getCurrencyForCountry(savedCountry) : 'USD'));
+  if (currSelect) {
+    currSelect.value = savedCurrency;
+  }
+
+  // Update dynamic exchange rate UI for the current currency
+  updateSettingsExchangeRateUI(currSelect ? currSelect.value : savedCurrency);
+
+  // Setup change listeners inside settings modal if not already initialized
+  if (countrySelect && !countrySelect.dataset.listenerAttached) {
+    countrySelect.dataset.listenerAttached = 'true';
+    countrySelect.addEventListener('change', () => {
+      const newCountry = countrySelect.value;
+      if (typeof getCurrencyForCountry === 'function') {
+        const matchingCurr = getCurrencyForCountry(newCountry);
+        if (currSelect && currSelect.value !== 'original') {
+          currSelect.value = matchingCurr;
+        }
+        updateSettingsExchangeRateUI(currSelect ? currSelect.value : matchingCurr);
+      }
+    });
+  }
+
+  if (currSelect && !currSelect.dataset.listenerAttached) {
+    currSelect.dataset.listenerAttached = 'true';
+    currSelect.addEventListener('change', () => {
+      const activeCurr = currSelect.value === 'original' && countrySelect && typeof getCurrencyForCountry === 'function'
+        ? getCurrencyForCountry(countrySelect.value)
+        : currSelect.value;
+      updateSettingsExchangeRateUI(activeCurr);
+    });
   }
 
   const currentDensity = localStorage.getItem('wants_grid_density') || 'standard';
@@ -142,6 +167,39 @@ function openSettingsModal() {
       window.Telemetry.track('SETTINGS_MODAL_OPEN', 'Usuario abrió el panel de personalización');
     }
   } catch (e) {}
+}
+
+function updateSettingsExchangeRateUI(currencyCode) {
+  const rateContainer = document.getElementById('settings-rate-container');
+  const rateTitle = document.getElementById('settings-rate-title');
+  const rateSubtitle = document.getElementById('settings-rate-subtitle');
+  const rateSymbol = document.getElementById('settings-rate-symbol');
+  const rateInput = document.getElementById('settings-rate-uyu');
+  if (!rateInput) return;
+
+  const curr = (currencyCode === 'original') ? 'USD' : (currencyCode || 'USD');
+  const currInfo = CURRENCY_MAP[curr] || { symbol: '$', code: curr, name: curr };
+
+  if (curr === 'USD') {
+    if (rateContainer) rateContainer.style.display = 'flex';
+    if (rateTitle) rateTitle.textContent = 'Cotización Dólar (USD por 1 USD):';
+    if (rateSubtitle) rateSubtitle.textContent = 'Moneda base de referencia (1 USD = 1.00 USD)';
+    if (rateSymbol) rateSymbol.textContent = '$';
+    rateInput.value = '1.0';
+    rateInput.disabled = true;
+  } else {
+    if (rateContainer) rateContainer.style.display = 'flex';
+    if (rateTitle) rateTitle.textContent = `Cotización Dólar (${currInfo.code} por 1 USD):`;
+    if (rateSubtitle) rateSubtitle.textContent = `Usado para convertir precios en ${currInfo.name || currInfo.code}`;
+    if (rateSymbol) rateSymbol.textContent = currInfo.symbol || '$';
+    rateInput.disabled = false;
+    
+    // Load persisted rate or default
+    const units = typeof getCurrencyUnitsPerUSD === 'function'
+      ? getCurrencyUnitsPerUSD(currInfo.code)
+      : 1.0;
+    rateInput.value = units;
+  }
 }
 
 function closeSettingsModal() {
@@ -205,26 +263,35 @@ function applySettingsFromModal() {
   // Currency
   const currSelect = document.getElementById('settings-currency');
   const displayCurrEl = document.getElementById('display-currency');
+  let selectedCurr = 'USD';
   if (currSelect) {
-    localStorage.setItem('display_currency', currSelect.value);
-    if (displayCurrEl) displayCurrEl.value = currSelect.value;
+    selectedCurr = currSelect.value;
+    localStorage.setItem('display_currency', selectedCurr);
+    if (displayCurrEl) displayCurrEl.value = selectedCurr;
   }
 
   // Country
   const countrySelect = document.getElementById('settings-country');
   const buyerCountryEl = document.getElementById('buyer-country');
+  const wizardBuyerCountryEl = document.getElementById('wizard-buyer-country');
+  let selectedCountry = 'Uruguay';
   if (countrySelect) {
-    localStorage.setItem('buyer_country', countrySelect.value);
-    if (buyerCountryEl) buyerCountryEl.value = countrySelect.value;
+    selectedCountry = countrySelect.value;
+    localStorage.setItem('buyer_country', selectedCountry);
+    if (buyerCountryEl) buyerCountryEl.value = selectedCountry;
+    if (wizardBuyerCountryEl) wizardBuyerCountryEl.value = selectedCountry;
   }
 
-  // Custom UYU Rate
+  // Custom Exchange Rate for the active currency
   const rateInput = document.getElementById('settings-rate-uyu');
-  if (rateInput) {
-    const val = parseFloat(rateInput.value) || 40;
-    localStorage.setItem('custom_uyu_rate', String(val));
-    if (CURRENCY_MAP.UYU) {
-      CURRENCY_MAP.UYU.rate = 1 / val;
+  if (rateInput && !rateInput.disabled) {
+    const val = parseFloat(rateInput.value);
+    const activeCode = selectedCurr === 'original' && typeof getCurrencyForCountry === 'function'
+      ? getCurrencyForCountry(selectedCountry)
+      : selectedCurr;
+      
+    if (!isNaN(val) && val > 0 && typeof setCustomCurrencyRate === 'function') {
+      setCustomCurrencyRate(activeCode, val);
     }
   }
 
@@ -531,4 +598,5 @@ window.openExportSheetsModal = openExportSheetsModal;
 window.closeExportSheetsModal = closeExportSheetsModal;
 window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
+window.updateSettingsExchangeRateUI = updateSettingsExchangeRateUI;
 window.closeAllModals = closeAllModals;

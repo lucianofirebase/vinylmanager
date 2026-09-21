@@ -405,17 +405,28 @@ function populateCountryFilter() {
     let clean = c;
     const lower = c.toLowerCase();
     
-    if (lower.includes('united states') || lower.includes('us')) clean = 'United States';
-    else if (lower.includes('united kingdom') || lower.includes('uk') || lower.includes('great britain')) clean = 'United Kingdom';
-    else if (lower.includes('spain') || lower.includes('españa')) clean = 'Spain';
-    else if (lower.includes('germany') || lower.includes('deutschland')) clean = 'Germany';
-    else if (lower.includes('brazil') || lower.includes('brasil')) clean = 'Brazil';
-    else if (lower.includes('sweden') || lower.includes('suecia')) clean = 'Sweden';
-    else if (lower.includes('uruguay')) clean = 'Uruguay';
-    else if (lower.includes('france') || lower.includes('francia')) clean = 'France';
-    else if (lower.includes('japan') || lower.includes('japón')) clean = 'Japan';
-    else if (lower.includes('netherlands') || lower.includes('holland') || lower.includes('países bajos')) clean = 'Netherlands';
-    else if (lower.includes('italy') || lower.includes('italia')) clean = 'Italy';
+    if (typeof COUNTRY_CONFIG !== 'undefined') {
+      for (const countryKey in COUNTRY_CONFIG) {
+        if (countryKey === 'Other') continue;
+        const cfg = COUNTRY_CONFIG[countryKey];
+        if (lower.includes(countryKey.toLowerCase())) {
+          clean = countryKey;
+          break;
+        }
+        if (Array.isArray(cfg.aliases)) {
+          const matched = cfg.aliases.some(a => {
+            if (a.length === 2) {
+              return new RegExp(`(^|[^a-z])${a}([^a-z]|$)`, 'i').test(lower);
+            }
+            return lower.includes(a);
+          });
+          if (matched) {
+            clean = countryKey;
+            break;
+          }
+        }
+      }
+    }
     
     const key = clean.toLowerCase();
     if (!uniqueMap.has(key)) {

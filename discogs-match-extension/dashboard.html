@@ -138,11 +138,23 @@
             <select id="buyer-country"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none appearance-none">
               <option value="Uruguay" selected>Uruguay (UY)</option>
+              <option value="Argentina">Argentina (AR)</option>
+              <option value="Brazil">Brasil (BR)</option>
+              <option value="Chile">Chile (CL)</option>
+              <option value="Colombia">Colombia (CO)</option>
+              <option value="Mexico">México (MX)</option>
               <option value="Spain">España (ES)</option>
               <option value="United States">EE.UU. (US)</option>
-              <option value="Argentina">Argentina (AR)</option>
               <option value="United Kingdom">Reino Unido (UK)</option>
               <option value="Germany">Alemania (DE)</option>
+              <option value="France">Francia (FR)</option>
+              <option value="Italy">Italia (IT)</option>
+              <option value="Netherlands">Países Bajos (NL)</option>
+              <option value="Japan">Japón (JP)</option>
+              <option value="Canada">Canadá (CA)</option>
+              <option value="Australia">Australia (AU)</option>
+              <option value="Switzerland">Suiza (CH)</option>
+              <option value="Sweden">Suecia (SE)</option>
               <option value="Other">Otro (Internacional)</option>
             </select>
             <span class="material-symbols-outlined text-[12px] pointer-events-none text-muted-graphite shrink-0 ml-0.5">expand_more</span>
@@ -153,10 +165,18 @@
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none text-emerald-900 appearance-none">
               <option value="USD" selected>$ USD</option>
               <option value="UYU">UYU ($U)</option>
-              <option value="EUR">€ EUR</option>
-              <option value="GBP">£ GBP</option>
-              <option value="ARS">$ ARS</option>
-              <option value="BRL">R$ BRL</option>
+              <option value="ARS">ARS ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="BRL">BRL (R$)</option>
+              <option value="CLP">CLP ($)</option>
+              <option value="COP">COP ($)</option>
+              <option value="MXN">MXN (Mex$)</option>
+              <option value="JPY">JPY (¥)</option>
+              <option value="CAD">CAD (CA$)</option>
+              <option value="AUD">AUD (A$)</option>
+              <option value="CHF">CHF</option>
+              <option value="SEK">SEK (kr)</option>
               <option value="original">ORIGINAL</option>
             </select>
             <span class="material-symbols-outlined text-[12px] pointer-events-none text-emerald-700 shrink-0 ml-0.5">expand_more</span>
@@ -654,11 +674,23 @@
                     <span class="material-symbols-outlined text-[15px] text-prada-blue shrink-0 pointer-events-none">location_on</span>
                     <select id="wizard-buyer-country" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
                       <option value="Uruguay" selected>Uruguay (UY)</option>
+                      <option value="Argentina">Argentina (AR)</option>
+                      <option value="Brazil">Brasil (BR)</option>
+                      <option value="Chile">Chile (CL)</option>
+                      <option value="Colombia">Colombia (CO)</option>
+                      <option value="Mexico">México (MX)</option>
                       <option value="Spain">España (ES)</option>
                       <option value="United States">EE.UU. (US)</option>
-                      <option value="Argentina">Argentina (AR)</option>
                       <option value="United Kingdom">Reino Unido (UK)</option>
                       <option value="Germany">Alemania (DE)</option>
+                      <option value="France">Francia (FR)</option>
+                      <option value="Italy">Italia (IT)</option>
+                      <option value="Netherlands">Países Bajos (NL)</option>
+                      <option value="Japan">Japón (JP)</option>
+                      <option value="Canada">Canadá (CA)</option>
+                      <option value="Australia">Australia (AU)</option>
+                      <option value="Switzerland">Suiza (CH)</option>
+                      <option value="Sweden">Suecia (SE)</option>
                       <option value="Other">Otro (Internacional)</option>
                     </select>
                   </div>
@@ -1207,11 +1239,19 @@
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Moneda Principal:</label>
               <select id="settings-currency" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
                 <option value="USD" selected>$ USD (Dólar estadounidense)</option>
-                <option value="UYU">UYU ($U Pesos Uruguayos)</option>
-                <option value="EUR">€ EUR (Euro)</option>
-                <option value="GBP">£ GBP (Libra esterlina)</option>
-                <option value="ARS">$ ARS (Pesos argentinos)</option>
-                <option value="BRL">R$ BRL (Real brasileño)</option>
+                <option value="UYU">UYU ($U Pesos uruguayos)</option>
+                <option value="ARS">ARS ($ Pesos argentinos)</option>
+                <option value="EUR">EUR (€ Euros)</option>
+                <option value="GBP">GBP (£ Libras esterlinas)</option>
+                <option value="BRL">BRL (R$ Reales brasileños)</option>
+                <option value="CLP">CLP ($ Pesos chilenos)</option>
+                <option value="COP">COP ($ Pesos colombianos)</option>
+                <option value="MXN">MXN (Mex$ Pesos mexicanos)</option>
+                <option value="JPY">JPY (¥ Yenes japoneses)</option>
+                <option value="CAD">CAD (CA$ Dólares canadienses)</option>
+                <option value="AUD">AUD (A$ Dólares australianos)</option>
+                <option value="CHF">CHF (Francos suizos)</option>
+                <option value="SEK">SEK (kr Coronas suecas)</option>
                 <option value="original">Moneda original de la tienda</option>
               </select>
             </div>
@@ -1219,26 +1259,38 @@
               <label class="font-bold text-pitch-black text-[10.5px] block mb-1">País del Comprador (Envío):</label>
               <select id="settings-country" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none">
                 <option value="Uruguay" selected>Uruguay (UY)</option>
+                <option value="Argentina">Argentina (AR)</option>
+                <option value="Brazil">Brasil (BR)</option>
+                <option value="Chile">Chile (CL)</option>
+                <option value="Colombia">Colombia (CO)</option>
+                <option value="Mexico">México (MX)</option>
                 <option value="Spain">España (ES)</option>
                 <option value="United States">EE.UU. (US)</option>
-                <option value="Argentina">Argentina (AR)</option>
                 <option value="United Kingdom">Reino Unido (UK)</option>
                 <option value="Germany">Alemania (DE)</option>
+                <option value="France">Francia (FR)</option>
+                <option value="Italy">Italia (IT)</option>
+                <option value="Netherlands">Países Bajos (NL)</option>
+                <option value="Japan">Japón (JP)</option>
+                <option value="Canada">Canadá (CA)</option>
+                <option value="Australia">Australia (AU)</option>
+                <option value="Switzerland">Suiza (CH)</option>
+                <option value="Sweden">Suecia (SE)</option>
                 <option value="Other">Otro / Internacional</option>
               </select>
             </div>
           </div>
 
-          <!-- Custom UYU Exchange Rate -->
-          <div class="pt-2 border-t border-hairline-light flex items-center justify-between">
+          <!-- Dynamic Currency Exchange Rate -->
+          <div id="settings-rate-container" class="pt-2 border-t border-hairline-light flex items-center justify-between">
             <div>
-              <span class="font-bold text-pitch-black text-[11px] block">Cotización Dólar (UYU por 1 USD):</span>
-              <span class="text-[10px] text-muted-graphite">Usado para convertir precios en pesos uruguayos</span>
+              <span id="settings-rate-title" class="font-bold text-pitch-black text-[11px] block">Cotización Dólar (UYU por 1 USD):</span>
+              <span id="settings-rate-subtitle" class="text-[10px] text-muted-graphite">Usado para convertir precios en pesos uruguayos</span>
             </div>
-            <div class="flex items-center gap-1">
-              <span class="font-bold text-xs text-pitch-black">$U</span>
-              <input type="number" id="settings-rate-uyu" step="0.5" min="20" max="100" value="40"
-                class="w-20 border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs text-right outline-none">
+            <div class="flex items-center gap-1.5">
+              <span id="settings-rate-symbol" class="font-bold text-xs text-pitch-black font-mono">$U</span>
+              <input type="number" id="settings-rate-uyu" step="any" min="0.0001" value="40"
+                class="w-28 border border-hairline-dark bg-pure-white px-2.5 py-1 font-bold text-xs text-right outline-none font-mono">
             </div>
           </div>
         </div>
