@@ -284,9 +284,9 @@
 
     <!-- Second row: Navigation Runway & Curated Filters -->
     <div id="header-nav-row"
-      class="max-w-[1780px] mx-auto px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs uppercase tracking-wider font-mono"
+      class="max-w-[1780px] mx-auto px-3 sm:px-6 py-2 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs uppercase tracking-wider font-mono relative z-40"
       style="display: none;">
-      <nav class="flex items-center gap-1.5 overflow-x-auto no-scrollbar max-w-full pb-1 shrink-0 -mx-1 px-1" id="tab-navigation">
+      <nav class="flex items-center gap-1.5 overflow-visible flex-wrap sm:flex-nowrap max-w-full pb-1 shrink-0" id="tab-navigation">
         <button id="tab-btn-sellers"
           class="shrink-0 whitespace-nowrap bg-prada-blue-night text-pure-white px-4 py-2 font-bold border-b-2 border-prada-red tracking-wider cursor-pointer shadow-xs"
           data-tooltip="Ver tiendas y vendedores ordenados por mayor stock de tu lista" data-tooltip-pos="bottom">
@@ -332,7 +332,7 @@
     </div>
 
     <!-- HARDWARE CRATE FILTERS (Architectural Line Bar) -->
-    <section id="filter-toolbar" class="border-t border-hairline-light bg-surface-low/95 px-3 sm:px-6 py-2.5"
+    <section id="filter-toolbar" class="border-t border-hairline-light bg-surface-low/95 px-3 sm:px-6 py-2.5 relative z-10"
       style="display: none;">
     <div
       class="max-w-[1780px] mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 text-xs font-mono uppercase tracking-wider">
