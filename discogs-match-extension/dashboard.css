@@ -2829,8 +2829,7 @@ body.dark .smart-candidate-badge-rec {
 
 .not-for-sale-list {
   flex: 1 1 0% !important;
-  min-height: 520px !important;
-  max-height: none !important;
+  min-height: 0 !important;
   overflow-y: auto !important;
   display: flex !important;
   flex-direction: column !important;
@@ -2838,9 +2837,15 @@ body.dark .smart-candidate-badge-rec {
   padding-right: 4px !important;
 }
 
+#stats-not-for-sale-card {
+  min-height: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
 @media (max-width: 1023px) {
   .not-for-sale-list:not(.is-expanded) {
-    max-height: 650px !important;
+    max-height: 560px !important;
   }
 }
 
@@ -4221,12 +4226,14 @@ input[type="checkbox"] {
 /* Header Navigation & Filter Stacking Contexts for Tooltip Visibility */
 #header-nav-row {
   position: relative !important;
-  z-index: 40 !important;
+  z-index: 50 !important;
+  overflow: visible !important;
 }
 
 #tab-navigation {
   position: relative !important;
   overflow: visible !important;
+  z-index: 50 !important;
 }
 
 #filter-toolbar {
@@ -4749,10 +4756,17 @@ select option {
 /* 1. Tab Navigation & Horizontal Scroll Engine */
 #tab-navigation {
   display: flex !important;
-  overflow-x: auto !important;
-  -webkit-overflow-scrolling: touch !important;
-  scrollbar-width: none !important;
-  -ms-overflow-style: none !important;
+  overflow: visible !important;
+  position: relative !important;
+  z-index: 50 !important;
+}
+@media (max-width: 640px) {
+  #tab-navigation {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
 }
 #tab-navigation::-webkit-scrollbar {
   display: none !important;

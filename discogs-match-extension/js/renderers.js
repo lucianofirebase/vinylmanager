@@ -1446,9 +1446,9 @@ function calculateAndRenderStats() {
         </div>
       </div>
       
-      <div class="stats-grid grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="stats-grid grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <!-- COLUMN 1: PRICE EXTREMES & POPULARITY -->
-        <div class="flex flex-col gap-6">
+        <div id="stats-col-1" class="flex flex-col gap-6">
           
           <!-- CHEAPEST VINYL (ACCESIBLES RANKING CON PAGINACIÓN E INFINITO) -->
           <div class="stats-card-rich relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)]" id="card-cheapest-ranking">
@@ -1507,8 +1507,8 @@ function calculateAndRenderStats() {
         </div>
         
         <!-- COLUMN 2: NOT FOR SALE / RESTRICTED SHIPPING -->
-        <div class="flex flex-col gap-6 h-full">
-          <div class="stats-card-rich flex-grow flex flex-col relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] h-full">
+        <div id="stats-col-2" class="flex flex-col gap-6 min-h-0">
+          <div id="stats-not-for-sale-card" class="stats-card-rich flex flex-col relative shadow-[4px_4px_0px_rgba(0,0,0,0.04)] min-h-0">
             <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
             <div class="mb-4 shrink-0">
               <h3 class="font-sans font-extrabold text-base uppercase tracking-tight text-pitch-black">⚠️ DISCOS SIN STOCK DIRECTO (${wantsNotForSale.length})</h3>
@@ -1539,7 +1539,7 @@ function calculateAndRenderStats() {
               </button>
             </div>
             
-            <div class="not-for-sale-list flex-1 min-h-[520px] overflow-y-auto flex flex-col gap-2 pr-1">
+            <div class="not-for-sale-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1">
               ${wantsNotForSale.length > 0 ? (
                 [...wantsBlockedByShipping.map(w => renderNotForSaleItem(w, true)),
                  ...wantsTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
@@ -1573,12 +1573,39 @@ function calculateAndRenderStats() {
             row.style.display = 'none';
           }
         });
+        setTimeout(syncStatsColumnsHeight, 60);
       });
     });
+
+    // Synchronize Column 2 card height to end exactly with Column 1 (end of "Preferencias de Diggers")
+    function syncStatsColumnsHeight() {
+      const col1 = statsView.querySelector('#stats-col-1');
+      const col2Card = statsView.querySelector('#stats-not-for-sale-card');
+      const nfsList = statsView.querySelector('.not-for-sale-list');
+      if (!col1 || !col2Card || !nfsList) return;
+
+      if (nfsList.classList.contains('is-expanded')) {
+        col2Card.style.height = 'auto';
+        col2Card.style.maxHeight = 'none';
+        return;
+      }
+
+      if (window.innerWidth >= 1024) {
+        const col1Height = col1.offsetHeight;
+        if (col1Height > 300) {
+          col2Card.style.height = `${col1Height}px`;
+          col2Card.style.maxHeight = `${col1Height}px`;
+        }
+      } else {
+        col2Card.style.height = 'auto';
+        col2Card.style.maxHeight = '560px';
+      }
+    }
 
     // Expand / Collapse toggle for not-for-sale-list
     const toggleHeightBtn = statsView.querySelector('#btn-toggle-not-for-sale-height');
     const nfsList = statsView.querySelector('.not-for-sale-list');
+    const col2Card = statsView.querySelector('#stats-not-for-sale-card');
     if (toggleHeightBtn && nfsList) {
       toggleHeightBtn.addEventListener('click', () => {
         const isExpanded = nfsList.classList.toggle('is-expanded');
@@ -1586,13 +1613,20 @@ function calculateAndRenderStats() {
         const text = toggleHeightBtn.querySelector('.btn-toggle-text');
         if (isExpanded) {
           if (icon) icon.textContent = 'unfold_less';
-          if (text) text.textContent = 'AJUSTAR A BLOQUE';
+          if (text) text.textContent = 'AJUSTAR A PREFERENCIAS';
+          if (col2Card) {
+            col2Card.style.height = 'auto';
+            col2Card.style.maxHeight = 'none';
+          }
         } else {
           if (icon) icon.textContent = 'unfold_more';
           if (text) text.textContent = 'DESPLEGAR TODO';
+          syncStatsColumnsHeight();
         }
       });
     }
+
+    window.addEventListener('resize', syncStatsColumnsHeight);
 
     // Dynamic Pagination & Search for "MÁS ACCESIBLES"
     let cheapestState = {
@@ -1704,6 +1738,7 @@ function calculateAndRenderStats() {
           });
         }
       }
+      setTimeout(syncStatsColumnsHeight, 60);
     }
 
     // Page size selector listeners
@@ -1729,8 +1764,9 @@ function calculateAndRenderStats() {
       });
     }
 
-    // Initial render of cheapest list
+    // Initial render of cheapest list & height synchronization
     updateCheapestList();
+    setTimeout(syncStatsColumnsHeight, 100);
   } catch (err) {
     console.error('[calculateAndRenderStats Error]', err);
     statsView.innerHTML = `
