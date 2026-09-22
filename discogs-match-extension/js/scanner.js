@@ -926,16 +926,38 @@ async function startMarketplaceScan(startIndex = 0) {
       }
     }
     
+    log('Escaneo completado. Procesando y agrupando resultados...', 'success');
+    
+    // Group and show results
+    groupListingsBySeller();
+
+    // Proactively verify official ASP banners for top matching sellers while the proxy tab is alive
+    if (state.groupedSellers && state.groupedSellers.length > 0 && typeof checkSellerAspBanner === 'function') {
+      const topCandidates = state.groupedSellers.slice(0, 10);
+      const uncheckedCandidates = topCandidates.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
+      if (uncheckedCandidates.length > 0) {
+        log(`Verificando políticas oficiales de envío en Discogs para los mejores vendedores (${uncheckedCandidates.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'info');
+        for (const seller of uncheckedCandidates) {
+          seller.aspChecked = true;
+          try {
+            const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal);
+            if (thresh) {
+              console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
+              seller.aspBannerThreshold = thresh;
+              seller.freeShippingThreshold = thresh;
+            }
+          } catch (e) {}
+        }
+        groupListingsBySeller();
+      }
+    }
+    
     // Close background tab if we opened one
     if (state.proxyTabId !== null) {
       chrome.tabs.remove(state.proxyTabId);
       state.proxyTabId = null;
     }
-    
-    log('Escaneo completado. Procesando y agrupando resultados...', 'success');
-    
-    // Group and show results
-    groupListingsBySeller();
+
     renderResults();
     
   } catch (error) {
@@ -1210,9 +1232,19 @@ function cancelScan() {
 
 
 async function clearScanCache() {
+  // Clear localStorage ASP banner cache
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith('discogs_asp_banner_')) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch (e) {}
+
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(null, (items) => {
-      const keysToRemove = Object.keys(items).filter(k => k.startsWith('release_'));
+      const keysToRemove = Object.keys(items).filter(k => k.startsWith('release_') || k.startsWith('discogs_asp_banner_'));
       if (keysToRemove.length === 0) {
         log('La caché de escaneo ya está vacía.', 'info');
         showToast('La caché de escaneo ya está completamente vacía.', 'info');
@@ -1220,7 +1252,7 @@ async function clearScanCache() {
       }
       chrome.storage.local.remove(keysToRemove, () => {
         log(`Caché de escaneo limpiada con éxito (${keysToRemove.length} elementos eliminados).`, 'success');
-        showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${keysToRemove.length} discos guardados.`, 'success');
+        showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${keysToRemove.length} elementos guardados.`, 'success');
       });
     });
   } else {

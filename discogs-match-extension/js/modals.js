@@ -328,7 +328,7 @@ function clearScanCacheAction() {
   const keysToRemove = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && (key.startsWith('marketplace_cache_') || key.startsWith('discogs_cache_') || key.startsWith('scan_session_'))) {
+    if (key && (key.startsWith('marketplace_cache_') || key.startsWith('discogs_cache_') || key.startsWith('scan_session_') || key.startsWith('discogs_asp_banner_'))) {
       keysToRemove.push(key);
     }
   }

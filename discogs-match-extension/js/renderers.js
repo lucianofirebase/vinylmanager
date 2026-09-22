@@ -620,7 +620,8 @@ function renderResults() {
     // 7. Free shipping or free shipping threshold filter
     if (filterFreeShipping && filterFreeShipping.checked) {
       if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
-        const cached = getCachedAspBanner(seller.name);
+        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+        const cached = getCachedAspBanner(seller.name, buyerCountryVal);
         if (cached) {
           seller.aspBannerThreshold = cached;
           seller.freeShippingThreshold = cached;
@@ -746,7 +747,8 @@ function renderResults() {
       }
 
       if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
-        const cached = getCachedAspBanner(seller.name);
+        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
+        const cached = getCachedAspBanner(seller.name, buyerCountryVal);
         if (cached) {
           seller.aspBannerThreshold = cached;
           seller.freeShippingThreshold = cached;
@@ -1092,7 +1094,9 @@ function renderResults() {
 
   // Trigger background ASP banner verification for visible sellers that don't have it yet
   if (typeof verifyDisplayedSellersAsp === 'function') {
-    verifyDisplayedSellersAsp(filtered);
+    const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
+    const targetSellers = isFreeShipFilterActive ? (state.groupedSellers || filtered) : filtered;
+    verifyDisplayedSellersAsp(targetSellers);
   }
 }
 

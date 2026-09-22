@@ -233,12 +233,22 @@ function detectCurrencyInContext(text, fallbackCurrency = 'USD') {
   return fallbackCurrency;
 }
 
-const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)?(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
+const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
 
-const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)?(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
+const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
 
-const ASP_CACHE_PREFIX = 'discogs_asp_banner_v4_';
+const ASP_CACHE_PREFIX = 'discogs_asp_banner_v5_';
 const ASP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+// Cleanup legacy cache keys on load
+try {
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && (k.startsWith('discogs_asp_banner_v1_') || k.startsWith('discogs_asp_banner_v2_') || k.startsWith('discogs_asp_banner_v3_') || k.startsWith('discogs_asp_banner_v4_') || k.includes('theslutbunny'))) {
+      localStorage.removeItem(k);
+    }
+  }
+} catch (e) {}
 
 function getCachedAspBanner(sellerName, buyerCountryVal = null) {
   if (!sellerName) return undefined;
@@ -285,8 +295,8 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
 
   const cleanSeller = sellerName.trim();
   try {
-    // 1. Check seller profile page where official ASP banner is rendered prominently
-    const sellerUrl = `https://www.discogs.com/es/user/${encodeURIComponent(cleanSeller)}`;
+    // 1. Check seller store page where official Discogs ASP banner is rendered at the top of the store
+    const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
     const html = await fetchThroughTab(sellerUrl);
     let threshold = null;
     if (html) {
@@ -296,7 +306,7 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
 
     // 2. Fallback check on seller wants store if needed
     if (!threshold) {
-      const storeUrl = `https://www.discogs.com/seller/${encodeURIComponent(cleanSeller)}/mywants`;
+      const storeUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
       const storeHtml = await fetchThroughTab(storeUrl);
       if (storeHtml) {
         const storeParsed = parseFreeShippingThresholds(storeHtml);
@@ -324,16 +334,19 @@ function parseFreeShippingThresholds(fullRowText, currency) {
     return null;
   }
 
+  // Normalize text if it contains HTML tags (e.g. from raw page HTML)
+  const textToMatch = fullRowText.includes('<') ? fullRowText.replace(/<[^>]+>/g, ' ') : fullRowText;
+
   // 1. Official Discogs Shipping Methods Modal Box (e.g. "Free Shipping: El subtotal debe ser, al menos, de 350,00 €.")
-  const modalMatch = fullRowText.match(OFFICIAL_MODAL_SHIPPING_REGEX);
+  const modalMatch = textToMatch.match(OFFICIAL_MODAL_SHIPPING_REGEX);
   if (modalMatch) {
     const rawVal = (modalMatch[1] || '').trim();
     const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
     if (cleanDigits) {
       const matchIndex = modalMatch.index || 0;
-      const surroundingContext = fullRowText.slice(
+      const surroundingContext = textToMatch.slice(
         Math.max(0, matchIndex - 10),
-        Math.min(fullRowText.length, matchIndex + modalMatch[0].length + 25)
+        Math.min(textToMatch.length, matchIndex + modalMatch[0].length + 25)
       );
       const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
       const val = parseLocalePrice(cleanDigits, threshCur);
@@ -350,8 +363,8 @@ function parseFreeShippingThresholds(fullRowText, currency) {
     }
   }
 
-  // 2. Official Discogs ASP Banner or Marketplace Listing Row
-  const aspMatch = fullRowText.match(OFFICIAL_ASP_BANNER_REGEX);
+  // 2. Official Discogs ASP Banner (e.g. "sze20 ofrece ENVÍO GRATUITO en pedidos de 330,00 € o más")
+  const aspMatch = textToMatch.match(OFFICIAL_ASP_BANNER_REGEX);
   if (!aspMatch) {
     return null;
   }
@@ -362,9 +375,9 @@ function parseFreeShippingThresholds(fullRowText, currency) {
 
   // Get surrounding context to detect currency reliably
   const matchIndex = aspMatch.index || 0;
-  const surroundingContext = fullRowText.slice(
+  const surroundingContext = textToMatch.slice(
     Math.max(0, matchIndex - 10),
-    Math.min(fullRowText.length, matchIndex + aspMatch[0].length + 25)
+    Math.min(textToMatch.length, matchIndex + aspMatch[0].length + 25)
   );
 
   const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
@@ -737,12 +750,12 @@ function parseReleaseHTML(html, releaseId) {
       }
 
       // 5b. Detect Free Shipping Threshold ONLY from official Discogs ASP Banner
-      // "solo condiciona a partir de este Detección de la barra oficial de Discogs (ASP Banner): si no tiene este no tiene envio gratis."
-      const fullRowText = (row.textContent || '') + ' ' + (shippingText || '');
-      const parsedThresholds = parseFreeShippingThresholds(fullRowText, currency) || {};
+      // STRICT: Individual listing rows contain seller comments, never official ASP banners.
+      // We ONLY take pageAspBanners (if scanning a seller store page) or verified cached ASP banners.
+      const parsedThresholds = {};
 
       // If page-level ASP banner matched this seller, attach it
-      if (sellerName && pageAspBanners[sellerName.toLowerCase()] && !parsedThresholds.aspBannerThreshold) {
+      if (sellerName && pageAspBanners[sellerName.toLowerCase()]) {
         parsedThresholds.aspBannerThreshold = pageAspBanners[sellerName.toLowerCase()];
       }
 
