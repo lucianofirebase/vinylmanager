@@ -626,6 +626,15 @@ function renderResults() {
         seller.freeShippingThreshold = cached;
       }
     }
+
+    // 7. Free shipping / threshold filter
+    if (filterFreeShipping && filterFreeShipping.checked) {
+      const hasThreshold = Boolean(seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0);
+      const isDirectFree = Boolean(seller.displayListings && seller.displayListings.length > 0 && seller.displayListings.every(l => l && l.isDirectFree));
+      if (!hasThreshold && !isDirectFree && !seller.hasFreeShippingUnlocked) {
+        return false;
+      }
+    }
     
     return true;
   });
@@ -1117,32 +1126,38 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
   try {
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
-    // Check up to 20 candidate sellers with highest matches
-    const batch = unchecked.slice(0, 20);
+    // Check up to 250 candidate sellers with highest matches
+    const batch = unchecked.slice(0, 250);
+    const CONCURRENCY = 4;
     let updatedAny = false;
 
-    for (const seller of batch) {
-      seller.aspChecked = true;
-      let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
-      if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
-        await new Promise(r => setTimeout(r, 400));
-        thresh = await checkSellerAspBanner(seller.name, buyerCountryVal);
-      }
+    for (let i = 0; i < batch.length; i += CONCURRENCY) {
+      const chunk = batch.slice(i, i + CONCURRENCY);
+      await Promise.all(chunk.map(async (seller) => {
+        seller.aspChecked = true;
+        let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
+        if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
+          thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
+        }
 
-      if (thresh) {
-        console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
-        seller.aspBannerThreshold = thresh;
-        seller.freeShippingThreshold = thresh;
-        
-        const activeListings = seller.displayListings || seller.listings || [];
-        const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
-        seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
-        seller.totalPrice = activeSubtotal + seller.estimatedShipping;
-        updatedAny = true;
+        if (thresh) {
+          console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
+          seller.aspBannerThreshold = thresh;
+          seller.freeShippingThreshold = thresh;
+          
+          const activeListings = seller.displayListings || seller.listings || [];
+          const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
+          seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
+          seller.totalPrice = activeSubtotal + seller.estimatedShipping;
+          updatedAny = true;
 
-        // Re-render immediately so the seller appears in results without waiting for the rest
-        renderResults();
-      }
+          // Re-render immediately so the seller appears in results without waiting for the rest
+          renderResults();
+        }
+      }));
+
+      // Small 80ms breathing space between chunks
+      await new Promise(r => setTimeout(r, 80));
     }
 
     if (updatedAny) {

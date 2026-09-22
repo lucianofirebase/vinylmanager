@@ -933,14 +933,14 @@ async function startMarketplaceScan(startIndex = 0) {
 
     // Proactively verify official ASP banners for top matching sellers while the proxy tab is alive
     if (state.groupedSellers && state.groupedSellers.length > 0 && typeof checkSellerAspBanner === 'function') {
-      const topCandidates = state.groupedSellers.slice(0, 10);
+      const topCandidates = state.groupedSellers.slice(0, 50);
       const uncheckedCandidates = topCandidates.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
       if (uncheckedCandidates.length > 0) {
         log(`Verificando políticas oficiales de envío en Discogs para los mejores vendedores (${uncheckedCandidates.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'info');
         for (const seller of uncheckedCandidates) {
           seller.aspChecked = true;
           try {
-            const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal);
+            const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
             if (thresh) {
               console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
               seller.aspBannerThreshold = thresh;

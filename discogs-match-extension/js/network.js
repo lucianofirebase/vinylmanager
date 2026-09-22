@@ -56,11 +56,25 @@ async function retryOnRateLimit(fn, retries = 5, initialDelay = 2200) {
 }
 
 // Direct fetch (no proxy)
-async function fetchDirect(url) {
+async function fetchDirect(url, options = {}) {
   return retryOnRateLimit(async () => {
     console.log(`[DirectFetch] Iniciando fetch directo para URL: ${url}`);
     try {
-      const response = await fetch(url);
+      const headers = {
+        'Accept': 'application/json, text/html, */*'
+      };
+      if (url.includes('api.discogs.com')) {
+        headers['Authorization'] = (options.headers && options.headers['Authorization']) || 
+          (typeof getDiscogsAuthHeader === 'function' ? getDiscogsAuthHeader() : 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA');
+      }
+      if (options.headers) {
+        Object.assign(headers, options.headers);
+      }
+
+      const response = await fetch(url, {
+        method: options.method || 'GET',
+        headers: headers
+      });
       console.log(`[DirectFetch] Status respuesta: ${response.status} para URL: ${url}`);
       if (response.status === 429) {
         throw new Error(`HTTP Error 429: Too Many Requests`);
@@ -95,12 +109,22 @@ async function fetchDirect(url) {
 }
 
 // Fetch helper using the content script proxy to bypass Cloudflare
-async function fetchThroughTab(url) {
+async function fetchThroughTab(url, options = {}) {
+  // If requesting api.discogs.com in an extension context, direct fetch with the Client token works immediately and natively!
+  if (url.includes('api.discogs.com')) {
+    try {
+      const res = await fetchDirect(url, options);
+      if (res && res.length > 0) return res;
+    } catch (directErr) {
+      console.warn(`[ProxyFetch] Direct fetch for API failed, attempting proxy tab...`, directErr.message);
+    }
+  }
+
   // In web mode (no extension context) fall straight through to a direct fetch.
   // api.discogs.com supports CORS so this works fine for API endpoints.
   if (!IS_EXTENSION) {
     console.log(`[ProxyFetch] No extension context — using fetchDirect for: ${url}`);
-    return fetchDirect(url);
+    return fetchDirect(url, options);
   }
 
   return retryOnRateLimit(async () => {
@@ -199,7 +223,7 @@ async function fetchThroughTab(url) {
 
       const sendMessageToTab = (tabId, isRetry = false) => {
         console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${tabId} para URL: ${url}`);
-        chrome.tabs.sendMessage(tabId, { action: "fetchUrl", url }, (response) => {
+        chrome.tabs.sendMessage(tabId, { action: "fetchUrl", url, headers: options.headers }, (response) => {
           if (chrome.runtime.lastError) {
             console.warn(`[ProxyFetch] Error de comunicación con pestaña ${tabId}:`, chrome.runtime.lastError.message);
             // If content script was not injected yet in an existing tab, attempt dynamic injection once

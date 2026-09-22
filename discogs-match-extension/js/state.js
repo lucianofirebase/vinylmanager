@@ -24,6 +24,24 @@ let state = {
 // Detect whether running inside a Chrome extension context or as a plain web page.
 const IS_EXTENSION = (typeof chrome !== 'undefined' && !!chrome.tabs && !!chrome.runtime?.id);
 
+// Official Discogs Client Auth Token for shipping policies & v3 marketplace APIs
+const DEFAULT_DISCOGS_CLIENT_TOKEN = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
+
+function getDiscogsAuthHeader() {
+  try {
+    const custom = localStorage.getItem('discogs_client_token');
+    if (custom && custom.trim()) {
+      const val = custom.trim();
+      return (val.startsWith('Client token=') || val.startsWith('Discogs token=') || val.startsWith('Bearer '))
+        ? val
+        : `Client token=${val}`;
+    }
+  } catch (e) {}
+  return DEFAULT_DISCOGS_CLIENT_TOKEN;
+}
+window.DEFAULT_DISCOGS_CLIENT_TOKEN = DEFAULT_DISCOGS_CLIENT_TOKEN;
+window.getDiscogsAuthHeader = getDiscogsAuthHeader;
+
 const CURRENCY_MAP = {
   'EUR': { symbol: '€', code: 'EUR', rate: 1.087, name: 'Euros' },
   'USD': { symbol: '$', code: 'USD', rate: 1.0, name: 'Dólares estadounidenses' },

@@ -237,14 +237,15 @@ const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA
 
 const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
 
-const ASP_CACHE_PREFIX = 'discogs_asp_banner_v7_';
+const ASP_CACHE_PREFIX = 'discogs_asp_banner_v9_';
 const ASP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SELLER_ID_CACHE_PREFIX = 'discogs_seller_id_';
 
 // Cleanup legacy cache keys on load
 try {
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v7_')) {
+    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v9_')) {
       localStorage.removeItem(k);
     }
   }
@@ -281,8 +282,92 @@ function setCachedAspBanner(sellerName, buyerCountryVal, threshold) {
   } catch (e) {}
 }
 
-async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
+/**
+ * Parse official Discogs shipping policies JSON endpoint:
+ * https://api.discogs.com/v3/marketplace/shipping/policies?seller_id=${seller_id}&country=${country}
+ */
+function parseShippingPoliciesJson(data, buyerCountryVal = 'Uruguay') {
+  if (!data || !Array.isArray(data.policies)) return null;
+  const buyerLower = (buyerCountryVal || 'uruguay').toLowerCase();
+
+  // Find policy that covers the buyer's country
+  let targetPolicy = data.policies.find(p => 
+    Array.isArray(p.countries) && p.countries.some(c => (c || '').toLowerCase() === buyerLower)
+  );
+  if (!targetPolicy) targetPolicy = data.policies[0];
+  if (!targetPolicy) return null;
+
+  if (targetPolicy.free_shipping) {
+    const minVal = parseFloat(targetPolicy.free_shipping_min_order_val) || 0;
+    const cur = data.currency || 'EUR';
+    return {
+      amount: minVal,
+      currency: cur,
+      formatted: targetPolicy.formatted_free_shipping_min_order_val || `${minVal.toFixed(2)} ${cur}`,
+      raw: targetPolicy.free_shipping_description || `Envío gratuito en pedidos de ${minVal} ${cur} o más`,
+      seller: null,
+      scope: 'asp_banner'
+    };
+  }
+  return null;
+}
+
+/**
+ * Resolve Discogs seller numeric ID from username if not present on marketplace row
+ */
+async function resolveSellerId(sellerName) {
   if (!sellerName) return null;
+  const cleanSeller = sellerName.trim();
+  const cacheKey = `${SELLER_ID_CACHE_PREFIX}${cleanSeller.toLowerCase()}`;
+  try {
+    const cached = localStorage.getItem(cacheKey);
+    if (cached) {
+      const parsedId = parseInt(cached, 10);
+      if (parsedId > 0) return parsedId;
+    }
+  } catch (e) {}
+
+  try {
+    const userUrl = `https://api.discogs.com/users/${encodeURIComponent(cleanSeller)}`;
+    let userJsonStr = null;
+    if (typeof fetchThroughTab === 'function') {
+      try {
+        userJsonStr = await fetchThroughTab(userUrl);
+      } catch (tabErr) {}
+    }
+    if (!userJsonStr && typeof fetchDirect === 'function') {
+      try {
+        userJsonStr = await fetchDirect(userUrl);
+      } catch (dirErr) {}
+    }
+    if (!userJsonStr) {
+      try {
+        const resp = await fetch(userUrl, { headers: { 'Accept': 'application/json' } });
+        if (resp.ok) userJsonStr = await resp.text();
+      } catch (fErr) {}
+    }
+
+    if (userJsonStr) {
+      const userData = typeof userJsonStr === 'object' ? userJsonStr : JSON.parse(userJsonStr);
+      if (userData && userData.id) {
+        const id = parseInt(userData.id, 10);
+        if (id > 0) {
+          try {
+            localStorage.setItem(cacheKey, String(id));
+          } catch (e) {}
+          return id;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn(`[DEBUG ASP] Error resolviendo sellerId para ${cleanSeller}:`, e);
+  }
+  return null;
+}
+
+async function checkSellerAspBanner(sellerName, buyerCountryVal = null, sellerId = null) {
+  if (!sellerName) return null;
+  const cleanSeller = sellerName.trim();
   const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
   
   console.group(`🔍 [DEBUG ASP] "${sellerName}" para país "${buyer}"`);
@@ -294,69 +379,89 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
     return cached;
   }
 
-  if (typeof fetchThroughTab !== 'function') {
-    console.warn(`[DEBUG ASP] fetchThroughTab no está disponible`);
-    console.groupEnd();
-    return null;
-  }
-
-  const cleanSeller = sellerName.trim();
   let threshold = null;
   let fetchSucceeded = false;
 
+  // 1. PRIMARY: Official Discogs Shipping Policies API
+  // https://api.discogs.com/v3/marketplace/shipping/policies?seller_id=${targetSellerId}&country=${encodeURIComponent(buyer)}
   try {
-    // 1. Check seller wantlist store page where official Discogs ASP banner is rendered at the top
-    const mywantsUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
-    console.log(`[DEBUG ASP] Solicitando URL 1 (mywants): ${mywantsUrl}`);
-    const html = await fetchThroughTab(mywantsUrl);
-    console.log(`[DEBUG ASP] URL 1 retornó ${html ? html.length : 0} bytes.`);
-
-    if (html && html.length > 200) {
-      fetchSucceeded = true;
-      const parsed = parseFreeShippingThresholds(html);
-      threshold = parsed?.aspBannerThreshold || null;
-      console.log(`[DEBUG ASP] Resultado parseo URL 1:`, threshold);
+    let targetSellerId = sellerId;
+    if (!targetSellerId) {
+      targetSellerId = await resolveSellerId(cleanSeller);
     }
 
-    // 2. Fallback check on seller root store if needed
-    if (!threshold) {
-      const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
-      console.log(`[DEBUG ASP] Solicitando URL 2 (fallback): ${sellerUrl}`);
-      try {
-        const storeHtml = await fetchThroughTab(sellerUrl);
-        console.log(`[DEBUG ASP] URL 2 retornó ${storeHtml ? storeHtml.length : 0} bytes.`);
-        if (storeHtml && storeHtml.length > 200) {
-          fetchSucceeded = true;
-          const storeParsed = parseFreeShippingThresholds(storeHtml);
-          threshold = storeParsed?.aspBannerThreshold || null;
-          console.log(`[DEBUG ASP] Resultado parseo URL 2:`, threshold);
+    if (targetSellerId) {
+      const policyApiUrl = `https://api.discogs.com/v3/marketplace/shipping/policies?seller_id=${targetSellerId}&country=${encodeURIComponent(buyer)}`;
+      console.log(`[DEBUG ASP] Solicitando API Oficial: ${policyApiUrl}`);
+
+      let policyJsonStr = null;
+      if (typeof fetchThroughTab === 'function') {
+        try {
+          policyJsonStr = await fetchThroughTab(policyApiUrl);
+        } catch (tabErr) {
+          console.warn(`[DEBUG ASP] fetchThroughTab error para API policies:`, tabErr.message);
         }
-      } catch (err2) {
-        console.warn(`[DEBUG ASP] Fallback URL 2 falló para ${cleanSeller}:`, err2.message);
+      }
+      if (!policyJsonStr && typeof fetchDirect === 'function') {
+        try {
+          policyJsonStr = await fetchDirect(policyApiUrl);
+        } catch (dirErr) {}
+      }
+
+      if (policyJsonStr) {
+        try {
+          const policyData = typeof policyJsonStr === 'object' ? policyJsonStr : JSON.parse(policyJsonStr);
+          if (policyData && Array.isArray(policyData.policies)) {
+            fetchSucceeded = true;
+            threshold = parseShippingPoliciesJson(policyData, buyer);
+            if (threshold) {
+              threshold.seller = cleanSeller;
+              console.log(`[DEBUG ASP] ✓ Umbral detectado vía API Oficial para ${cleanSeller}:`, threshold);
+            } else {
+              console.log(`[DEBUG ASP] ✗ API Oficial confirmó sin envío gratis para ${cleanSeller}`);
+            }
+          }
+        } catch (parseJsonErr) {
+          console.warn(`[DEBUG ASP] Error parseando respuesta JSON de policies:`, parseJsonErr);
+        }
       }
     }
-
-    if (threshold) {
-      console.log(`[DEBUG ASP] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
-    } else {
-      console.log(`[DEBUG ASP] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
-    }
-
-    console.groupEnd();
-    
-    // Only cache if the request actually succeeded with valid HTML to prevent caching network failures
-    if (fetchSucceeded) {
-      setCachedAspBanner(cleanSeller, buyer, threshold);
-    } else {
-      console.warn(`[DEBUG ASP] No se obtuvo respuesta HTML válida para ${cleanSeller}, NO se guarda resultado negativo.`);
-    }
-
-    return threshold;
-  } catch (err) {
-    console.warn(`[DEBUG ASP] Error al consultar ${cleanSeller}:`, err);
-    console.groupEnd();
-    return null;
+  } catch (apiErr) {
+    console.warn(`[DEBUG ASP] Falló consulta de API policies para ${cleanSeller}:`, apiErr.message);
   }
+
+  // 2. FALLBACK: Scrape seller wantlist store page HTML if API did not yield a valid response
+  if (!fetchSucceeded && typeof fetchThroughTab === 'function') {
+    try {
+      const mywantsUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
+      console.log(`[DEBUG ASP] Solicitando URL Fallback HTML (mywants): ${mywantsUrl}`);
+      const html = await fetchThroughTab(mywantsUrl);
+      if (html && html.length > 200) {
+        fetchSucceeded = true;
+        const parsed = parseFreeShippingThresholds(html);
+        threshold = parsed?.aspBannerThreshold || null;
+        console.log(`[DEBUG ASP] Resultado parseo Fallback HTML:`, threshold);
+      }
+    } catch (errHtml) {
+      console.warn(`[DEBUG ASP] Fallback HTML falló para ${cleanSeller}:`, errHtml.message);
+    }
+  }
+
+  if (threshold) {
+    console.log(`[DEBUG ASP] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
+  } else {
+    console.log(`[DEBUG ASP] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
+  }
+
+  console.groupEnd();
+  
+  if (fetchSucceeded) {
+    setCachedAspBanner(cleanSeller, buyer, threshold);
+  } else {
+    console.warn(`[DEBUG ASP] No se obtuvo respuesta válida para ${cleanSeller}, NO se guarda resultado negativo.`);
+  }
+
+  return threshold;
 }
 
 const OFFICIAL_MODAL_SHIPPING_REGEX = /(?:free\s+shipping|env[íi]o\s+(?:gratuito|gratis)|kostenloser\s+versand|frais\s+de\s+port\s+gratuits?|livraison\s+gratuite|spedizione\s+gratuita)\s*:\s*[\s\S]{0,100}?\b(?:subtotal|zwischensumme|sous-total|subtotale|pedido|order)\b[\s\S]{0,80}?(?:debe\s+ser|must\s+be|doit\s+[êe]tre|muss\s+mindestens|deve\s+essere|al\s+menos|at\s+least|mindestens)[\s\S]{0,40}?(?:de\s+|d'au\s+moins\s+)?(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
@@ -607,7 +712,7 @@ function parseReleaseHTML(html, releaseId) {
         return; // Skip this listing
       }
 
-      // 1. Seller Name (extracted from href to prevent issues with browser translations)
+      // 1. Seller Name & Seller ID
       const sellerLink = row.querySelector('.seller_info a, a[href^="/user/"], [class*="seller"] a');
       if (!sellerLink) return;
       
@@ -625,6 +730,11 @@ function parseReleaseHTML(html, releaseId) {
       }
       
       if (!sellerName || sellerName.toLowerCase() === 'view seller profile' || sellerName.toLowerCase() === 'vendedor') return;
+
+      const sellerIdAttr = row.querySelector('[data-seller-id], .show-shipping-methods, [data-seller-uid]')?.getAttribute('data-seller-id') ||
+                           row.querySelector('[data-seller-uid]')?.getAttribute('data-seller-uid') ||
+                           row.getAttribute('data-seller-id');
+      const sellerId = sellerIdAttr ? parseInt(sellerIdAttr, 10) : null;
       
       // 2. Seller Rating and Ratings Count
       const sellerInfoEl = row.querySelector('.seller_info, [class*="seller_info"], [class*="seller-info"]');
@@ -838,6 +948,7 @@ function parseReleaseHTML(html, releaseId) {
       listings.push({
         releaseId,
         sellerName,
+        sellerId: sellerId || null,
         rating,
         ratingCount,
         shipsFrom,
@@ -927,6 +1038,7 @@ function groupListingsBySeller() {
 
       sellersMap[sName] = {
         name: sName,
+        sellerId: listing.sellerId || null,
         rating: (!isNaN(rawRating) && isFinite(rawRating)) ? rawRating : 100,
         ratingCount: (!isNaN(rawRatingCount) && isFinite(rawRatingCount)) ? rawRatingCount : 0,
         shipsFrom: (listing.shipsFrom || 'Internacional').trim(),
@@ -936,6 +1048,9 @@ function groupListingsBySeller() {
         listings: []
       };
     } else {
+      if (!sellersMap[sName].sellerId && listing.sellerId) {
+        sellersMap[sName].sellerId = listing.sellerId;
+      }
       if (!sellersMap[sName].aspBannerThreshold && listing.thresholds && listing.thresholds.aspBannerThreshold) {
         sellersMap[sName].aspBannerThreshold = listing.thresholds.aspBannerThreshold;
         sellersMap[sName].freeShippingThreshold = listing.thresholds.aspBannerThreshold;

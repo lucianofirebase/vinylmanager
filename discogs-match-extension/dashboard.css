@@ -1017,6 +1017,12 @@ video {
   max-width: 1440px;
 }
 
+.max-w-\[1780px\] {
+  max-width: 1780px !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
 .max-w-lg {
   max-width: 32rem;
 }
@@ -1947,16 +1953,25 @@ video {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 14px;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .wants-list-grid.density-compact {
   grid-template-columns: repeat(auto-fill, minmax(115px, 1fr));
   gap: 10px;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 .wants-list-grid.density-standard {
   grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   gap: 16px;
+  width: 100% !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* 3D Vinyl Card Tilt & Sheen Effect */
@@ -3957,12 +3972,23 @@ body, .font-sans {
   letter-spacing: 0.14em !important;
 }
 
-/* Base Body Luxury Palette */
+/* Base Body Luxury Palette & Strict Viewport Confinement */
 html, body {
   background-color: #F8F7F4 !important;
   color: #0B0B0C !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.main-content {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
 
 /* Custom Color Utilities matching Stitch Mockup */
@@ -4368,6 +4394,7 @@ input[type="checkbox"] {
   box-sizing: border-box !important;
   width: 100% !important;
   max-width: 100% !important;
+  overflow-x: hidden !important;
 }
 
 .wantlist-toolbar {

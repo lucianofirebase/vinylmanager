@@ -5,13 +5,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "fetchUrl") {
     console.log("[Discogs Matcher] Proxy fetching same-origin URL:", request.url);
 
-    // Perform standard fetch inside discogs.com page context (inherits active cookies & Cloudflare clearance)
+    // Perform fetch with credentials inside discogs.com page context (inherits active cookies like __cf_bm & session)
+    const headers = {
+      'Accept': 'application/json, text/html, */*',
+      'Accept-Language': 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7'
+    };
+
+    if (request.headers && typeof request.headers === 'object') {
+      Object.assign(headers, request.headers);
+    }
+
+    if (request.url && request.url.includes('api.discogs.com') && !headers['Authorization']) {
+      try {
+        let token = localStorage.getItem('discogs_client_token') ||
+                    localStorage.getItem('token') ||
+                    localStorage.getItem('discogs_user_token');
+        if (token) {
+          headers['Authorization'] = (token.startsWith('Client token=') || token.startsWith('Bearer ') || token.startsWith('Discogs token='))
+            ? token
+            : `Client token=${token}`;
+        } else {
+          headers['Authorization'] = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
+        }
+      } catch (e) {
+        headers['Authorization'] = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
+      }
+    }
+
     fetch(request.url, {
       method: 'GET',
-      headers: {
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-        'Accept-Language': 'es-ES,es;q=0.9,en-US;q=0.8,en;q=0.7'
-      }
+      credentials: 'include',
+      headers: headers
     })
     .then(async response => {
       // Check HTTP Status
