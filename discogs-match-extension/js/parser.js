@@ -284,47 +284,63 @@ function setCachedAspBanner(sellerName, buyerCountryVal, threshold) {
 async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
   if (!sellerName) return null;
   const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+  
+  debugger; // [BREAKPOINT 1]: Comprobando ASP Banner para sellerName
+  console.group(`🔍 [DEBUG ASP] "${sellerName}" para país "${buyer}"`);
+
   const cached = getCachedAspBanner(sellerName, buyer);
   if (cached !== undefined) {
+    console.log(`[DEBUG ASP] Encontrado en caché:`, cached);
+    console.groupEnd();
     return cached;
   }
 
   if (typeof fetchThroughTab !== 'function') {
+    console.warn(`[DEBUG ASP] fetchThroughTab no está disponible`);
+    console.groupEnd();
     return null;
   }
 
   const cleanSeller = sellerName.trim();
   try {
-    console.log(`[ASP Banner] Verificando tienda de ${cleanSeller}...`);
     // 1. Check seller store page where official Discogs ASP banner is rendered at the top of the store
     const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
+    console.log(`[DEBUG ASP] Solicitando URL 1: ${sellerUrl}`);
     const html = await fetchThroughTab(sellerUrl);
+    console.log(`[DEBUG ASP] URL 1 retornó ${html ? html.length : 0} bytes. ¿Tiene "ENVÍO GRATUITO" / "FREE SHIPPING"?:`, html ? /env[íi]o\s+(?:gratuito|gratis)|free\s+shipping/i.test(html) : false);
+
     let threshold = null;
     if (html) {
       const parsed = parseFreeShippingThresholds(html);
       threshold = parsed?.aspBannerThreshold || null;
+      console.log(`[DEBUG ASP] Resultado parseo URL 1:`, threshold);
     }
 
     // 2. Fallback check on seller wants store if needed
     if (!threshold) {
       const storeUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
+      console.log(`[DEBUG ASP] Solicitando URL 2 (fallback): ${storeUrl}`);
       const storeHtml = await fetchThroughTab(storeUrl);
+      console.log(`[DEBUG ASP] URL 2 retornó ${storeHtml ? storeHtml.length : 0} bytes. ¿Tiene "ENVÍO GRATUITO" / "FREE SHIPPING"?:`, storeHtml ? /env[íi]o\s+(?:gratuito|gratis)|free\s+shipping/i.test(storeHtml) : false);
       if (storeHtml) {
         const storeParsed = parseFreeShippingThresholds(storeHtml);
         threshold = storeParsed?.aspBannerThreshold || null;
+        console.log(`[DEBUG ASP] Resultado parseo URL 2:`, threshold);
       }
     }
 
     if (threshold) {
-      console.log(`[ASP Banner] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
+      console.log(`[DEBUG ASP] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
     } else {
-      console.log(`[ASP Banner] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
+      console.log(`[DEBUG ASP] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
     }
 
+    console.groupEnd();
     setCachedAspBanner(cleanSeller, buyer, threshold);
     return threshold;
   } catch (err) {
-    console.warn(`[ASP Banner] Error al consultar ${cleanSeller}:`, err);
+    console.warn(`[DEBUG ASP] Error al consultar ${cleanSeller}:`, err);
+    console.groupEnd();
     return null;
   }
 }
@@ -340,6 +356,7 @@ function parseFreeShippingThresholds(fullRowText, currency) {
   // 1. Official Discogs Shipping Methods Modal Box (e.g. "Free Shipping: El subtotal debe ser, al menos, de 350,00 €.")
   const modalMatch = textToMatch.match(OFFICIAL_MODAL_SHIPPING_REGEX);
   if (modalMatch) {
+    debugger; // [BREAKPOINT 2]: Modal Match detectado
     const rawVal = (modalMatch[1] || '').trim();
     const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
     if (cleanDigits) {
@@ -365,36 +382,34 @@ function parseFreeShippingThresholds(fullRowText, currency) {
 
   // 2. Official Discogs ASP Banner (e.g. "sze20 ofrece ENVÍO GRATUITO en pedidos de 330,00 € o más")
   const aspMatch = textToMatch.match(OFFICIAL_ASP_BANNER_REGEX);
-  if (!aspMatch) {
-    return null;
+  if (aspMatch) {
+    debugger; // [BREAKPOINT 3]: Banner oficial detectado
+    const rawVal = (aspMatch[2] || '').trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (cleanDigits) {
+      const matchIndex = aspMatch.index || 0;
+      const surroundingContext = textToMatch.slice(
+        Math.max(0, matchIndex - 10),
+        Math.min(textToMatch.length, matchIndex + aspMatch[0].length + 25)
+      );
+
+      const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
+      const val = parseLocalePrice(cleanDigits, threshCur);
+      if (val > 0) {
+        return {
+          aspBannerThreshold: {
+            amount: val,
+            currency: threshCur,
+            raw: aspMatch[0].trim(),
+            seller: aspMatch[1] ? aspMatch[1].trim() : null,
+            scope: 'asp_banner'
+          }
+        };
+      }
+    }
   }
 
-  const rawVal = (aspMatch[2] || '').trim();
-  const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
-  if (!cleanDigits) return null;
-
-  // Get surrounding context to detect currency reliably
-  const matchIndex = aspMatch.index || 0;
-  const surroundingContext = textToMatch.slice(
-    Math.max(0, matchIndex - 10),
-    Math.min(textToMatch.length, matchIndex + aspMatch[0].length + 25)
-  );
-
-  const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
-  const val = parseLocalePrice(cleanDigits, threshCur);
-  if (val <= 0) return null;
-
-  const bannerSeller = aspMatch[1] ? aspMatch[1].trim() : null;
-
-  return {
-    aspBannerThreshold: {
-      amount: val,
-      currency: threshCur,
-      raw: aspMatch[0].trim(),
-      seller: bannerSeller,
-      scope: 'asp_banner'
-    }
-  };
+  return null;
 }
 
 function parseReleaseHTML(html, releaseId) {

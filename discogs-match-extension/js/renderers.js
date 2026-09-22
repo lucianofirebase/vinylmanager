@@ -627,9 +627,18 @@ function renderResults() {
           seller.freeShippingThreshold = cached;
         }
       }
-      const hasFreeShip = seller.hasFreeShippingUnlocked ||
+      const hasFreeShip = Boolean(seller.hasFreeShippingUnlocked ||
         (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) ||
-        seller.estimatedShipping === 0;
+        seller.estimatedShipping === 0);
+
+      console.log(`[DEBUG FILTRO] Vendedor "${seller.name}": pasaFiltro = ${hasFreeShip}`, {
+        sellerName: seller.name,
+        freeShippingThreshold: seller.freeShippingThreshold,
+        hasFreeShippingUnlocked: seller.hasFreeShippingUnlocked,
+        estimatedShipping: seller.estimatedShipping,
+        subtotal: seller.subtotal
+      });
+
       if (!hasFreeShip) return false;
     }
     
@@ -1103,6 +1112,8 @@ function renderResults() {
 // Background verification for official Discogs ASP banners on visible sellers
 let isVerifyingAsp = false;
 async function verifyDisplayedSellersAsp(displayedSellers) {
+  debugger; // [BREAKPOINT 4]: Iniciando verifyDisplayedSellersAsp
+  console.log(`[DEBUG VERIFY] verifyDisplayedSellersAsp llamado con ${displayedSellers?.length || 0} vendedores. isVerifyingAsp = ${isVerifyingAsp}`);
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
   
   // Find sellers in view that haven't been checked yet, prioritized by match count descending
@@ -1110,6 +1121,7 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
     .filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold)
     .sort((a, b) => ((b.displayListings || b.listings || []).length) - ((a.displayListings || a.listings || []).length));
     
+  console.log(`[DEBUG VERIFY] Vendedores pendientes por revisar (${unchecked.length}):`, unchecked.map(s => `${s.name} (${(s.displayListings || s.listings || []).length} matches)`));
   if (unchecked.length === 0) return;
 
   isVerifyingAsp = true;
