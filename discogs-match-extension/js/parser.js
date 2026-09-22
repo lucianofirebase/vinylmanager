@@ -312,16 +312,45 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
   }
 }
 
+const OFFICIAL_MODAL_SHIPPING_REGEX = /(?:free\s+shipping|env[íi]o\s+(?:gratuito|gratis)|kostenloser\s+versand|frais\s+de\s+port\s+gratuits?|livraison\s+gratuite|spedizione\s+gratuita)\s*:\s*[\s\S]{0,100}?\b(?:subtotal|zwischensumme|sous-total|subtotale|pedido|order)\b[\s\S]{0,80}?(?:debe\s+ser|must\s+be|doit\s+[êe]tre|muss\s+mindestens|deve\s+essere|al\s+menos|at\s+least|mindestens)[\s\S]{0,40}?(?:de\s+|d'au\s+moins\s+)?(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
+
 function parseFreeShippingThresholds(fullRowText, currency) {
   if (!fullRowText) return null;
 
-  // STRICT REQUIREMENT: Only condition free shipping on Discogs official ASP Banner.
+  // STRICT REQUIREMENT: Only condition free shipping on Discogs official ASP Banner or official Shipping Methods modal.
   // Domestic-only or informal local shipping comments MUST be rejected for non-domestic buyers.
   const isDomesticOnly = /\b(?:innerhalb|inland|germany\s+only|nur\s+deutschland|us\s+only|usa\s+only|continental\s+us|domestic\s+only|solo\s+nacional|sólo\s+nacional)\b/i.test(fullRowText);
   if (isDomesticOnly) {
     return null;
   }
 
+  // 1. Official Discogs Shipping Methods Modal Box (e.g. "Free Shipping: El subtotal debe ser, al menos, de 350,00 €.")
+  const modalMatch = fullRowText.match(OFFICIAL_MODAL_SHIPPING_REGEX);
+  if (modalMatch) {
+    const rawVal = (modalMatch[1] || '').trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (cleanDigits) {
+      const matchIndex = modalMatch.index || 0;
+      const surroundingContext = fullRowText.slice(
+        Math.max(0, matchIndex - 10),
+        Math.min(fullRowText.length, matchIndex + modalMatch[0].length + 25)
+      );
+      const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
+      const val = parseLocalePrice(cleanDigits, threshCur);
+      if (val > 0) {
+        return {
+          aspBannerThreshold: {
+            amount: val,
+            currency: threshCur,
+            raw: modalMatch[0].trim(),
+            scope: 'asp_banner'
+          }
+        };
+      }
+    }
+  }
+
+  // 2. Official Discogs ASP Banner or Marketplace Listing Row
   const aspMatch = fullRowText.match(OFFICIAL_ASP_BANNER_REGEX);
   if (!aspMatch) {
     return null;
@@ -335,7 +364,7 @@ function parseFreeShippingThresholds(fullRowText, currency) {
   const matchIndex = aspMatch.index || 0;
   const surroundingContext = fullRowText.slice(
     Math.max(0, matchIndex - 10),
-    Math.min(fullRowText.length, matchIndex + aspMatch[0].length + 20)
+    Math.min(fullRowText.length, matchIndex + aspMatch[0].length + 25)
   );
 
   const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
