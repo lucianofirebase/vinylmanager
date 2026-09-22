@@ -33,10 +33,20 @@ function calculateSellerShipping(seller, listingsList) {
   
   // Check if seller offers free shipping over threshold and subtotal meets or exceeds it
   const currentSubtotal = listingsList.reduce((sum, item) => sum + (item.priceVal || 0), 0);
-  if (seller && seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {
-    let thresholdInSellerCurrency = seller.freeShippingThreshold.amount;
-    if (seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency) {
-      const threshRate = CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate || 1.0;
+  
+  // Resolve active threshold defensively based on seller relationship
+  let thresholdObj = seller?.freeShippingThreshold;
+  if (!thresholdObj && seller) {
+    if (seller.aspBannerThreshold) thresholdObj = seller.aspBannerThreshold;
+    else if (seller.internationalThreshold) thresholdObj = seller.internationalThreshold;
+    else if (seller.isDomestic) thresholdObj = seller.domesticThreshold || seller.genericThreshold;
+    else if (seller.isEUToEU && seller.genericThreshold && !seller.genericThreshold.isDomesticOnly) thresholdObj = seller.genericThreshold;
+  }
+
+  if (thresholdObj && thresholdObj.amount > 0) {
+    let thresholdInSellerCurrency = thresholdObj.amount;
+    if (thresholdObj.currency && seller.currency && thresholdObj.currency !== seller.currency) {
+      const threshRate = CURRENCY_MAP[thresholdObj.currency]?.rate || 1.0;
       const sellerRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
       thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
     }
@@ -210,6 +220,123 @@ function parseLocalePrice(cleanPrice, currency) {
   return parseFloat(cleanPrice) || 0;
 }
 
+function detectCurrencyInContext(text, fallbackCurrency = 'USD') {
+  if (!text) return fallbackCurrency;
+  const upper = text.toUpperCase();
+  if (upper.includes('EUR') || upper.includes('€')) return 'EUR';
+  if (upper.includes('GBP') || upper.includes('£')) return 'GBP';
+  if (upper.includes('USD') || upper.includes('$')) return 'USD';
+  if (upper.includes('JPY') || upper.includes('¥')) return 'JPY';
+  if (upper.includes('CAD') || upper.includes('CA$')) return 'CAD';
+  if (upper.includes('AUD') || upper.includes('AU$')) return 'AUD';
+  return fallbackCurrency;
+}
+
+function parseFreeShippingThresholds(fullRowText, currency) {
+  if (!fullRowText) return null;
+
+  let aspBannerThreshold = null;
+  let internationalThreshold = null;
+  let domesticThreshold = null;
+  let genericThreshold = null;
+
+  // 1. Official Discogs ASP Banner Pattern (e.g. "Have-A-Break ofrece ENVÍO GRATUITO en pedidos de 350,00 € o más")
+  const aspMatch = fullRowText.match(/(?:ofrece\s+env[íi]o\s+(?:gratuito|gratis)\s+en\s+pedidos\s+de|offers\s+free\s+shipping\s+on\s+orders\s+of|bietet\s+kostenlosen\s+versand\s+(?:ab|f[üu]r\s+bestellungen\s+ab)|offre\s+les\s+frais\s+de\s+port\s+pour\s+les\s+commandes\s+de)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i);
+  if (aspMatch) {
+    const rawVal = aspMatch[1].trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (cleanDigits) {
+      let threshCur = detectCurrencyInContext(aspMatch[0], currency);
+      const val = parseLocalePrice(cleanDigits, threshCur);
+      if (val > 0) {
+        aspBannerThreshold = {
+          amount: val,
+          currency: threshCur,
+          raw: aspMatch[0].trim(),
+          scope: 'asp_banner'
+        };
+      }
+    }
+  }
+
+  // 2. Explicit International / Worldwide Threshold Pattern (e.g. "FREE INTERNATIONAL SHIPPING FROM 170 € ORDER VALUE")
+  const intlMatch = fullRowText.match(/(?:free\s+(?:international|worldwide|global)\s+(?:shipping|delivery|postage)|env[íi]o\s+internacional\s+(?:gratis|gratuito)|kostenloser\s+internationaler\s+versand|port\s+international\s+gratuit)\s*(?:from|over|on\s+orders\s+over|for\s+orders\s+over|a\s+partir\s+de|desde|ab|d[èe]s)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i);
+  if (intlMatch) {
+    const rawVal = intlMatch[1].trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (cleanDigits) {
+      let threshCur = detectCurrencyInContext(intlMatch[0], currency);
+      const val = parseLocalePrice(cleanDigits, threshCur);
+      if (val > 0) {
+        internationalThreshold = {
+          amount: val,
+          currency: threshCur,
+          raw: intlMatch[0].trim(),
+          scope: 'international'
+        };
+      }
+    }
+  }
+
+  // 3. Domestic / Generic Threshold Pattern (e.g. "KOSTENLOSER VERSAND AB 90 € INNERHALB DEUTSCHLANDS", "Free shipping over $100")
+  const genMatches = fullRowText.matchAll(/(?:free\s+(?:shipping|delivery|postage)|env[íi]o\s+(?:gratis|gratuito)|port\s+gratuit|livraison\s+gratuite|kostenloser\s+versand|spedizione\s+gratuita)\s*(?:on\s+orders\s+over|for\s+orders\s+over|orders\s+over|orders\s+from|over|from|a\s+partir\s+de|en\s+pedidos\s+(?:de\s+m[áa]s\s+de|superiores\s+a)|superando\s+(?:los\s+)?|en\s+compras\s+mayores\s+a|ab|d[èe]s|oltre)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi);
+  
+  for (const m of genMatches) {
+    const rawVal = m[1].trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (!cleanDigits) continue;
+
+    const matchIndex = m.index || 0;
+    const surroundingContext = fullRowText.slice(Math.max(0, matchIndex - 20), Math.min(fullRowText.length, matchIndex + m[0].length + 45)).toLowerCase();
+    
+    const isDomesticOnly = /\b(?:innerhalb\s+deutschlands|inland|germany\s+only|nur\s+deutschland|us\s+only|usa\s+only|continental\s+us|domestic\s+only|solo\s+nacional|sólo\s+nacional|nacional\s+solamente)\b/i.test(surroundingContext);
+    const isExplicitIntl = /\b(?:international|worldwide|global|todos los pa[íi]ses)\b/i.test(surroundingContext);
+
+    let threshCur = detectCurrencyInContext(m[0] + ' ' + surroundingContext, currency);
+    const val = parseLocalePrice(cleanDigits, threshCur);
+    if (val > 0) {
+      if (isExplicitIntl) {
+        if (!internationalThreshold) {
+          internationalThreshold = {
+            amount: val,
+            currency: threshCur,
+            raw: m[0].trim(),
+            scope: 'international'
+          };
+        }
+      } else if (isDomesticOnly) {
+        if (!domesticThreshold) {
+          domesticThreshold = {
+            amount: val,
+            currency: threshCur,
+            raw: m[0].trim(),
+            scope: 'domestic_only'
+          };
+        }
+      } else {
+        if (!genericThreshold) {
+          genericThreshold = {
+            amount: val,
+            currency: threshCur,
+            raw: m[0].trim(),
+            scope: 'generic'
+          };
+        }
+      }
+    }
+  }
+
+  if (!aspBannerThreshold && !internationalThreshold && !domesticThreshold && !genericThreshold) {
+    return null;
+  }
+
+  return {
+    aspBannerThreshold,
+    internationalThreshold,
+    domesticThreshold,
+    genericThreshold
+  };
+}
 
 function parseReleaseHTML(html, releaseId) {
   const parser = new DOMParser();
@@ -319,6 +446,31 @@ function parseReleaseHTML(html, releaseId) {
     console.warn('Error parsing release_schema JSON-LD:', ldErr);
   }
   
+  // Page-level seller ASP promo banner scanning (e.g. "Have-A-Break ofrece ENVÍO GRATUITO en pedidos de 350,00 € o más")
+  const pageAspBanners = {};
+  try {
+    const pageText = doc.body ? doc.body.textContent : html;
+    const bannerRegex = /([a-zA-Z0-9_\-\.]+)\s+(?:ofrece\s+env[íi]o\s+(?:gratuito|gratis)\s+en\s+pedidos\s+de|offers\s+free\s+shipping\s+on\s+orders\s+of|bietet\s+kostenlosen\s+versand\s+(?:ab|f[üu]r\s+bestellungen\s+ab))\s*([^\n.,;()]+(?:[.,]\d{1,2})?)/gi;
+    let bMatch;
+    while ((bMatch = bannerRegex.exec(pageText)) !== null) {
+      const sellerKey = bMatch[1].trim();
+      const rawVal = bMatch[2].trim();
+      const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+      if (cleanDigits) {
+        const cur = detectCurrencyInContext(bMatch[0], 'EUR');
+        const val = parseLocalePrice(cleanDigits, cur);
+        if (val > 0) {
+          pageAspBanners[sellerKey.toLowerCase()] = {
+            amount: val,
+            currency: cur,
+            raw: bMatch[0].trim(),
+            scope: 'asp_banner'
+          };
+        }
+      }
+    }
+  } catch (err) {}
+
   // Find listings rows
   let rows = doc.querySelectorAll('.shortcut_navigable');
   
@@ -532,34 +684,21 @@ function parseReleaseHTML(html, releaseId) {
         shippingVal = 0; // will fall back to base shipping rate in estimate calculations
       }
 
-      // 5b. Detect Free Shipping Threshold (e.g. "Free shipping on orders over $50", "Envío gratis a partir de €75")
-      let freeShippingThreshold = null;
+      // 5b. Detect Multi-Tier Free Shipping Thresholds (ASP banner, International, Domestic)
       const fullRowText = (row.textContent || '') + ' ' + (shippingText || '');
-      const freeShipMatch = fullRowText.match(/(?:free\s+(?:shipping|delivery|postage)|env[íi]o\s+(?:gratis|gratuito)|port\s+gratuit|livraison\s+gratuite|kostenloser\s+versand|spedizione\s+gratuita)\s*(?:on\s+orders\s+over|for\s+orders\s+over|orders\s+over|orders\s+from|over|from|a\s+partir\s+de|en\s+pedidos\s+(?:de\s+m[áa]s\s+de|superiores\s+a)|superando\s+(?:los\s+)?|en\s+compras\s+mayores\s+a|ab|d[èe]s|oltre)\s*([^\n.,;()]+(?:[.,]\d{1,2})?)/i);
+      const parsedThresholds = parseFreeShippingThresholds(fullRowText, currency) || {};
 
-      if (freeShipMatch) {
-        const rawMatch = freeShipMatch[1].trim();
-        const cleanDigits = rawMatch.replace(/[^\d.,]/g, '');
-        if (cleanDigits) {
-          let threshCurrency = currency;
-          const matchContext = freeShipMatch[0].toUpperCase();
-          if (matchContext.includes('EUR') || matchContext.includes('€')) threshCurrency = 'EUR';
-          else if (matchContext.includes('GBP') || matchContext.includes('£')) threshCurrency = 'GBP';
-          else if (matchContext.includes('USD') || matchContext.includes('$')) threshCurrency = 'USD';
-          else if (matchContext.includes('JPY') || matchContext.includes('¥')) threshCurrency = 'JPY';
-          else if (matchContext.includes('CAD') || matchContext.includes('CA$')) threshCurrency = 'CAD';
-          else if (matchContext.includes('AUD') || matchContext.includes('AU$')) threshCurrency = 'AUD';
-
-          const thresholdVal = parseLocalePrice(cleanDigits, threshCurrency);
-          if (thresholdVal > 0) {
-            freeShippingThreshold = {
-              amount: thresholdVal,
-              currency: threshCurrency,
-              raw: freeShipMatch[0].trim()
-            };
-          }
-        }
+      // If page-level ASP banner matched this seller, attach it
+      if (sellerName && pageAspBanners[sellerName.toLowerCase()] && !parsedThresholds.aspBannerThreshold) {
+        parsedThresholds.aspBannerThreshold = pageAspBanners[sellerName.toLowerCase()];
       }
+
+      // Backward-compatible primary threshold field
+      const primaryThreshold = parsedThresholds.aspBannerThreshold || 
+                               parsedThresholds.internationalThreshold || 
+                               parsedThresholds.genericThreshold || 
+                               parsedThresholds.domesticThreshold || null;
+      let freeShippingThreshold = primaryThreshold;
 
       // 6. Condition (Avoid regex \b boundary bug on '+')
       const conditionEl = row.querySelector('.item_condition, .condition');
@@ -609,6 +748,7 @@ function parseReleaseHTML(html, releaseId) {
         currency,
         isShippingEstimated,
         freeShippingThreshold,
+        thresholds: parsedThresholds,
         mediaCondition,
         mediaCondClass,
         sleeveCondition,
@@ -689,11 +829,26 @@ function groupListingsBySeller() {
         ratingCount: (!isNaN(rawRatingCount) && isFinite(rawRatingCount)) ? rawRatingCount : 0,
         shipsFrom: (listing.shipsFrom || 'Internacional').trim(),
         currency: listing.currency || 'USD',
+        aspBannerThreshold: listing.thresholds?.aspBannerThreshold || null,
+        internationalThreshold: listing.thresholds?.internationalThreshold || null,
+        domesticThreshold: listing.thresholds?.domesticThreshold || null,
+        genericThreshold: listing.thresholds?.genericThreshold || null,
         freeShippingThreshold: listing.freeShippingThreshold || null,
         listings: []
       };
-    } else if (!sellersMap[sName].freeShippingThreshold && listing.freeShippingThreshold) {
-      sellersMap[sName].freeShippingThreshold = listing.freeShippingThreshold;
+    } else {
+      if (!sellersMap[sName].aspBannerThreshold && listing.thresholds?.aspBannerThreshold) {
+        sellersMap[sName].aspBannerThreshold = listing.thresholds.aspBannerThreshold;
+      }
+      if (!sellersMap[sName].internationalThreshold && listing.thresholds?.internationalThreshold) {
+        sellersMap[sName].internationalThreshold = listing.thresholds.internationalThreshold;
+      }
+      if (!sellersMap[sName].domesticThreshold && listing.thresholds?.domesticThreshold) {
+        sellersMap[sName].domesticThreshold = listing.thresholds.domesticThreshold;
+      }
+      if (!sellersMap[sName].genericThreshold && listing.thresholds?.genericThreshold) {
+        sellersMap[sName].genericThreshold = listing.thresholds.genericThreshold;
+      }
     }
     
     // Avoid double listings of same release by same seller (keep cheapest copy)
@@ -731,6 +886,23 @@ function groupListingsBySeller() {
     // Save properties to seller object
     seller.isDomestic = isDomestic;
     seller.isEUToEU = isEUToEU;
+
+    // Select the applicable free shipping threshold based on buyer location
+    let activeThreshold = null;
+    if (seller.aspBannerThreshold) {
+      // Official Discogs banner rendered specifically for buyer's destination (e.g. 350 € to Uruguay)
+      activeThreshold = seller.aspBannerThreshold;
+    } else if (seller.internationalThreshold) {
+      // Explicit international offer (e.g. "Free international shipping from 170 €")
+      activeThreshold = seller.internationalThreshold;
+    } else if (isDomestic) {
+      // Domestic buyer matches seller's country (e.g. German buyer with German seller, US buyer with US seller)
+      activeThreshold = seller.domesticThreshold || seller.genericThreshold;
+    } else if (isEUToEU && seller.genericThreshold && !seller.genericThreshold.isDomesticOnly) {
+      activeThreshold = seller.genericThreshold;
+    }
+
+    seller.freeShippingThreshold = activeThreshold;
     
     let hasFreeShippingUnlocked = false;
     if (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {
