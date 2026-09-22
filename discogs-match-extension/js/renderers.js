@@ -619,6 +619,13 @@ function renderResults() {
     }
     // 7. Free shipping or free shipping threshold filter
     if (filterFreeShipping && filterFreeShipping.checked) {
+      if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
+        const cached = getCachedAspBanner(seller.name);
+        if (cached) {
+          seller.aspBannerThreshold = cached;
+          seller.freeShippingThreshold = cached;
+        }
+      }
       const hasFreeShip = seller.hasFreeShippingUnlocked ||
         (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) ||
         seller.estimatedShipping === 0;
@@ -665,6 +672,11 @@ function renderResults() {
     if (statsView) statsView.style.display = 'none';
     currentAppView = 'results-no-results';
     updateForwardAndBackButtons();
+
+    // Trigger ASP verification for grouped sellers in case some have banners not yet fetched!
+    if (typeof verifyDisplayedSellersAsp === 'function' && state && state.groupedSellers) {
+      verifyDisplayedSellersAsp(state.groupedSellers);
+    }
     return;
   }
   
@@ -731,6 +743,14 @@ function renderResults() {
           const hitB = strB.includes(searchQuery);
           return (hitB ? 1 : 0) - (hitA ? 1 : 0);
         });
+      }
+
+      if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
+        const cached = getCachedAspBanner(seller.name);
+        if (cached) {
+          seller.aspBannerThreshold = cached;
+          seller.freeShippingThreshold = cached;
+        }
       }
 
       const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
@@ -1087,7 +1107,7 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
 
   isVerifyingAsp = true;
   try {
-    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state?.buyerCountry || 'Uruguay')) || 'Uruguay';
+    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
     // Check up to 8 visible sellers sequentially to avoid rate limiting
     const batch = unchecked.slice(0, 8);
