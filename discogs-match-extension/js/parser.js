@@ -305,10 +305,10 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
   let fetchSucceeded = false;
 
   try {
-    // 1. Check seller store page where official Discogs ASP banner is rendered at the top of the store
-    const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
-    console.log(`[DEBUG ASP] Solicitando URL 1: ${sellerUrl}`);
-    const html = await fetchThroughTab(sellerUrl);
+    // 1. Check seller wantlist store page where official Discogs ASP banner is rendered at the top
+    const mywantsUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
+    console.log(`[DEBUG ASP] Solicitando URL 1 (mywants): ${mywantsUrl}`);
+    const html = await fetchThroughTab(mywantsUrl);
     console.log(`[DEBUG ASP] URL 1 retornó ${html ? html.length : 0} bytes.`);
 
     if (html && html.length > 200) {
@@ -318,12 +318,12 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
       console.log(`[DEBUG ASP] Resultado parseo URL 1:`, threshold);
     }
 
-    // 2. Fallback check on seller wants store if needed
+    // 2. Fallback check on seller root store if needed
     if (!threshold) {
-      const storeUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
-      console.log(`[DEBUG ASP] Solicitando URL 2 (fallback): ${storeUrl}`);
+      const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
+      console.log(`[DEBUG ASP] Solicitando URL 2 (fallback): ${sellerUrl}`);
       try {
-        const storeHtml = await fetchThroughTab(storeUrl);
+        const storeHtml = await fetchThroughTab(sellerUrl);
         console.log(`[DEBUG ASP] URL 2 retornó ${storeHtml ? storeHtml.length : 0} bytes.`);
         if (storeHtml && storeHtml.length > 200) {
           fetchSucceeded = true;

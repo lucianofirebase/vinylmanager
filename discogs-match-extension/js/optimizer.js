@@ -361,7 +361,9 @@ function renderSmartPurchase(filteredSellers) {
                   ` : ''))}
                 </div>
                 <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
-                  ${escapeHTML(sellerA.name)}
+                  ${(sellerA.hasFreeShippingUnlocked || (sellerA.freeShippingThreshold && sellerA.freeShippingThreshold.amount > 0) || shippingCostA === 0)
+                    ? `<mark class="highlight-matched-text" style="background:#fde047; color:#000000; font-weight:900; padding:1px 6px; text-decoration:underline; text-decoration-color:#ca8a04; text-decoration-thickness:2px;">${escapeHTML(sellerA.name)}</mark>`
+                    : escapeHTML(sellerA.name)}
                   <span class="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 ml-2 align-middle inline-block">${sellerA.rating}% ${sellerA.ratingCount > 0 ? `(${sellerA.ratingCount.toLocaleString()} VOTOS)` : 'POSITIVO'}</span>
                 </h2>
               </div>
@@ -457,7 +459,9 @@ function renderSmartPurchase(filteredSellers) {
                   ` : ''))}
                 </div>
                 <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
-                  ${escapeHTML(sellerB.name)}
+                  ${(sellerB.hasFreeShippingUnlocked || (sellerB.freeShippingThreshold && sellerB.freeShippingThreshold.amount > 0) || shippingCostB === 0)
+                    ? `<mark class="highlight-matched-text" style="background:#fde047; color:#000000; font-weight:900; padding:1px 6px; text-decoration:underline; text-decoration-color:#ca8a04; text-decoration-thickness:2px;">${escapeHTML(sellerB.name)}</mark>`
+                    : escapeHTML(sellerB.name)}
                   <span class="font-mono text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 ml-2 align-middle inline-block">${sellerB.rating}% ${sellerB.ratingCount > 0 ? `(${sellerB.ratingCount.toLocaleString()} VOTOS)` : 'POSITIVO'}</span>
                 </h2>
               </div>

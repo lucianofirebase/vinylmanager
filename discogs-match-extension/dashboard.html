@@ -331,15 +331,11 @@
             class="h-4 w-4 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer accent-prada-red" type="checkbox" />
           <span class="font-semibold text-emerald-800">CON ENVÍO APROBADO</span>
         </label>
-        <label class="flex items-center gap-2 cursor-pointer hover:text-pitch-black"
-          data-tooltip="Mostrar tiendas que ofrecen envío gratis (directo o superando umbral de compra)" data-tooltip-pos="top">
-          <input id="filter-free-shipping"
-            class="h-4 w-4 border-hairline-dark text-prada-red focus:ring-0 cursor-pointer accent-prada-red" type="checkbox" />
-          <span class="font-semibold text-blue-900 flex items-center gap-1">
-            <span class="material-symbols-outlined text-[15px] text-blue-600">local_shipping</span>
-            ENVÍO GRATIS / UMBRAL
-          </span>
-        </label>
+        <div class="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50/90 border border-amber-300 shadow-2xs text-[11px] font-mono cursor-help"
+          data-tooltip="Los vendedores con cartel oficial de Envío Gratis en Discogs aparecen automáticamente destacados con su nombre subrayado en amarillo" data-tooltip-pos="top">
+          <span class="material-symbols-outlined text-[15px] text-amber-700">local_shipping</span>
+          <span class="highlight-matched-text text-[10px] font-extrabold uppercase px-1">ENVÍO GRATIS DESTACADO</span>
+        </div>
         <button id="clear-cache-btn"
           class="text-prada-red hover:text-prada-red-dark underline uppercase font-bold cursor-pointer text-xs"
           type="button" data-tooltip="Eliminar datos locales guardados y forzar recarga"

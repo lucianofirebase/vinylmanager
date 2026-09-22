@@ -617,29 +617,14 @@ function renderResults() {
     if (filterHasShipping && filterHasShipping.checked && seller.isShippingEstimated) {
       return false;
     }
-    // 7. Free shipping or free shipping threshold filter
-    if (filterFreeShipping && filterFreeShipping.checked) {
-      if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
-        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
-        const cached = getCachedAspBanner(seller.name, buyerCountryVal);
-        if (cached) {
-          seller.aspBannerThreshold = cached;
-          seller.freeShippingThreshold = cached;
-        }
+    // Sync cached ASP banner if available
+    if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
+      const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+      const cached = getCachedAspBanner(seller.name, buyerCountryVal);
+      if (cached) {
+        seller.aspBannerThreshold = cached;
+        seller.freeShippingThreshold = cached;
       }
-      const hasFreeShip = Boolean(seller.hasFreeShippingUnlocked ||
-        (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) ||
-        seller.estimatedShipping === 0);
-
-      console.log(`[DEBUG FILTRO] Vendedor "${seller.name}": pasaFiltro = ${hasFreeShip}`, {
-        sellerName: seller.name,
-        freeShippingThreshold: seller.freeShippingThreshold,
-        hasFreeShippingUnlocked: seller.hasFreeShippingUnlocked,
-        estimatedShipping: seller.estimatedShipping,
-        subtotal: seller.subtotal
-      });
-
-      if (!hasFreeShip) return false;
     }
     
     return true;
@@ -885,6 +870,11 @@ function renderResults() {
         ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío estimado por seguridad." data-tooltip="Envío estimado automáticamente según tarifas de la región" data-tooltip-pos="top">⚠️</span>` 
         : '';
       
+      const hasFreeShippingFeature = Boolean(isThresholdUnlocked || hasThreshold || isDirectFreeShipping);
+      const sellerNameDisplay = hasFreeShippingFeature
+        ? `<mark class="highlight-matched-text" style="background:#fde047; color:#000000; font-weight:900; padding:1px 6px; text-decoration:underline; text-decoration-color:#ca8a04; text-decoration-thickness:2px; font-size:1.05em;" data-tooltip="Vendedor con Envío Gratis (${hasThreshold ? 'a partir de ' + formatPrice(thresholdAmount, thresholdCurrency) : 'directo'})">${escapeHTML(seller.name)}</mark>`
+        : escapeHTML(seller.name);
+
       card.innerHTML = `
         <!-- Linea Rossa Strip Indicator (visible when expanded) -->
         <div class="h-1 bg-prada-red w-full ${isAutoExpanded ? '' : 'hidden'}" id="strip-indicator-${seller.name}"></div>
@@ -896,7 +886,7 @@ function renderResults() {
               data-tooltip="Posición #${rankNumber} en el ranking global de mejores vendedores" data-tooltip-pos="top">#${rankNumber}</span>
             <div class="flex flex-col min-w-0">
               <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-                <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black truncate max-w-[180px] sm:max-w-none">${escapeHTML(seller.name)}</span>
+                <span class="font-sans font-bold text-base uppercase tracking-tight text-pitch-black truncate max-w-[240px] sm:max-w-none">${sellerNameDisplay}</span>
                 <span class="border border-emerald-300 bg-prada-emerald-bg px-1.5 py-0.5 text-[9px] font-mono uppercase text-emerald-900 font-bold cursor-help"
                   data-tooltip="Porcentaje de valoraciones positivas del vendedor en Discogs" data-tooltip-pos="top">${seller.rating}%</span>
                 <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold cursor-help"
