@@ -237,14 +237,14 @@ const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA
 
 const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
 
-const ASP_CACHE_PREFIX = 'discogs_asp_banner_v5_';
+const ASP_CACHE_PREFIX = 'discogs_asp_banner_v6_';
 const ASP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Cleanup legacy cache keys on load
 try {
-  for (let i = 0; i < localStorage.length; i++) {
+  for (let i = localStorage.length - 1; i >= 0; i--) {
     const k = localStorage.key(i);
-    if (k && (k.startsWith('discogs_asp_banner_v1_') || k.startsWith('discogs_asp_banner_v2_') || k.startsWith('discogs_asp_banner_v3_') || k.startsWith('discogs_asp_banner_v4_') || k.includes('theslutbunny'))) {
+    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v6_')) {
       localStorage.removeItem(k);
     }
   }
@@ -295,6 +295,7 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
 
   const cleanSeller = sellerName.trim();
   try {
+    console.log(`[ASP Banner] Verificando tienda de ${cleanSeller}...`);
     // 1. Check seller store page where official Discogs ASP banner is rendered at the top of the store
     const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
     const html = await fetchThroughTab(sellerUrl);
@@ -314,10 +315,16 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
       }
     }
 
+    if (threshold) {
+      console.log(`[ASP Banner] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
+    } else {
+      console.log(`[ASP Banner] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
+    }
+
     setCachedAspBanner(cleanSeller, buyer, threshold);
     return threshold;
   } catch (err) {
-    console.warn(`[ASP Banner] Failed to fetch banner for ${cleanSeller}:`, err);
+    console.warn(`[ASP Banner] Error al consultar ${cleanSeller}:`, err);
     return null;
   }
 }
@@ -326,13 +333,6 @@ const OFFICIAL_MODAL_SHIPPING_REGEX = /(?:free\s+shipping|env[íi]o\s+(?:gratuit
 
 function parseFreeShippingThresholds(fullRowText, currency) {
   if (!fullRowText) return null;
-
-  // STRICT REQUIREMENT: Only condition free shipping on Discogs official ASP Banner or official Shipping Methods modal.
-  // Domestic-only or informal local shipping comments MUST be rejected for non-domestic buyers.
-  const isDomesticOnly = /\b(?:innerhalb|inland|germany\s+only|nur\s+deutschland|us\s+only|usa\s+only|continental\s+us|domestic\s+only|solo\s+nacional|sólo\s+nacional)\b/i.test(fullRowText);
-  if (isDomesticOnly) {
-    return null;
-  }
 
   // Normalize text if it contains HTML tags (e.g. from raw page HTML)
   const textToMatch = fullRowText.includes('<') ? fullRowText.replace(/<[^>]+>/g, ' ') : fullRowText;
@@ -983,6 +983,12 @@ function groupListingsBySeller() {
     };
   });
   
+  // Sort sellers primarily by match count descending, secondary by price ascending
+  state.groupedSellers.sort((a, b) => {
+    if (b.matchCount !== a.matchCount) return b.matchCount - a.matchCount;
+    return a.totalPrice - b.totalPrice;
+  });
+
   console.log('Grouped sellers with location-based shipping:', state.groupedSellers);
   populateCountryFilter();
 }

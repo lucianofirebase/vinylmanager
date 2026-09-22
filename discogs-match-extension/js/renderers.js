@@ -1105,23 +1105,26 @@ let isVerifyingAsp = false;
 async function verifyDisplayedSellersAsp(displayedSellers) {
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
   
-  // Find sellers in view that haven't been checked yet
-  const unchecked = displayedSellers.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
+  // Find sellers in view that haven't been checked yet, prioritized by match count descending
+  const unchecked = displayedSellers
+    .filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold)
+    .sort((a, b) => ((b.displayListings || b.listings || []).length) - ((a.displayListings || a.listings || []).length));
+    
   if (unchecked.length === 0) return;
 
   isVerifyingAsp = true;
   try {
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
-    // Check up to 8 visible sellers sequentially to avoid rate limiting
-    const batch = unchecked.slice(0, 8);
+    // Check up to 20 candidate sellers with highest matches
+    const batch = unchecked.slice(0, 20);
     let updatedAny = false;
 
     for (const seller of batch) {
       seller.aspChecked = true;
       let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
       if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 400));
         thresh = await checkSellerAspBanner(seller.name, buyerCountryVal);
       }
 
@@ -1135,11 +1138,13 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
         seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
         seller.totalPrice = activeSubtotal + seller.estimatedShipping;
         updatedAny = true;
+
+        // Re-render immediately so the seller appears in results without waiting for the rest
+        renderResults();
       }
     }
 
     if (updatedAny) {
-      // Re-render results cleanly so badges, unlocked states and shipping values update
       renderResults();
     }
   } catch (e) {

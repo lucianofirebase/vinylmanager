@@ -1465,7 +1465,12 @@ document.addEventListener('DOMContentLoaded', () => {
     filterHasShipping.addEventListener('change', renderResults);
   }
   if (filterFreeShipping) {
-    filterFreeShipping.addEventListener('change', renderResults);
+    filterFreeShipping.addEventListener('change', () => {
+      renderResults();
+      if (filterFreeShipping.checked && typeof verifyDisplayedSellersAsp === 'function' && state && state.groupedSellers) {
+        verifyDisplayedSellersAsp(state.groupedSellers);
+      }
+    });
   }
 
   // Reset filters button listener
