@@ -244,18 +244,6 @@ function getCachedAspBanner(sellerName, buyerCountryVal = null) {
   if (!sellerName) return undefined;
   const cleanSeller = sellerName.trim();
   const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
-
-  // Seed verified official Discogs ASP banner for Have-A-Break (350,00 €)
-  if (cleanSeller.toLowerCase() === 'have-a-break') {
-    return {
-      amount: 350,
-      currency: 'EUR',
-      raw: 'Have-A-Break ofrece ENVÍO GRATUITO en pedidos de 350,00 € o más',
-      seller: 'Have-A-Break',
-      scope: 'asp_banner'
-    };
-  }
-
   const cacheKey = `${ASP_CACHE_PREFIX}${cleanSeller.toLowerCase()}_${buyer.toLowerCase()}`;
   try {
     const raw = localStorage.getItem(cacheKey);
