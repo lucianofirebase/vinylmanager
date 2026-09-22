@@ -5132,3 +5132,17 @@ select option {
   backdrop-filter: blur(4px);
 }
 
+/* Free Shipping & Threshold Visual Signatures */
+.seller-card.free-shipping-unlocked {
+  border-left: 4px solid #059669 !important;
+}
+
+.seller-card.free-shipping-threshold-available {
+  border-left: 4px solid #0284c7 !important;
+}
+
+.seller-card.free-shipping-included {
+  border-left: 4px solid #10b981 !important;
+}
+
+

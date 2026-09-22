@@ -46,6 +46,7 @@ function toggleFiltersState(enabled) {
     filterPriorityOnly.disabled = true;
   }
   if (filterHasShipping) filterHasShipping.disabled = !enabled;
+  if (filterFreeShipping) filterFreeShipping.disabled = !enabled;
   
   const filterSection = document.querySelector('.filter-section');
   if (filterSection) {
@@ -616,6 +617,13 @@ function renderResults() {
     if (filterHasShipping && filterHasShipping.checked && seller.isShippingEstimated) {
       return false;
     }
+    // 7. Free shipping or free shipping threshold filter
+    if (filterFreeShipping && filterFreeShipping.checked) {
+      const hasFreeShip = seller.hasFreeShippingUnlocked ||
+        (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) ||
+        seller.estimatedShipping === 0;
+      if (!hasFreeShip) return false;
+    }
     
     return true;
   });
@@ -735,6 +743,34 @@ function renderResults() {
       const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
       const isAutoExpanded = Boolean(searchQuery);
 
+      // Free shipping threshold evaluations
+      const hasThreshold = Boolean(seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0);
+      let thresholdAmount = hasThreshold ? seller.freeShippingThreshold.amount : 0;
+      const thresholdCurrency = hasThreshold ? (seller.freeShippingThreshold.currency || seller.currency || '$') : '$';
+      
+      // Handle cross-currency threshold calculation if needed
+      let thresholdInSellerCurrency = thresholdAmount;
+      if (hasThreshold && seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency) {
+        const threshRate = CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate || 1.0;
+        const sellerRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+        thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
+      }
+
+      const isThresholdUnlocked = hasThreshold && (activeSubtotal >= thresholdInSellerCurrency);
+      const remainingForFree = hasThreshold ? Math.max(0, thresholdInSellerCurrency - activeSubtotal) : 0;
+      const isDirectFreeShipping = (activeShipping === 0 && !hasThreshold);
+
+      let cardShippingBadgeClass = '';
+      if (isThresholdUnlocked) {
+        cardShippingBadgeClass = 'free-shipping-unlocked';
+      } else if (hasThreshold) {
+        cardShippingBadgeClass = 'free-shipping-threshold-available';
+      } else if (isDirectFreeShipping) {
+        cardShippingBadgeClass = 'free-shipping-included';
+      }
+
+      card.className = `seller-card ${cardShippingBadgeClass}`.trim();
+
       // Generate deep-dive catalog rows
       let listingsHtml = '';
       const totalPages = Math.ceil(activeListings.length / 10);
@@ -834,6 +870,25 @@ function renderResults() {
                   data-tooltip="Porcentaje de valoraciones positivas del vendedor en Discogs" data-tooltip-pos="top">${seller.rating}%</span>
                 <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold cursor-help"
                   data-tooltip="País de origen desde donde despacha este vendedor" data-tooltip-pos="top">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
+                ${isThresholdUnlocked ? `
+                  <span class="inline-flex items-center gap-1 border border-emerald-500 bg-emerald-50 text-emerald-900 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold tracking-wide shadow-2xs cursor-help"
+                    data-tooltip="¡Envío gratis desbloqueado! Tu compra de ${formatPrice(activeSubtotal, seller.currency)} supera el umbral de ${formatPrice(thresholdAmount, thresholdCurrency)}" data-tooltip-pos="top">
+                    <span class="material-symbols-outlined text-[13px] text-emerald-600 font-bold">local_shipping</span>
+                    <span>ENVÍO GRATIS DESBLOQUEADO (&gt;${formatPrice(thresholdAmount, thresholdCurrency)})</span>
+                  </span>
+                ` : (hasThreshold ? `
+                  <span class="inline-flex items-center gap-1 border border-blue-400 bg-blue-50/90 text-blue-950 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold tracking-wide shadow-2xs cursor-help"
+                    data-tooltip="Envío gratis disponible a partir de ${formatPrice(thresholdAmount, thresholdCurrency)}. Añade ${formatPrice(remainingForFree, seller.currency)} para tener envío sin costo." data-tooltip-pos="top">
+                    <span class="material-symbols-outlined text-[13px] text-blue-600 font-bold">local_shipping</span>
+                    <span>ENVÍO GRATIS DESDE ${formatPrice(thresholdAmount, thresholdCurrency)} <span class="text-blue-700 font-normal">(FALTAN ${formatPrice(remainingForFree, seller.currency)})</span></span>
+                  </span>
+                ` : (isDirectFreeShipping ? `
+                  <span class="inline-flex items-center gap-1 border border-emerald-400 bg-emerald-50/70 text-emerald-900 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold tracking-wide shadow-2xs cursor-help"
+                    data-tooltip="Este vendedor ofrece envío gratuito sin costo para este lote" data-tooltip-pos="top">
+                    <span class="material-symbols-outlined text-[13px] text-emerald-600 font-bold">check_circle</span>
+                    <span>ENVÍO GRATIS DIRECTO</span>
+                  </span>
+                ` : ''))}
               </div>
               <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-wider mt-0.5 truncate">${seller.ratingCount > 0 ? `${seller.ratingCount.toLocaleString()} CALIFICACIONES • ` : ''}${seller.isDomestic ? 'ENVÍO AUTOMATIZADO (NACIONAL)' : (seller.isEUToEU ? 'ENVÍO INTRA-UE' : 'TIENDA VERIFICADA DISCOGS')}</span>
             </div>
@@ -855,11 +910,21 @@ function renderResults() {
               </span>
             </div>
             <div class="px-3 sm:px-5 text-right cursor-help"
-              data-tooltip="Costo de envío estimado consolidando el paquete hacia ${escapeHTML(buyerCountryVal)}" data-tooltip-pos="top">
+              data-tooltip="${isThresholdUnlocked ? '¡Envío gratuito aplicado por compra superior al umbral!' : (hasThreshold ? 'Costo de envío estándar. Si sumas ' + formatPrice(remainingForFree, seller.currency) + ' más en discos, el envío será GRATIS' : 'Costo de envío estimado consolidando el paquete hacia ' + escapeHTML(buyerCountryVal))}" data-tooltip-pos="top">
               <span class="text-[9px] text-muted-graphite uppercase tracking-widest block font-semibold mb-1">ENVÍO A ${escapeHTML(buyerCountryCode)}</span>
-              <span class="font-bold text-prada-blue text-xs sm:text-[13px] whitespace-nowrap block">
-                ${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}
-              </span>
+              ${activeShipping === 0 ? `
+                <span class="font-bold text-emerald-700 text-xs sm:text-[13px] whitespace-nowrap block flex items-center justify-end gap-1">
+                  <span class="text-[9px] bg-emerald-100 text-emerald-800 px-1 py-0.5 border border-emerald-300 font-mono font-bold">GRATIS</span>
+                  $0.00
+                </span>
+              ` : `
+                <span class="font-bold text-prada-blue text-xs sm:text-[13px] whitespace-nowrap block">
+                  ${formatPrice(activeShipping, seller.currency)}${sellerShippingWarning}
+                </span>
+                ${hasThreshold ? `
+                  <span class="text-[8.5px] text-blue-700 font-mono font-bold block mt-0.5">GRATIS DESDE ${formatPrice(thresholdAmount, thresholdCurrency)}</span>
+                ` : ''}
+              `}
             </div>
             <div class="pl-3 sm:pl-5 pr-3 sm:pr-4 text-right min-w-[105px] sm:min-w-[125px] bg-pure-white/90 py-1 border-l border-hairline-light cursor-help"
               data-tooltip="Precio final estimado (Subtotal + Envío total consolidado)" data-tooltip-pos="top">

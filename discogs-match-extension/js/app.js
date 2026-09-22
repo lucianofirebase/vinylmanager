@@ -1464,8 +1464,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterHasShipping) {
     filterHasShipping.addEventListener('change', renderResults);
   }
-
-
+  if (filterFreeShipping) {
+    filterFreeShipping.addEventListener('change', renderResults);
+  }
 
   // Reset filters button listener
   const btnResetFilters = document.getElementById('btn-reset-filters');
@@ -1477,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
       filterRating.value = "0";
       filterPriorityOnly.checked = false;
       localStorage.setItem('filter_priority_only', 'false');
+      if (filterFreeShipping) filterFreeShipping.checked = false;
       if (filterSearchRelease) filterSearchRelease.value = "";
       renderResults();
     });

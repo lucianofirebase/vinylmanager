@@ -31,6 +31,20 @@ function calculateSellerShipping(seller, listingsList) {
   const baseShippingInSellerCurrency = baseShippingUSD * conversionFactor;
   const extraItemInSellerCurrency = extraItemUSD * conversionFactor;
   
+  // Check if seller offers free shipping over threshold and subtotal meets or exceeds it
+  const currentSubtotal = listingsList.reduce((sum, item) => sum + (item.priceVal || 0), 0);
+  if (seller && seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {
+    let thresholdInSellerCurrency = seller.freeShippingThreshold.amount;
+    if (seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency) {
+      const threshRate = CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate || 1.0;
+      const sellerRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+      thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
+    }
+    if (currentSubtotal >= thresholdInSellerCurrency) {
+      return 0; // Free shipping threshold unlocked!
+    }
+  }
+
   // Check if we parsed actual shipping costs from listings
   const shippingValues = listingsList.map(l => l.shippingVal).filter(v => v > 0);
   if (shippingValues.length > 0) {
@@ -518,6 +532,35 @@ function parseReleaseHTML(html, releaseId) {
         shippingVal = 0; // will fall back to base shipping rate in estimate calculations
       }
 
+      // 5b. Detect Free Shipping Threshold (e.g. "Free shipping on orders over $50", "Envío gratis a partir de €75")
+      let freeShippingThreshold = null;
+      const fullRowText = (row.textContent || '') + ' ' + (shippingText || '');
+      const freeShipMatch = fullRowText.match(/(?:free\s+(?:shipping|delivery|postage)|env[íi]o\s+(?:gratis|gratuito)|port\s+gratuit|livraison\s+gratuite|kostenloser\s+versand|spedizione\s+gratuita)\s*(?:on\s+orders\s+over|for\s+orders\s+over|orders\s+over|orders\s+from|over|from|a\s+partir\s+de|en\s+pedidos\s+(?:de\s+m[áa]s\s+de|superiores\s+a)|superando\s+(?:los\s+)?|en\s+compras\s+mayores\s+a|ab|d[èe]s|oltre)\s*([^\n.,;()]+(?:[.,]\d{1,2})?)/i);
+
+      if (freeShipMatch) {
+        const rawMatch = freeShipMatch[1].trim();
+        const cleanDigits = rawMatch.replace(/[^\d.,]/g, '');
+        if (cleanDigits) {
+          let threshCurrency = currency;
+          const matchContext = freeShipMatch[0].toUpperCase();
+          if (matchContext.includes('EUR') || matchContext.includes('€')) threshCurrency = 'EUR';
+          else if (matchContext.includes('GBP') || matchContext.includes('£')) threshCurrency = 'GBP';
+          else if (matchContext.includes('USD') || matchContext.includes('$')) threshCurrency = 'USD';
+          else if (matchContext.includes('JPY') || matchContext.includes('¥')) threshCurrency = 'JPY';
+          else if (matchContext.includes('CAD') || matchContext.includes('CA$')) threshCurrency = 'CAD';
+          else if (matchContext.includes('AUD') || matchContext.includes('AU$')) threshCurrency = 'AUD';
+
+          const thresholdVal = parseLocalePrice(cleanDigits, threshCurrency);
+          if (thresholdVal > 0) {
+            freeShippingThreshold = {
+              amount: thresholdVal,
+              currency: threshCurrency,
+              raw: freeShipMatch[0].trim()
+            };
+          }
+        }
+      }
+
       // 6. Condition (Avoid regex \b boundary bug on '+')
       const conditionEl = row.querySelector('.item_condition, .condition');
       let mediaCondition = 'VG+';
@@ -565,6 +608,7 @@ function parseReleaseHTML(html, releaseId) {
         shippingVal,
         currency,
         isShippingEstimated,
+        freeShippingThreshold,
         mediaCondition,
         mediaCondClass,
         sleeveCondition,
@@ -645,8 +689,11 @@ function groupListingsBySeller() {
         ratingCount: (!isNaN(rawRatingCount) && isFinite(rawRatingCount)) ? rawRatingCount : 0,
         shipsFrom: (listing.shipsFrom || 'Internacional').trim(),
         currency: listing.currency || 'USD',
+        freeShippingThreshold: listing.freeShippingThreshold || null,
         listings: []
       };
+    } else if (!sellersMap[sName].freeShippingThreshold && listing.freeShippingThreshold) {
+      sellersMap[sName].freeShippingThreshold = listing.freeShippingThreshold;
     }
     
     // Avoid double listings of same release by same seller (keep cheapest copy)
@@ -685,6 +732,17 @@ function groupListingsBySeller() {
     seller.isDomestic = isDomestic;
     seller.isEUToEU = isEUToEU;
     
+    let hasFreeShippingUnlocked = false;
+    if (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {
+      let thresholdInSellerCurrency = seller.freeShippingThreshold.amount;
+      if (seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency) {
+        const threshRate = CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate || 1.0;
+        const sellerRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+        thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
+      }
+      hasFreeShippingUnlocked = subtotal >= thresholdInSellerCurrency;
+    }
+    
     const estimatedShipping = calculateSellerShipping(seller, seller.listings || []);
     const totalPrice = subtotal + estimatedShipping;
     
@@ -696,7 +754,9 @@ function groupListingsBySeller() {
       totalPrice: parseFloat(totalPrice.toFixed(2)),
       isDomestic,
       isEUToEU,
-      isShippingEstimated: (seller.listings || []).some(l => l && l.isShippingEstimated)
+      isShippingEstimated: (seller.listings || []).some(l => l && l.isShippingEstimated),
+      freeShippingThreshold: seller.freeShippingThreshold || null,
+      hasFreeShippingUnlocked
     };
   });
   

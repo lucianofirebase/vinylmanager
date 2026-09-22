@@ -108,64 +108,160 @@ function startRadarShaderCanvas() {
   if (!canvas) return;
   
   const ctx = canvas.getContext('2d');
-  let width = (canvas.width = canvas.offsetWidth || 600);
-  let height = (canvas.height = canvas.offsetHeight || 160);
-  
   let angle = 0;
-  let particles = Array.from({ length: 24 }, () => ({
-    x: Math.random() * width,
-    y: Math.random() * height,
-    radius: Math.random() * 2 + 1,
-    speed: Math.random() * 1.5 + 0.5,
-    alpha: Math.random() * 0.6 + 0.2
-  }));
+  let laserY = 0;
+  let laserDirection = 1;
+  let animTick = 0;
+
+  function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || canvas.offsetWidth || 800;
+    const h = rect.height || canvas.offsetHeight || 520;
+    
+    if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+      canvas.width = Math.round(w * dpr);
+      canvas.height = Math.round(h * dpr);
+    }
+    ctx.resetTransform?.();
+    ctx.scale(dpr, dpr);
+    return { width: w, height: h };
+  }
 
   function draw() {
+    const { width, height } = resizeCanvas();
     ctx.clearRect(0, 0, width, height);
-    
-    // Draw glowing center radar pulses centered on the vinyl artwork
-    const centerX = width * 0.5;
-    const centerY = height * 0.38;
-    
-    angle += 0.03;
-    
-    // Concentric glowing vinyl grooves
-    for (let r = 30; r <= 160; r += 26) {
+
+    animTick++;
+    angle += 0.015;
+
+    // 1. Architectural Swiss Grid with Micro-Crosshairs (+)
+    const gridSize = 42;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.032)';
+    ctx.lineWidth = 1;
+
+    // Vertical grid lines
+    for (let x = gridSize; x < width; x += gridSize) {
       ctx.beginPath();
-      ctx.arc(centerX, centerY, r + Math.sin(angle + r) * 2, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(245, 166, 35, ${0.18 - r * 0.0009})`;
-      ctx.lineWidth = 1.5;
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
       ctx.stroke();
     }
 
-    // Scanning radar line pulse
+    // Horizontal grid lines
+    for (let y = gridSize; y < height; y += gridSize) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    // Micro-crosshairs (+) at key intersections
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+    ctx.lineWidth = 1;
+    for (let x = gridSize * 2; x < width - gridSize; x += gridSize * 3) {
+      for (let y = gridSize * 2; y < height - gridSize; y += gridSize * 3) {
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y);
+        ctx.lineTo(x + 3, y);
+        ctx.moveTo(x, y - 3);
+        ctx.lineTo(x, y + 3);
+        ctx.stroke();
+      }
+    }
+
+    // 2. Concentric Acoustic Vinyl Grooves (Centered behind the turntable)
+    // Find turntable element position relative to canvas for exact concentric alignment
+    const turntable = document.getElementById('loading-turntable-container');
+    let centerX = width * 0.5;
+    let centerY = height * 0.40;
+
+    if (turntable) {
+      const tRect = turntable.getBoundingClientRect();
+      const cRect = canvas.getBoundingClientRect();
+      if (tRect.width > 0 && cRect.width > 0) {
+        centerX = (tRect.left - cRect.left) + (tRect.width * 0.5);
+        centerY = (tRect.top - cRect.top) + (tRect.height * 0.5);
+      }
+    }
+
+    // Smooth acoustic soundwaves radiating outward
+    const waveBase = (animTick * 0.4) % 40;
+    for (let r = 40 + waveBase; r <= Math.max(width, height) * 0.75; r += 40) {
+      const maxR = Math.max(width, height) * 0.7;
+      const progress = r / maxR;
+      const alpha = Math.max(0, 0.075 * (1 - progress));
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, r, 0, Math.PI * 2);
+      ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // 3. Subtle Circular Precision Reticle around the record
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, 155, 0, Math.PI * 2);
+    ctx.strokeStyle = 'rgba(224, 43, 32, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Small rotating compass ticks on the reticle
     ctx.save();
     ctx.translate(centerX, centerY);
-    ctx.rotate(angle);
-    const grad = ctx.createLinearGradient(0, 0, 150, 0);
-    grad.addColorStop(0, 'rgba(245, 166, 35, 0.4)');
-    grad.addColorStop(1, 'rgba(245, 166, 35, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, 130, 0, Math.PI / 4);
-    ctx.closePath();
-    ctx.fill();
+    ctx.rotate(angle * 0.5);
+    for (let i = 0; i < 4; i++) {
+      ctx.rotate(Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(150, 0);
+      ctx.lineTo(160, 0);
+      ctx.strokeStyle = 'rgba(224, 43, 32, 0.35)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
     ctx.restore();
 
-    // Floating golden particles
-    particles.forEach(p => {
-      p.x += p.speed;
-      if (p.x > width) p.x = 0;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(245, 166, 35, ${p.alpha})`;
-      ctx.fill();
-    });
+    // 4. Razor-sharp Prada Red Laser Scan Sweep (Gliding smoothly up and down)
+    laserY += 1.2 * laserDirection;
+    if (laserY >= height - 30) {
+      laserY = height - 30;
+      laserDirection = -1;
+    } else if (laserY <= 30) {
+      laserY = 30;
+      laserDirection = 1;
+    }
+
+    // Laser vertical gradient tail
+    const laserTailH = 28;
+    const laserGrad = ctx.createLinearGradient(0, laserY - (laserDirection * laserTailH), 0, laserY);
+    laserGrad.addColorStop(0, 'rgba(224, 43, 32, 0)');
+    laserGrad.addColorStop(1, 'rgba(224, 43, 32, 0.08)');
+
+    ctx.fillStyle = laserGrad;
+    ctx.fillRect(gridSize, Math.min(laserY, laserY - (laserDirection * laserTailH)), width - (gridSize * 2), laserTailH);
+
+    // Sharp 1px laser beam
+    ctx.beginPath();
+    ctx.moveTo(gridSize, laserY);
+    ctx.lineTo(width - gridSize, laserY);
+    ctx.strokeStyle = 'rgba(224, 43, 32, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Laser endpoint pins
+    ctx.fillStyle = '#E02B20';
+    ctx.fillRect(gridSize - 2, laserY - 2, 4, 4);
+    ctx.fillRect(width - gridSize - 2, laserY - 2, 4, 4);
+
+    // 5. Technical Telemetry Micro-Typography (Corner Data)
+    ctx.font = '9px monospace';
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    ctx.fillText('DISCOGS ARCHIVE SCANNER // RADAR v2.4', gridSize + 4, 20);
+    ctx.fillText('33⅓ RPM • HI-FI LATAM PROXY', width - gridSize - 155, 20);
 
     radarAnimFrameId = requestAnimationFrame(draw);
   }
-  
+
   if (radarAnimFrameId) cancelAnimationFrame(radarAnimFrameId);
   draw();
 }

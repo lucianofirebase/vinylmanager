@@ -346,6 +346,19 @@ function renderSmartPurchase(filteredSellers) {
                     OPCIÓN 1: MAYOR CATÁLOGO EN STOCK
                   </span>
                   <span class="text-[11px] font-mono uppercase text-prada-blue font-semibold border border-blue-200 bg-blue-50 px-2 py-0.5">${getCountryFlag(sellerA.shipsFrom)} ${escapeHTML(sellerA.shipsFrom)}</span>
+                  ${sellerA.hasFreeShippingUnlocked ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-emerald-700 text-pure-white px-2 py-0.5 font-bold shadow-xs flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px]">local_shipping</span> ENVÍO GRATIS DESBLOQUEADO
+                    </span>
+                  ` : (sellerA.freeShippingThreshold && sellerA.freeShippingThreshold.amount > 0 ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-blue-700 text-pure-white px-2 py-0.5 font-bold shadow-xs flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px]">local_shipping</span> ENVÍO GRATIS &gt; ${formatPrice(sellerA.freeShippingThreshold.amount, sellerA.freeShippingThreshold.currency || sellerA.currency)}
+                    </span>
+                  ` : (shippingCostA === 0 ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-emerald-700 text-pure-white px-2 py-0.5 font-bold shadow-xs">
+                      ENVÍO GRATIS
+                    </span>
+                  ` : ''))}
                 </div>
                 <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
                   ${escapeHTML(sellerA.name)}
@@ -393,7 +406,7 @@ function renderSmartPurchase(filteredSellers) {
             </div>
             <div class="border-l border-hairline-light pl-4 cursor-help" data-tooltip="Costo de envío agrupando todo en un único paquete" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">ENVÍO CONSOLIDADO</span>
-              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostA, sellerA.currency)}</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${shippingCostA === 0 ? '<span class="text-emerald-700">GRATIS ($0.00)</span>' : formatPrice(shippingCostA, sellerA.currency)}</span>
             </div>
             <div class="border-l border-hairline-light pl-4 bg-prada-red-bg px-2 py-0.5 cursor-help" data-tooltip="Ahorro estimado respecto a comprar discos individualmente con envíos separados" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-prada-red font-bold block">AHORRO EN FLETE</span>
@@ -429,6 +442,19 @@ function renderSmartPurchase(filteredSellers) {
                     OPCIÓN 2: LOTE MÁS ECONÓMICO
                   </span>
                   <span class="text-[11px] font-mono uppercase text-prada-blue font-semibold border border-blue-200 bg-blue-50 px-2 py-0.5">${getCountryFlag(sellerB.shipsFrom)} ${escapeHTML(sellerB.shipsFrom)}</span>
+                  ${sellerB.hasFreeShippingUnlocked ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-emerald-700 text-pure-white px-2 py-0.5 font-bold shadow-xs flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px]">local_shipping</span> ENVÍO GRATIS DESBLOQUEADO
+                    </span>
+                  ` : (sellerB.freeShippingThreshold && sellerB.freeShippingThreshold.amount > 0 ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-blue-700 text-pure-white px-2 py-0.5 font-bold shadow-xs flex items-center gap-1">
+                      <span class="material-symbols-outlined text-[13px]">local_shipping</span> ENVÍO GRATIS &gt; ${formatPrice(sellerB.freeShippingThreshold.amount, sellerB.freeShippingThreshold.currency || sellerB.currency)}
+                    </span>
+                  ` : (shippingCostB === 0 ? `
+                    <span class="text-[10px] font-mono tracking-wider uppercase bg-emerald-700 text-pure-white px-2 py-0.5 font-bold shadow-xs">
+                      ENVÍO GRATIS
+                    </span>
+                  ` : ''))}
                 </div>
                 <h2 class="font-sans font-extrabold text-xl sm:text-2xl uppercase tracking-tight mt-1.5 text-pitch-black">
                   ${escapeHTML(sellerB.name)}
@@ -469,7 +495,7 @@ function renderSmartPurchase(filteredSellers) {
             </div>
             <div class="border-l border-hairline-light pl-3 cursor-help" data-tooltip="Costo de envío estimado del paquete completo" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-muted-graphite font-semibold block">FLETE</span>
-              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${formatPrice(shippingCostB, sellerB.currency)}</span>
+              <span class="font-bold text-sm sm:text-base tracking-tight text-prada-blue">${shippingCostB === 0 ? '<span class="text-emerald-700">GRATIS ($0.00)</span>' : formatPrice(shippingCostB, sellerB.currency)}</span>
             </div>
             <div class="border-l border-hairline-light pl-3 bg-blue-50/60 px-2 py-0.5 cursor-help" data-tooltip="Costo total estimado (Subtotal discos + Flete)" data-tooltip-pos="top">
               <span class="text-[10px] uppercase tracking-wider text-prada-blue font-bold block">TOTAL LOTE</span>

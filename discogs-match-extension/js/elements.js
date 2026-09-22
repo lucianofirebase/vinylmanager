@@ -109,6 +109,7 @@ const filterRating = document.getElementById('filter-rating');
 const sortBy = document.getElementById('sort-by');
 const filterPriorityOnly = document.getElementById('filter-priority-only');
 const filterHasShipping = document.getElementById('filter-has-shipping');
+const filterFreeShipping = document.getElementById('filter-free-shipping');
 const filterMinCondition = document.getElementById('filter-min-condition');
 const discogsTokenInput = document.getElementById('discogs-token-input');
 
