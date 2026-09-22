@@ -1069,6 +1069,60 @@ function renderResults() {
       });
     }
   });
+
+  // Trigger background ASP banner verification for visible sellers that don't have it yet
+  if (typeof verifyDisplayedSellersAsp === 'function') {
+    verifyDisplayedSellersAsp(filtered);
+  }
+}
+
+// Background verification for official Discogs ASP banners on visible sellers
+let isVerifyingAsp = false;
+async function verifyDisplayedSellersAsp(displayedSellers) {
+  if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
+  
+  // Find sellers in view that haven't been checked yet
+  const unchecked = displayedSellers.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
+  if (unchecked.length === 0) return;
+
+  isVerifyingAsp = true;
+  try {
+    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state?.buyerCountry || 'Uruguay')) || 'Uruguay';
+    
+    // Check up to 8 visible sellers sequentially to avoid rate limiting
+    const batch = unchecked.slice(0, 8);
+    let updatedAny = false;
+
+    for (const seller of batch) {
+      seller.aspChecked = true;
+      let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
+      if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
+        await new Promise(r => setTimeout(r, 600));
+        thresh = await checkSellerAspBanner(seller.name, buyerCountryVal);
+      }
+
+      if (thresh) {
+        console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
+        seller.aspBannerThreshold = thresh;
+        seller.freeShippingThreshold = thresh;
+        
+        const activeListings = seller.displayListings || seller.listings || [];
+        const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
+        seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
+        seller.totalPrice = activeSubtotal + seller.estimatedShipping;
+        updatedAny = true;
+      }
+    }
+
+    if (updatedAny) {
+      // Re-render results cleanly so badges, unlocked states and shipping values update
+      renderResults();
+    }
+  } catch (e) {
+    console.warn('[ASP Banner] Error in verifyDisplayedSellersAsp:', e);
+  } finally {
+    isVerifyingAsp = false;
+  }
 }
 
 // Build pagination number buttons for seller crate table
