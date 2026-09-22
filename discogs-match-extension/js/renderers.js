@@ -1112,7 +1112,6 @@ function renderResults() {
 // Background verification for official Discogs ASP banners on visible sellers
 let isVerifyingAsp = false;
 async function verifyDisplayedSellersAsp(displayedSellers) {
-  debugger; // [BREAKPOINT 4]: Iniciando verifyDisplayedSellersAsp
   console.log(`[DEBUG VERIFY] verifyDisplayedSellersAsp llamado con ${displayedSellers?.length || 0} vendedores. isVerifyingAsp = ${isVerifyingAsp}`);
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
   

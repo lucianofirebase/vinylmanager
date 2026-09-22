@@ -177,12 +177,32 @@ async function fetchThroughTab(url) {
           });
       };
 
+      const createFreshProxyTab = () => {
+        return new Promise((resolveFresh, rejectFresh) => {
+          console.log('[ProxyFetch] Creando pestaña proxy de Discogs dedicada en segundo plano...');
+          chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
+            if (chrome.runtime.lastError || !tab) {
+              return rejectFresh(chrome.runtime.lastError || new Error("Failed to create tab"));
+            }
+            state.proxyTabId = tab.id;
+            const listener = (tabId, changeInfo) => {
+              if (tabId === tab.id && changeInfo.status === 'complete') {
+                chrome.tabs.onUpdated.removeListener(listener);
+                console.log(`[ProxyFetch] Pestaña proxy dedicada lista (ID: ${tab.id})`);
+                setTimeout(() => resolveFresh(tab), 400);
+              }
+            };
+            chrome.tabs.onUpdated.addListener(listener);
+          });
+        });
+      };
+
       const sendMessageToTab = (tabId, isRetry = false) => {
         console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${tabId} para URL: ${url}`);
         chrome.tabs.sendMessage(tabId, { action: "fetchUrl", url }, (response) => {
           if (chrome.runtime.lastError) {
             console.warn(`[ProxyFetch] Error de comunicación con pestaña ${tabId}:`, chrome.runtime.lastError.message);
-            // If content script was not injected yet in an existing tab, inject dynamically
+            // If content script was not injected yet in an existing tab, attempt dynamic injection once
             if (!isRetry && typeof chrome !== 'undefined' && chrome.scripting && chrome.scripting.executeScript) {
               console.log(`[ProxyFetch] Inyectando content.js dinámicamente en pestaña ${tabId}...`);
               chrome.scripting.executeScript({
@@ -190,13 +210,20 @@ async function fetchThroughTab(url) {
                 files: ['content.js']
               }, () => {
                 if (chrome.runtime.lastError) {
-                  console.warn(`[ProxyFetch] Falló inyección dinámica:`, chrome.runtime.lastError.message);
-                  doDirectFallback();
+                  console.warn(`[ProxyFetch] Falló inyección dinámica (${chrome.runtime.lastError.message}). Abriendo pestaña proxy dedicada...`);
+                  createFreshProxyTab()
+                    .then(freshTab => sendMessageToTab(freshTab.id, true))
+                    .catch(() => doDirectFallback());
                 } else {
-                  console.log(`[ProxyFetch] Inyección exitosa. Reintentando mensaje...`);
-                  sendMessageToTab(tabId, true);
+                  console.log(`[ProxyFetch] Inyección exitosa. Reintentando mensaje en 200ms...`);
+                  setTimeout(() => sendMessageToTab(tabId, true), 200);
                 }
               });
+            } else if (!isRetry) {
+              console.log(`[ProxyFetch] Pestaña no disponible, abriendo pestaña proxy dedicada...`);
+              createFreshProxyTab()
+                .then(freshTab => sendMessageToTab(freshTab.id, true))
+                .catch(() => doDirectFallback());
             } else {
               doDirectFallback();
             }

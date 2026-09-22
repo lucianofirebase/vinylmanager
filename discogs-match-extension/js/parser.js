@@ -237,14 +237,14 @@ const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA
 
 const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
 
-const ASP_CACHE_PREFIX = 'discogs_asp_banner_v6_';
+const ASP_CACHE_PREFIX = 'discogs_asp_banner_v7_';
 const ASP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 // Cleanup legacy cache keys on load
 try {
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v6_')) {
+    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v7_')) {
       localStorage.removeItem(k);
     }
   }
@@ -285,7 +285,6 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
   if (!sellerName) return null;
   const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
   
-  debugger; // [BREAKPOINT 1]: Comprobando ASP Banner para sellerName
   console.group(`🔍 [DEBUG ASP] "${sellerName}" para país "${buyer}"`);
 
   const cached = getCachedAspBanner(sellerName, buyer);
@@ -302,15 +301,18 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
   }
 
   const cleanSeller = sellerName.trim();
+  let threshold = null;
+  let fetchSucceeded = false;
+
   try {
     // 1. Check seller store page where official Discogs ASP banner is rendered at the top of the store
     const sellerUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}`;
     console.log(`[DEBUG ASP] Solicitando URL 1: ${sellerUrl}`);
     const html = await fetchThroughTab(sellerUrl);
-    console.log(`[DEBUG ASP] URL 1 retornó ${html ? html.length : 0} bytes. ¿Tiene "ENVÍO GRATUITO" / "FREE SHIPPING"?:`, html ? /env[íi]o\s+(?:gratuito|gratis)|free\s+shipping/i.test(html) : false);
+    console.log(`[DEBUG ASP] URL 1 retornó ${html ? html.length : 0} bytes.`);
 
-    let threshold = null;
-    if (html) {
+    if (html && html.length > 200) {
+      fetchSucceeded = true;
       const parsed = parseFreeShippingThresholds(html);
       threshold = parsed?.aspBannerThreshold || null;
       console.log(`[DEBUG ASP] Resultado parseo URL 1:`, threshold);
@@ -320,12 +322,17 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
     if (!threshold) {
       const storeUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
       console.log(`[DEBUG ASP] Solicitando URL 2 (fallback): ${storeUrl}`);
-      const storeHtml = await fetchThroughTab(storeUrl);
-      console.log(`[DEBUG ASP] URL 2 retornó ${storeHtml ? storeHtml.length : 0} bytes. ¿Tiene "ENVÍO GRATUITO" / "FREE SHIPPING"?:`, storeHtml ? /env[íi]o\s+(?:gratuito|gratis)|free\s+shipping/i.test(storeHtml) : false);
-      if (storeHtml) {
-        const storeParsed = parseFreeShippingThresholds(storeHtml);
-        threshold = storeParsed?.aspBannerThreshold || null;
-        console.log(`[DEBUG ASP] Resultado parseo URL 2:`, threshold);
+      try {
+        const storeHtml = await fetchThroughTab(storeUrl);
+        console.log(`[DEBUG ASP] URL 2 retornó ${storeHtml ? storeHtml.length : 0} bytes.`);
+        if (storeHtml && storeHtml.length > 200) {
+          fetchSucceeded = true;
+          const storeParsed = parseFreeShippingThresholds(storeHtml);
+          threshold = storeParsed?.aspBannerThreshold || null;
+          console.log(`[DEBUG ASP] Resultado parseo URL 2:`, threshold);
+        }
+      } catch (err2) {
+        console.warn(`[DEBUG ASP] Fallback URL 2 falló para ${cleanSeller}:`, err2.message);
       }
     }
 
@@ -336,7 +343,14 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null) {
     }
 
     console.groupEnd();
-    setCachedAspBanner(cleanSeller, buyer, threshold);
+    
+    // Only cache if the request actually succeeded with valid HTML to prevent caching network failures
+    if (fetchSucceeded) {
+      setCachedAspBanner(cleanSeller, buyer, threshold);
+    } else {
+      console.warn(`[DEBUG ASP] No se obtuvo respuesta HTML válida para ${cleanSeller}, NO se guarda resultado negativo.`);
+    }
+
     return threshold;
   } catch (err) {
     console.warn(`[DEBUG ASP] Error al consultar ${cleanSeller}:`, err);
@@ -356,7 +370,6 @@ function parseFreeShippingThresholds(fullRowText, currency) {
   // 1. Official Discogs Shipping Methods Modal Box (e.g. "Free Shipping: El subtotal debe ser, al menos, de 350,00 €.")
   const modalMatch = textToMatch.match(OFFICIAL_MODAL_SHIPPING_REGEX);
   if (modalMatch) {
-    debugger; // [BREAKPOINT 2]: Modal Match detectado
     const rawVal = (modalMatch[1] || '').trim();
     const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
     if (cleanDigits) {
@@ -383,7 +396,6 @@ function parseFreeShippingThresholds(fullRowText, currency) {
   // 2. Official Discogs ASP Banner (e.g. "sze20 ofrece ENVÍO GRATUITO en pedidos de 330,00 € o más")
   const aspMatch = textToMatch.match(OFFICIAL_ASP_BANNER_REGEX);
   if (aspMatch) {
-    debugger; // [BREAKPOINT 3]: Banner oficial detectado
     const rawVal = (aspMatch[2] || '').trim();
     const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
     if (cleanDigits) {

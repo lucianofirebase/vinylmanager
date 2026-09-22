@@ -1466,7 +1466,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (filterFreeShipping) {
     filterFreeShipping.addEventListener('change', () => {
-      debugger; // [BREAKPOINT 5]: Clic en checkbox "ENVÍO GRATIS / UMBRAL"
       console.log('🔍 [DEBUG CLICK] Checkbox "ENVÍO GRATIS / UMBRAL" cambió a:', filterFreeShipping.checked);
       renderResults();
       if (filterFreeShipping.checked && typeof verifyDisplayedSellersAsp === 'function' && state && state.groupedSellers) {
