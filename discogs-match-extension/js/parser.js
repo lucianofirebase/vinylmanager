@@ -463,7 +463,7 @@ function parseReleaseHTML(html, releaseId) {
     console.warn('Error parsing release_schema JSON-LD:', ldErr);
   }
   
-  // Page-level seller ASP promo banner scanning (e.g. "Have-A-Break ofrece ENVÍO GRATUITO en pedidos de 350,00 € o más")
+  // Page-level seller ASP promo banner scanning (e.g. "[Seller] ofrece ENVÍO GRATUITO en pedidos de [X] € o más")
   const pageAspBanners = {};
   try {
     const pageText = doc.body ? doc.body.textContent : html;
