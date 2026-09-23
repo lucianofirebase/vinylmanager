@@ -34,7 +34,9 @@
       const wantsSearchInput = document.getElementById('wants-search-input');
       const searchVal = (wantsSearchInput ? wantsSearchInput.value : '').toLowerCase().trim();
 
-      const wants = (global.appStore ? global.appStore.getState().wants : global.state?.wants) || [];
+      const wants = (global.state?.wants && Array.isArray(global.state.wants) && global.state.wants.length > 0)
+        ? global.state.wants
+        : ((global.appStore?.getState()?.wants?.length > 0) ? global.appStore.getState().wants : (global.state?.wants || []));
       const filteredWants = wants.filter(w => {
         if (!searchVal) return true;
         return (w.title || '').toLowerCase().includes(searchVal) || (w.artist || '').toLowerCase().includes(searchVal);

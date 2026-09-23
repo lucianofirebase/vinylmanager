@@ -1,29 +1,27 @@
-/**
- * Discogs Matcher • Currency & Locale Domain Service
- * Pure mathematical conversions, exchange rates, and locale price formatting (Zero DOM)
- */
+(function(global) {
+  'use strict';
 
-const CURRENCY_MAP = {
-  'EUR': { symbol: '€', code: 'EUR', rate: 1.087, name: 'Euros' },
-  'USD': { symbol: '$', code: 'USD', rate: 1.0, name: 'Dólares estadounidenses' },
-  'GBP': { symbol: '£', code: 'GBP', rate: 1.282, name: 'Libras esterlinas' },
-  'JPY': { symbol: '¥', code: 'JPY', rate: 0.00645, name: 'Yenes japoneses' },
-  'UYU': { symbol: '$U', code: 'UYU', rate: 0.025, name: 'Pesos uruguayos' },
-  'ARS': { symbol: '$', code: 'ARS', rate: 0.0008, name: 'Pesos argentinos' },
-  'AUD': { symbol: 'A$', code: 'AUD', rate: 0.667, name: 'Dólares australianos' },
-  'CAD': { symbol: 'CA$', code: 'CAD', rate: 0.73, name: 'Dólares canadienses' },
-  'CHF': { symbol: 'CHF', code: 'CHF', rate: 1.124, name: 'Francos suizos' },
-  'SEK': { symbol: 'kr', code: 'SEK', rate: 0.0952, name: 'Coronas suecas' },
-  'NOK': { symbol: 'kr', code: 'NOK', rate: 0.093, name: 'Coronas noruegas' },
-  'DKK': { symbol: 'kr', code: 'DKK', rate: 0.14, name: 'Coronas danesas' },
-  'NZD': { symbol: 'NZ$', code: 'NZD', rate: 0.61, name: 'Dólares neozelandeses' },
-  'BRL': { symbol: 'R$', code: 'BRL', rate: 0.1818, name: 'Reales brasileños' },
-  'MXN': { symbol: 'Mex$', code: 'MXN', rate: 0.0513, name: 'Pesos mexicanos' },
-  'CLP': { symbol: '$', code: 'CLP', rate: 0.00106, name: 'Pesos chilenos' },
-  'COP': { symbol: '$', code: 'COP', rate: 0.000244, name: 'Pesos colombianos' }
-};
+  const CURRENCY_MAP = global.CURRENCY_MAP || {
+    'EUR': { symbol: '€', code: 'EUR', rate: 1.087, name: 'Euros' },
+    'USD': { symbol: '$', code: 'USD', rate: 1.0, name: 'Dólares estadounidenses' },
+    'GBP': { symbol: '£', code: 'GBP', rate: 1.282, name: 'Libras esterlinas' },
+    'JPY': { symbol: '¥', code: 'JPY', rate: 0.00645, name: 'Yenes japoneses' },
+    'UYU': { symbol: '$U', code: 'UYU', rate: 0.025, name: 'Pesos uruguayos' },
+    'ARS': { symbol: '$', code: 'ARS', rate: 0.0008, name: 'Pesos argentinos' },
+    'AUD': { symbol: 'A$', code: 'AUD', rate: 0.667, name: 'Dólares australianos' },
+    'CAD': { symbol: 'CA$', code: 'CAD', rate: 0.73, name: 'Dólares canadienses' },
+    'CHF': { symbol: 'CHF', code: 'CHF', rate: 1.124, name: 'Francos suizos' },
+    'SEK': { symbol: 'kr', code: 'SEK', rate: 0.0952, name: 'Coronas suecas' },
+    'NOK': { symbol: 'kr', code: 'NOK', rate: 0.093, name: 'Coronas noruegas' },
+    'DKK': { symbol: 'kr', code: 'DKK', rate: 0.14, name: 'Coronas danesas' },
+    'NZD': { symbol: 'NZ$', code: 'NZD', rate: 0.61, name: 'Dólares neozelandeses' },
+    'BRL': { symbol: 'R$', code: 'BRL', rate: 0.1818, name: 'Reales brasileños' },
+    'MXN': { symbol: 'Mex$', code: 'MXN', rate: 0.0513, name: 'Pesos mexicanos' },
+    'CLP': { symbol: '$', code: 'CLP', rate: 0.00106, name: 'Pesos chilenos' },
+    'COP': { symbol: '$', code: 'COP', rate: 0.000244, name: 'Pesos colombianos' }
+  };
 
-const COUNTRY_CONFIG = {
+  const COUNTRY_CONFIG = global.COUNTRY_CONFIG || {
   'Uruguay': {
     name: 'Uruguay',
     currency: 'UYU',
@@ -341,17 +339,19 @@ CurrencyService.detectCurrencyInContext = (text, fallback) => {
   return fallback || 'USD';
 };
 
-if (typeof window !== 'undefined') {
-  window.CURRENCY_MAP = CURRENCY_MAP;
-  window.COUNTRY_CONFIG = COUNTRY_CONFIG;
-  window.CurrencyService = CurrencyService;
-  window.currencyService = currencyService;
-}
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = CurrencyService;
-  module.exports.CURRENCY_MAP = CURRENCY_MAP;
-  module.exports.COUNTRY_CONFIG = COUNTRY_CONFIG;
-  module.exports.CurrencyService = CurrencyService;
-  module.exports.currencyService = currencyService;
-}
+  if (typeof global !== 'undefined') {
+    global.CURRENCY_MAP = CURRENCY_MAP;
+    global.COUNTRY_CONFIG = COUNTRY_CONFIG;
+    global.CurrencyService = CurrencyService;
+    global.currencyService = currencyService;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = CurrencyService;
+    module.exports.CURRENCY_MAP = CURRENCY_MAP;
+    module.exports.COUNTRY_CONFIG = COUNTRY_CONFIG;
+    module.exports.CurrencyService = CurrencyService;
+    module.exports.currencyService = currencyService;
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+
 

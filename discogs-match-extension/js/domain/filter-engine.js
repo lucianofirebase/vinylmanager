@@ -1,26 +1,24 @@
-/**
- * Discogs Matcher • Filter & Sort Domain Engine
- * Pure mathematical filtering and sorting for candidate marketplace sellers (Zero DOM)
- */
+(function(global) {
+  'use strict';
 
-const GOLDMINE_RANKS = {
-  'M': 6,
-  'Mint (M)': 6,
-  'NM': 5,
-  'Near Mint (NM or M-)': 5,
-  'VG+': 4,
-  'Very Good Plus (VG+)': 4,
-  'VG': 3,
-  'Very Good (VG)': 3,
-  'G+': 2,
-  'Good Plus (G+)': 2,
-  'G': 1,
-  'Good (G)': 1,
-  'F': 0,
-  'Fair (F)': 0,
-  'P': -1,
-  'Poor (P)': -1
-};
+  const GOLDMINE_RANKS = global.GOLDMINE_RANKS || {
+    'M': 6,
+    'Mint (M)': 6,
+    'NM': 5,
+    'Near Mint (NM or M-)': 5,
+    'VG+': 4,
+    'Very Good Plus (VG+)': 4,
+    'VG': 3,
+    'Very Good (VG)': 3,
+    'G+': 2,
+    'Good Plus (G+)': 2,
+    'G': 1,
+    'Good (G)': 1,
+    'F': 0,
+    'Fair (F)': 0,
+    'P': -1,
+    'Poor (P)': -1
+  };
 
 class FilterEngine {
   constructor() {
@@ -187,15 +185,17 @@ FilterEngine.matchesConditionFilter = (itemCond, minCond) => filterEngine.isCond
 FilterEngine.applyFilters = (sellers, options) => filterEngine.applyFilters(sellers, options);
 FilterEngine.sortSellers = (sellers, sortBy) => filterEngine.sortSellers(sellers, sortBy);
 
-if (typeof window !== 'undefined') {
-  window.GOLDMINE_RANKS = GOLDMINE_RANKS;
-  window.FilterEngine = FilterEngine;
-  window.filterEngine = filterEngine;
-}
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = FilterEngine;
-  module.exports.GOLDMINE_RANKS = GOLDMINE_RANKS;
-  module.exports.FilterEngine = FilterEngine;
-  module.exports.filterEngine = filterEngine;
-}
+  if (typeof global !== 'undefined') {
+    global.GOLDMINE_RANKS = GOLDMINE_RANKS;
+    global.FilterEngine = FilterEngine;
+    global.filterEngine = filterEngine;
+  }
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = FilterEngine;
+    module.exports.GOLDMINE_RANKS = GOLDMINE_RANKS;
+    module.exports.FilterEngine = FilterEngine;
+    module.exports.filterEngine = filterEngine;
+  }
+})(typeof window !== 'undefined' ? window : globalThis);
+
 

@@ -61,22 +61,27 @@
 
   // 7. UI Component Renderers
   if (global.RadarRenderer) {
-    global.startRadarShaderCanvas = () => global.RadarRenderer.startRadarCanvas();
-    global.stopRadarShaderCanvas = () => global.RadarRenderer.stopRadarCanvas();
+    if (!global.startRadarShaderCanvas) global.startRadarShaderCanvas = () => global.RadarRenderer.startRadarCanvas();
+    if (!global.stopRadarShaderCanvas) global.stopRadarShaderCanvas = () => global.RadarRenderer.stopRadarCanvas();
   }
 
-  if (global.SmartPurchaseRenderer) {
-    global.renderSmartPurchase = (filteredSellers) => global.SmartPurchaseRenderer.render(filteredSellers);
-  }
+  // Preserve existing working UI renderers and expose new ones on App namespace
+  global.App = {
+    currency: global.CurrencyService,
+    filter: global.FilterEngine,
+    shipping: global.ShippingEngine,
+    parser: global.DiscogsParser,
+    optimizer: global.OptimizerService,
+    local: global.LocalMatcher,
+    scanCoordinator: global.ScanCoordinator,
+    ui: {
+      radar: global.RadarRenderer,
+      smartPurchase: global.SmartPurchaseRenderer,
+      wantsGrid: global.WantsGridRenderer,
+      router: global.AppRouter
+    }
+  };
 
-  if (global.WantsGridRenderer) {
-    global.renderWantsListInManager = (resetPage) => global.WantsGridRenderer.renderWantsListInManager(resetPage);
-  }
-
-  if (global.AppRouter) {
-    global.switchTab = (tabName, pushHistory) => global.AppRouter.switchTab(tabName, pushHistory);
-    global.showWantlistManager = () => global.AppRouter.showWantlistManager();
-  }
 
   console.log('[VinylManager] Architecture facade initialized successfully: 12 modular layers active.');
 })(typeof window !== 'undefined' ? window : globalThis);
