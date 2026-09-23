@@ -269,6 +269,12 @@ function applySettingsFromModal() {
     selectedCurr = currSelect.value;
     localStorage.setItem('display_currency', selectedCurr);
     if (displayCurrEl) displayCurrEl.value = selectedCurr;
+    if (typeof state !== 'undefined' && state) {
+      state.displayCurrency = selectedCurr;
+    }
+    if (typeof window !== 'undefined' && window.appStore && typeof window.appStore.setState === 'function') {
+      window.appStore.setState({ displayCurrency: selectedCurr });
+    }
   }
 
   // Country
@@ -276,11 +282,19 @@ function applySettingsFromModal() {
   const buyerCountryEl = document.getElementById('buyer-country');
   const wizardBuyerCountryEl = document.getElementById('wizard-buyer-country');
   let selectedCountry = 'Uruguay';
+  let countryChanged = false;
   if (countrySelect) {
     selectedCountry = countrySelect.value;
+    const currentCountry = (typeof state !== 'undefined' && state && state.buyerCountry) || localStorage.getItem('buyer_country') || (buyerCountryEl ? buyerCountryEl.value : 'Uruguay');
+    if (currentCountry !== selectedCountry) {
+      countryChanged = true;
+    }
     localStorage.setItem('buyer_country', selectedCountry);
     if (buyerCountryEl) buyerCountryEl.value = selectedCountry;
     if (wizardBuyerCountryEl) wizardBuyerCountryEl.value = selectedCountry;
+    if (typeof state !== 'undefined' && state) {
+      state.buyerCountry = selectedCountry;
+    }
   }
 
   // Custom Exchange Rate for the active currency
@@ -291,8 +305,13 @@ function applySettingsFromModal() {
       ? getCurrencyForCountry(selectedCountry)
       : selectedCurr;
       
-    if (!isNaN(val) && val > 0 && typeof setCustomCurrencyRate === 'function') {
-      setCustomCurrencyRate(activeCode, val);
+    if (!isNaN(val) && val > 0) {
+      if (typeof setCustomCurrencyRate === 'function') {
+        setCustomCurrencyRate(activeCode, val);
+      }
+      if (typeof window !== 'undefined' && window.currencyService && typeof window.currencyService.setCustomCurrencyRate === 'function') {
+        window.currencyService.setCustomCurrencyRate(activeCode, val);
+      }
     }
   }
 
@@ -301,10 +320,28 @@ function applySettingsFromModal() {
   const isCompact = compBtn && compBtn.classList.contains('bg-pitch-black');
   setGridDensity(isCompact ? 'compact' : 'standard');
 
+  // If country changed and listings are loaded, recalculate domestic/international shipping & regroup
+  if (countryChanged && typeof state !== 'undefined' && state.allListings && state.allListings.length > 0) {
+    if (typeof groupListingsBySeller === 'function') {
+      groupListingsBySeller();
+    }
+    if (typeof saveCompletedScanResults === 'function') {
+      saveCompletedScanResults();
+    }
+  }
+
   // Re-render results if any
-  if (state.groupedSellers && state.groupedSellers.length > 0) {
-    renderResults();
+  if (typeof state !== 'undefined' && state.groupedSellers && state.groupedSellers.length > 0) {
+    if (typeof renderResults === 'function') renderResults();
     if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
+  }
+
+  // Re-render wantlist manager if open
+  const wantsModal = document.getElementById('wants-manager-modal');
+  if (wantsModal && (wantsModal.classList.contains('open') || wantsModal.style.display !== 'none')) {
+    if (typeof renderWantsListInManager === 'function') {
+      renderWantsListInManager();
+    }
   }
 
   showToast('Ajustes y preferencias guardados con éxito', 'success');
@@ -351,25 +388,74 @@ function resetDefaultSettingsAction() {
   localStorage.removeItem('filter_min_condition');
   localStorage.removeItem('filter_min_rating');
   localStorage.removeItem('custom_uyu_rate');
+  localStorage.removeItem('custom_rate_UYU');
+  localStorage.removeItem('rate_UYU');
   localStorage.removeItem('wants_grid_density');
+  localStorage.removeItem('display_currency');
+  localStorage.removeItem('buyer_country');
 
-  if (CURRENCY_MAP.UYU) CURRENCY_MAP.UYU.rate = 0.025;
+  if (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP.UYU) CURRENCY_MAP.UYU.rate = 0.025;
+  if (typeof window !== 'undefined' && window.currencyService && window.currencyService.currencyMap && window.currencyService.currencyMap.UYU) {
+    window.currencyService.currencyMap.UYU.rate = 0.025;
+  }
 
   const turboRadio = document.getElementById('settings-cache-turbo');
   if (turboRadio) turboRadio.checked = true;
   const rememberCheckbox = document.getElementById('settings-remember-cache');
   if (rememberCheckbox) rememberCheckbox.checked = false;
+  if (typeof syncCacheState === 'function') syncCacheState(true);
+
   const minMatches = document.getElementById('settings-min-matches');
   if (minMatches) minMatches.value = '2';
+  const filterMinMatchesEl = document.getElementById('filter-min-matches');
+  if (filterMinMatchesEl) filterMinMatchesEl.value = '2';
+
   const minCond = document.getElementById('settings-min-condition');
   if (minCond) minCond.value = 'VG+';
+  const filterMinCondEl = document.getElementById('filter-min-condition');
+  if (filterMinCondEl) filterMinCondEl.value = 'VG+';
+
   const minRating = document.getElementById('settings-min-rating');
   if (minRating) minRating.value = '99';
+  const filterRatingEl = document.getElementById('filter-rating');
+  if (filterRatingEl) filterRatingEl.value = '99';
+
+  const countrySelect = document.getElementById('settings-country');
+  if (countrySelect) countrySelect.value = 'Uruguay';
+  const buyerCountryEl = document.getElementById('buyer-country');
+  if (buyerCountryEl) buyerCountryEl.value = 'Uruguay';
+  if (typeof state !== 'undefined' && state) {
+    state.buyerCountry = 'Uruguay';
+  }
+
+  const currSelect = document.getElementById('settings-currency');
+  if (currSelect) currSelect.value = 'USD';
+  const displayCurrEl = document.getElementById('display-currency');
+  if (displayCurrEl) displayCurrEl.value = 'USD';
+  if (typeof state !== 'undefined' && state) {
+    state.displayCurrency = 'USD';
+  }
+  if (typeof window !== 'undefined' && window.appStore && typeof window.appStore.setState === 'function') {
+    window.appStore.setState({ displayCurrency: 'USD' });
+  }
+
   const rateInput = document.getElementById('settings-rate-uyu');
   if (rateInput) rateInput.value = '40';
+  if (typeof updateSettingsExchangeRateUI === 'function') {
+    updateSettingsExchangeRateUI('USD');
+  }
 
   updateSettingsDensityUI('standard');
   setGridDensity('standard');
+
+  if (typeof state !== 'undefined' && state.allListings && state.allListings.length > 0) {
+    if (typeof groupListingsBySeller === 'function') groupListingsBySeller();
+    if (typeof saveCompletedScanResults === 'function') saveCompletedScanResults();
+  }
+  if (typeof state !== 'undefined' && state.groupedSellers && state.groupedSellers.length > 0) {
+    if (typeof renderResults === 'function') renderResults();
+    if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
+  }
 
   showToast('Ajustes restablecidos a sus valores predeterminados', 'info');
 }

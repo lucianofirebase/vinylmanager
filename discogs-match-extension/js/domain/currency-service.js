@@ -235,7 +235,7 @@ class CurrencyService {
 
   getCurrencyUnitsPerUSD(currencyCode, countryName = null) {
     try {
-      const stored = localStorage.getItem(`rate_${currencyCode}`);
+      const stored = localStorage.getItem(`rate_${currencyCode}`) || localStorage.getItem(`custom_rate_${currencyCode}`) || (currencyCode === 'UYU' ? localStorage.getItem('custom_uyu_rate') : null);
       if (stored) {
         const val = parseFloat(stored);
         if (!isNaN(val) && val > 0) return val;
@@ -261,9 +261,16 @@ class CurrencyService {
     if (!isNaN(val) && val > 0) {
       try {
         localStorage.setItem(`rate_${currencyCode}`, val.toString());
+        localStorage.setItem(`custom_rate_${currencyCode}`, val.toString());
+        if (currencyCode === 'UYU') {
+          localStorage.setItem('custom_uyu_rate', val.toString());
+        }
       } catch (e) {}
       if (this.currencyMap[currencyCode]) {
         this.currencyMap[currencyCode].rate = 1.0 / val;
+      }
+      if (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP[currencyCode]) {
+        CURRENCY_MAP[currencyCode].rate = 1.0 / val;
       }
       return true;
     }

@@ -573,6 +573,10 @@ function onLocationChange() {
   const selectedCountry = buyerCountry ? buyerCountry.value : 'Uruguay';
   log(`Ubicación de envío de comprador actualizada a: ${selectedCountry}`, 'info');
 
+  if (typeof state !== 'undefined' && state) {
+    state.buyerCountry = selectedCountry;
+  }
+
   // Synchronize all country selectors
   if (wizardBuyerCountry && wizardBuyerCountry.value !== selectedCountry) {
     wizardBuyerCountry.value = selectedCountry;
@@ -589,6 +593,12 @@ function onLocationChange() {
     if (displayCurrencySelect && displayCurrencySelect.value !== 'original') {
       displayCurrencySelect.value = matchingCurrency;
       localStorage.setItem('display_currency', matchingCurrency);
+      if (typeof state !== 'undefined' && state) {
+        state.displayCurrency = matchingCurrency;
+      }
+      if (typeof window !== 'undefined' && window.appStore && typeof window.appStore.setState === 'function') {
+        window.appStore.setState({ displayCurrency: matchingCurrency });
+      }
     }
     const settingsCurrency = document.getElementById('settings-currency');
     if (settingsCurrency && settingsCurrency.value !== 'original') {
@@ -601,6 +611,9 @@ function onLocationChange() {
 
   if (state.allListings && state.allListings.length > 0) {
     groupListingsBySeller();
+    if (typeof saveCompletedScanResults === 'function') {
+      saveCompletedScanResults();
+    }
     renderResults();
   }
   if (typeof calculateAndRenderStats === 'function') {
@@ -1507,9 +1520,21 @@ document.addEventListener('DOMContentLoaded', () => {
   if (displayCurrencySelect) {
     const savedDisplayCurr = localStorage.getItem('display_currency') || 'UYU';
     displayCurrencySelect.value = savedDisplayCurr;
+    if (typeof state !== 'undefined' && state) {
+      state.displayCurrency = savedDisplayCurr;
+    }
+    if (typeof window !== 'undefined' && window.appStore && typeof window.appStore.setState === 'function') {
+      window.appStore.setState({ displayCurrency: savedDisplayCurr });
+    }
     displayCurrencySelect.addEventListener('change', () => {
       localStorage.setItem('display_currency', displayCurrencySelect.value);
-      if (state.groupedSellers.length > 0) {
+      if (typeof state !== 'undefined' && state) {
+        state.displayCurrency = displayCurrencySelect.value;
+      }
+      if (typeof window !== 'undefined' && window.appStore && typeof window.appStore.setState === 'function') {
+        window.appStore.setState({ displayCurrency: displayCurrencySelect.value });
+      }
+      if (state.groupedSellers && state.groupedSellers.length > 0) {
         renderResults();
         if (typeof calculateAndRenderStats === 'function') calculateAndRenderStats();
       }
@@ -1528,12 +1553,36 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     filterSearchRelease.addEventListener('search', renderResults);
   }
-  filterMinMatches.addEventListener('change', renderResults);
+
+  // Restore filter values from localStorage if set via Settings modal
+  const savedMinMatches = localStorage.getItem('filter_min_matches');
+  if (savedMinMatches && filterMinMatches) {
+    filterMinMatches.value = savedMinMatches;
+  }
+  const savedMinCond = localStorage.getItem('filter_min_condition');
+  if (savedMinCond && filterMinCondition) {
+    filterMinCondition.value = savedMinCond;
+  }
+  const savedMinRating = localStorage.getItem('filter_min_rating');
+  if (savedMinRating && filterRating) {
+    filterRating.value = savedMinRating;
+  }
+
+  filterMinMatches.addEventListener('change', () => {
+    localStorage.setItem('filter_min_matches', filterMinMatches.value);
+    renderResults();
+  });
   if (filterMinCondition) {
-    filterMinCondition.addEventListener('change', renderResults);
+    filterMinCondition.addEventListener('change', () => {
+      localStorage.setItem('filter_min_condition', filterMinCondition.value);
+      renderResults();
+    });
   }
   filterCountry.addEventListener('change', renderResults);
-  filterRating.addEventListener('change', renderResults);
+  filterRating.addEventListener('change', () => {
+    localStorage.setItem('filter_min_rating', filterRating.value);
+    renderResults();
+  });
   sortBy.addEventListener('change', renderResults);
   filterPriorityOnly.addEventListener('change', () => {
     localStorage.setItem('filter_priority_only', filterPriorityOnly.checked ? 'true' : 'false');

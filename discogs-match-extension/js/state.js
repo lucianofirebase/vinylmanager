@@ -343,7 +343,7 @@ function syncCacheState(enabled) {
   const managerUseCacheCheckbox = document.getElementById('manager-use-cache-checkbox');
   const bottomUseCacheCheckbox = document.getElementById('bottom-use-cache-checkbox');
   const settingsTurbo = document.getElementById('settings-cache-turbo');
-  const settingsDirect = document.getElementById('settings-cache-direct');
+  const settingsDirect = document.getElementById('settings-cache-live') || document.getElementById('settings-cache-direct');
   if (useCacheCheckbox) useCacheCheckbox.checked = enabled;
   if (managerUseCacheCheckbox) managerUseCacheCheckbox.checked = enabled;
   if (bottomUseCacheCheckbox) bottomUseCacheCheckbox.checked = enabled;
