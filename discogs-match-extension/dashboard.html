@@ -1847,18 +1847,47 @@
     </button>
   </div>
 
+  <!-- External & Utility Libraries -->
   <script src="xlsx.full.min.js"></script>
   <script src="telemetry.js"></script>
   <script src="motion.js"></script>
-  <script src="js/state.js"></script>
+
+  <!-- Layer 1: Core & Reactive Store -->
+  <script src="js/core/events.js"></script>
+  <script src="js/core/store.js"></script>
   <script src="js/elements.js"></script>
+  <script src="js/state.js"></script>
+
+  <!-- Layer 2: Infrastructure & Data Access -->
+  <script src="js/infrastructure/cache-repository.js"></script>
+  <script src="js/infrastructure/api-client.js"></script>
   <script src="js/network.js"></script>
+
+  <!-- Layer 3: Pure Domain & Business Logic (0 DOM) -->
+  <script src="js/domain/currency-service.js"></script>
+  <script src="js/domain/filter-engine.js"></script>
+  <script src="js/domain/shipping-engine.js"></script>
+  <script src="js/domain/discogs-parser.js"></script>
+  <script src="js/domain/optimizer-service.js"></script>
+  <script src="js/domain/local-matcher.js"></script>
+
+  <!-- Layer 4: Orchestration & Domain Services -->
+  <script src="js/services/scan-coordinator.js"></script>
+
+  <!-- Layer 5: UI Presentation Components -->
+  <script src="js/ui/router.js"></script>
+  <script src="js/ui/radar-renderer.js"></script>
+  <script src="js/ui/smart-purchase-renderer.js"></script>
+  <script src="js/ui/wants-grid-renderer.js"></script>
+
+  <!-- Backward-compatible facades and legacy handlers -->
   <script src="js/parser.js"></script>
   <script src="js/scanner.js"></script>
   <script src="js/optimizer.js"></script>
   <script src="js/renderers.js"></script>
   <script src="js/local.js"></script>
   <script src="js/modals.js"></script>
+  <script src="js/facade.js"></script>
   <script src="js/app.js"></script>
   <script src="dashboard.js"></script>
 </body>
