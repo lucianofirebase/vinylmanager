@@ -18,7 +18,8 @@ let state = {
   cancelRequested: false,
   proxyTabId: null,
   localSheetRows: [],
-  localMatches: []
+  localMatches: [],
+  sellerSort: new Map()
 };
 
 // Detect whether running inside a Chrome extension context or as a plain web page.

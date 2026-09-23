@@ -518,6 +518,179 @@ function highlightQueryText(text, query) {
   return escaped.replace(regex, '<mark class="highlight-matched-text">$1</mark>');
 }
 
+// Sort seller listings by column and direction
+function sortSellerListings(listings, col, dir = 'asc') {
+  const sorted = [...listings];
+  sorted.sort((a, b) => {
+    if (col === 'price') {
+      const pA = typeof a.priceVal === 'number' ? a.priceVal : (parseFloat(a.priceVal) || 0);
+      const pB = typeof b.priceVal === 'number' ? b.priceVal : (parseFloat(b.priceVal) || 0);
+      return dir === 'asc' ? pA - pB : pB - pA;
+    }
+    if (col === 'condition') {
+      const rA = typeof getConditionRank === 'function' ? getConditionRank(a.mediaCondition) : 0;
+      const rB = typeof getConditionRank === 'function' ? getConditionRank(b.mediaCondition) : 0;
+      // asc = best condition first (Mint down to Poor), desc = worst first
+      return dir === 'asc' ? rB - rA : rA - rB;
+    }
+    if (col === 'shipping') {
+      const sA = typeof a.shippingVal === 'number' ? a.shippingVal : (parseFloat(a.shippingVal) || 18.5);
+      const sB = typeof b.shippingVal === 'number' ? b.shippingVal : (parseFloat(b.shippingVal) || 18.5);
+      return dir === 'asc' ? sA - sB : sB - sA;
+    }
+    if (col === 'title') {
+      const wantA = (state.wants || []).find(w => String(w.id) === String(a.releaseId));
+      const wantB = (state.wants || []).find(w => String(w.id) === String(b.releaseId));
+      const strA = `${wantA?.artist || a.releaseArtist || a.artist || ''} — ${wantA?.title || a.releaseTitle || a.title || ''}`.toLowerCase();
+      const strB = `${wantB?.artist || b.releaseArtist || b.artist || ''} — ${wantB?.title || b.releaseTitle || b.title || ''}`.toLowerCase();
+      return dir === 'asc' ? strA.localeCompare(strB) : strB.localeCompare(strA);
+    }
+    return 0;
+  });
+  return sorted;
+}
+
+// Generate the HTML for catalog rows of a seller
+function buildSellerListingRowsHtml(activeListings, seller, priorityIds, searchQuery, bundleItemShipping) {
+  let listingsHtml = '';
+  activeListings.forEach((list, rowIdx) => {
+    const pageNumber = Math.floor(rowIdx / 10) + 1;
+    const isHiddenStyle = pageNumber > 1 ? 'display: none;' : '';
+    const wantInfo = (state.wants || []).find(w => String(w.id) === String(list.releaseId)) || { title: 'Unknown Title', artist: 'Unknown Artist' };
+    const isPriority = priorityIds.some(pid => String(pid) === String(list.releaseId));
+    const starHtml = isPriority ? `<span class="text-prada-red mr-1" title="Disco prioritario">★</span>` : '';
+    const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || list.image || '';
+    const coverThumb = typeof upgradeDiscogsImageUrl === 'function' ? upgradeDiscogsImageUrl(coverRaw) : coverRaw;
+    const imgHtml = coverThumb
+      ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/img:scale-110 transition-transform duration-300" src="${escapeHTML(coverThumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+         <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`
+      : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`;
+
+    const artistLabel = wantInfo.artist || list.releaseArtist || list.artist || 'Unknown Artist';
+    const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
+    const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
+
+    const combinedText = `${artistLabel} — ${titleLabel}`.toLowerCase();
+    const isSearchHit = Boolean(searchQuery && (
+      combinedText.includes(searchQuery) ||
+      (wantInfo.title && wantInfo.title.toLowerCase().includes(searchQuery)) ||
+      (wantInfo.artist && wantInfo.artist.toLowerCase().includes(searchQuery)) ||
+      (list.title && list.title.toLowerCase().includes(searchQuery)) ||
+      (wantInfo.label && wantInfo.label.toLowerCase().includes(searchQuery)) ||
+      (wantInfo.catno && wantInfo.catno.toLowerCase().includes(searchQuery))
+    ));
+
+    const rowHighlightClass = isSearchHit ? 'is-search-hit' : '';
+    const titleHighlightClass = isSearchHit ? 'highlight-marker-title' : '';
+    const priceHighlightHtml = isSearchHit
+      ? `<span class="highlight-marker-price text-sm tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`
+      : `<span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`;
+
+    const formattedTitle = isSearchHit
+      ? highlightQueryText(`${artistLabel} — ${titleLabel}`, searchQuery)
+      : escapeHTML(`${artistLabel} — ${titleLabel}`);
+
+    listingsHtml += `
+      <div class="seller-listing-row ${rowHighlightClass} grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
+        <div class="col-span-5 flex items-center gap-3">
+          <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0 cursor-pointer" type="checkbox"
+            data-tooltip="Incluir o excluir este disco del cálculo de subtotal y envío" data-tooltip-pos="top"/>
+          <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img">
+            ${imgHtml}
+          </div>
+          <div class="flex flex-col min-w-0 font-mono">
+            <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors ${titleHighlightClass}"
+              data-tooltip="Ver ficha técnica de esta edición en Discogs" data-tooltip-pos="top">
+              ${starHtml}${formattedTitle}
+            </a>
+            <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
+          </div>
+        </div>
+        <div class="col-span-2 flex justify-center items-center gap-1.5 font-mono text-[10px]">
+          ${renderGoldmineTag(list.mediaCondition, false)}
+          ${renderGoldmineTag(list.sleeveCondition || 'Generic', true)}
+        </div>
+        <div class="col-span-2 text-right font-mono">
+          ${priceHighlightHtml}
+        </div>
+        <div class="col-span-2 text-right font-mono text-[11px]">
+          <span class="text-muted-graphite line-through text-[10px] block" data-tooltip="Costo de envío individual estándar sin consolidar" data-tooltip-pos="top">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
+          <span class="font-bold text-prada-emerald block" data-tooltip="Costo prorrateado de envío por disco comprando este lote agrupado" data-tooltip-pos="top">LOTE: ${formatPrice(bundleItemShipping, seller.currency)}</span>
+        </div>
+        <div class="col-span-1 flex justify-center">
+          <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="w-7 h-7 border border-hairline-light hover:border-prada-blue hover:text-prada-blue flex items-center justify-center text-pitch-black transition-colors" title="Ver Oferta"
+            data-tooltip="Abrir esta oferta específica del vendedor en Discogs" data-tooltip-pos="left">
+            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+          </a>
+        </div>
+      </div>
+    `;
+  });
+  return listingsHtml;
+}
+
+// Handle column header clicks to sort seller listings
+function handleSellerColumnSort(sellerName, col) {
+  if (!state.sellerSort) state.sellerSort = new Map();
+  const current = state.sellerSort.get(sellerName);
+  
+  let newDir = 'asc';
+  if (current && current.col === col) {
+    newDir = current.dir === 'asc' ? 'desc' : 'asc';
+  } else if (col === 'condition') {
+    newDir = 'asc'; // Mint down to Poor
+  }
+  
+  state.sellerSort.set(sellerName, { col, dir: newDir });
+  
+  const seller = (state.groupedSellers || []).find(s => s.name === sellerName);
+  if (!seller) return;
+  
+  const rawListings = [...(seller.displayListings || seller.listings || [])];
+  const sortedListings = sortSellerListings(rawListings, col, newDir);
+  seller.displayListings = sortedListings;
+  
+  const rowsContainer = document.getElementById(`rows-${sellerName}`);
+  if (rowsContainer) {
+    const priorityIds = (state.wants || []).filter(w => w.isPriority).map(w => w.id);
+    const searchQuery = filterSearchRelease ? filterSearchRelease.value.trim().toLowerCase() : '';
+    const activeShipping = calculateSellerShipping(seller, sortedListings);
+    const bundleItemShipping = activeShipping / Math.max(sortedListings.length, 1);
+    
+    rowsContainer.innerHTML = buildSellerListingRowsHtml(sortedListings, seller, priorityIds, searchQuery, bundleItemShipping);
+  }
+  
+  // Update header classes and indicators
+  const detailsDiv = document.getElementById(`details-${sellerName}`);
+  if (detailsDiv) {
+    const sortBtns = detailsDiv.querySelectorAll('.btn-sort-col');
+    sortBtns.forEach(btn => {
+      const bCol = btn.getAttribute('data-col');
+      const icon = btn.querySelector('.sort-icon');
+      if (bCol === col) {
+        btn.classList.add('text-prada-red', 'font-extrabold');
+        btn.classList.remove('text-muted-graphite');
+        if (icon) {
+          icon.textContent = newDir === 'asc' ? '↑' : '↓';
+          icon.className = 'sort-icon font-mono text-[10px] text-prada-red font-bold';
+        }
+      } else {
+        btn.classList.remove('text-prada-red', 'font-extrabold');
+        btn.classList.add('text-muted-graphite');
+        if (icon) {
+          icon.textContent = '↕';
+          icon.className = 'sort-icon font-mono text-[10px] text-muted-graphite/50 font-normal';
+        }
+      }
+    });
+  }
+  
+  // Reset pagination to page 1
+  if (typeof goToSellerPage === 'function') {
+    goToSellerPage(sellerName, 1);
+  }
+}
+
 // Render dynamic results card matching filters
 function renderResults() {
   if (state.groupedSellers.length === 0) {
@@ -758,7 +931,7 @@ function renderResults() {
       card.className = 'seller-card';
       card.id = 'seller-card-' + seller.name;
       
-      const activeListings = [...(seller.displayListings || seller.listings || [])];
+      let activeListings = [...(seller.displayListings || seller.listings || [])];
       
       // If search query is active, sort matching listings to the top so they appear immediately
       if (searchQuery) {
@@ -829,83 +1002,12 @@ function renderResults() {
       }
 
       // Generate deep-dive catalog rows
-      let listingsHtml = '';
+      const currentSort = state.sellerSort?.get(seller.name);
+      if (!searchQuery && currentSort) {
+        activeListings = sortSellerListings(activeListings, currentSort.col, currentSort.dir);
+      }
       const totalPages = Math.ceil(activeListings.length / 10);
-
-      activeListings.forEach((list, rowIdx) => {
-        const pageNumber = Math.floor(rowIdx / 10) + 1;
-        const isHiddenStyle = pageNumber > 1 ? 'display: none;' : '';
-        const wantInfo = state.wants.find(w => String(w.id) === String(list.releaseId)) || { title: 'Unknown Title', artist: 'Unknown Artist' };
-        const isPriority = priorityIds.some(pid => String(pid) === String(list.releaseId));
-        const starHtml = isPriority ? `<span class="text-prada-red mr-1" title="Disco prioritario">★</span>` : '';
-        const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || list.image || '';
-        const coverThumb = upgradeDiscogsImageUrl(coverRaw);
-        const imgHtml = coverThumb
-          ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/img:scale-110 transition-transform duration-300" src="${escapeHTML(coverThumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
-             <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`
-          : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`;
-
-        const artistLabel = wantInfo.artist || list.releaseArtist || list.artist || 'Unknown Artist';
-        const titleLabel = wantInfo.title || list.releaseTitle || list.title || 'Unknown Title';
-        const labelText = [wantInfo.label || list.label || '', wantInfo.catno || list.catno || '', wantInfo.year || list.year || ''].filter(Boolean).join(' • ');
-
-        // Check if this release matches the active search query
-        const combinedText = `${artistLabel} — ${titleLabel}`.toLowerCase();
-        const isSearchHit = Boolean(searchQuery && (
-          combinedText.includes(searchQuery) ||
-          (wantInfo.title && wantInfo.title.toLowerCase().includes(searchQuery)) ||
-          (wantInfo.artist && wantInfo.artist.toLowerCase().includes(searchQuery)) ||
-          (list.title && list.title.toLowerCase().includes(searchQuery)) ||
-          (wantInfo.label && wantInfo.label.toLowerCase().includes(searchQuery)) ||
-          (wantInfo.catno && wantInfo.catno.toLowerCase().includes(searchQuery))
-        ));
-
-        const rowHighlightClass = isSearchHit ? 'is-search-hit' : '';
-        const titleHighlightClass = isSearchHit ? 'highlight-marker-title' : '';
-        const priceHighlightHtml = isSearchHit
-          ? `<span class="highlight-marker-price text-sm tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`
-          : `<span class="font-bold text-sm text-pitch-black tracking-tight">${formatPrice(list.priceVal, list.currency)}</span>`;
-
-        const formattedTitle = isSearchHit
-          ? highlightQueryText(`${artistLabel} — ${titleLabel}`, searchQuery)
-          : escapeHTML(`${artistLabel} — ${titleLabel}`);
-
-        listingsHtml += `
-          <div class="seller-listing-row ${rowHighlightClass} grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
-            <div class="col-span-5 flex items-center gap-3">
-              <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0 cursor-pointer" type="checkbox"
-                data-tooltip="Incluir o excluir este disco del cálculo de subtotal y envío" data-tooltip-pos="top"/>
-              <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img">
-                ${imgHtml}
-              </div>
-              <div class="flex flex-col min-w-0 font-mono">
-                <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors ${titleHighlightClass}"
-                  data-tooltip="Ver ficha técnica de esta edición en Discogs" data-tooltip-pos="top">
-                  ${starHtml}${formattedTitle}
-                </a>
-                <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
-              </div>
-            </div>
-            <div class="col-span-2 flex justify-center items-center gap-1.5 font-mono text-[10px]">
-              ${renderGoldmineTag(list.mediaCondition, false)}
-              ${renderGoldmineTag(list.sleeveCondition || 'Generic', true)}
-            </div>
-            <div class="col-span-2 text-right font-mono">
-              ${priceHighlightHtml}
-            </div>
-            <div class="col-span-2 text-right font-mono text-[11px]">
-              <span class="text-muted-graphite line-through text-[10px] block" data-tooltip="Costo de envío individual estándar sin consolidar" data-tooltip-pos="top">${formatPrice(list.shippingVal || 18.50, list.currency)}</span>
-              <span class="font-bold text-prada-emerald block" data-tooltip="Costo prorrateado de envío por disco comprando este lote agrupado" data-tooltip-pos="top">LOTE: ${formatPrice(bundleItemShipping, seller.currency)}</span>
-            </div>
-            <div class="col-span-1 flex justify-center">
-              <a href="${list.listingUrl || (list.listingId ? 'https://www.discogs.com/sell/item/' + list.listingId : 'https://www.discogs.com/release/' + list.releaseId)}" target="_blank" class="w-7 h-7 border border-hairline-light hover:border-prada-blue hover:text-prada-blue flex items-center justify-center text-pitch-black transition-colors" title="Ver Oferta"
-                data-tooltip="Abrir esta oferta específica del vendedor en Discogs" data-tooltip-pos="left">
-                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-              </a>
-            </div>
-          </div>
-        `;
-      });
+      const listingsHtml = buildSellerListingRowsHtml(activeListings, seller, priorityIds, searchQuery, bundleItemShipping);
       
       const sellerShippingWarning = seller.isShippingEstimated 
         ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: help; margin-left: 4px;" title="Envío estimado por seguridad." data-tooltip="Envío estimado automáticamente según tarifas de la región" data-tooltip-pos="top">⚠️</span>` 
@@ -1014,16 +1116,28 @@ function renderResults() {
           <div class="overflow-x-auto w-full">
             <div class="min-w-[620px]">
               <!-- Table Header -->
-              <div class="grid grid-cols-12 gap-4 px-4 py-2.5 bg-ivory-warm border-b border-hairline-light font-mono text-[9px] uppercase tracking-widest text-muted-graphite font-bold">
-                <div class="col-span-5">DISCO / EDICIÓN</div>
-                <div class="col-span-2 text-center">ESTADO (VINILO / TAPA)</div>
-                <div class="col-span-2 text-right">PRECIO ÍTEM</div>
-                <div class="col-span-2 text-right">ENVÍO APROX / LOTE</div>
+              <div class="grid grid-cols-12 gap-4 px-4 py-2 bg-ivory-warm border-b border-hairline-light font-mono text-[9px] uppercase tracking-widest text-muted-graphite font-bold select-none">
+                <button type="button" class="btn-sort-col col-span-5 flex items-center gap-1.5 text-left hover:text-pitch-black transition-colors cursor-pointer ${currentSort?.col === 'title' ? 'text-prada-red font-extrabold' : 'text-muted-graphite'}" data-seller="${escapeHTML(seller.name)}" data-col="title" title="Ordenar por Título / Artista" data-tooltip="Ordenar alfabéticamente por artista o título" data-tooltip-pos="top">
+                  <span>DISCO / EDICIÓN</span>
+                  <span class="sort-icon font-mono text-[10px] ${currentSort?.col === 'title' ? 'text-prada-red font-bold' : 'text-muted-graphite/50 font-normal'}">${currentSort?.col === 'title' ? (currentSort.dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
+                <button type="button" class="btn-sort-col col-span-2 flex items-center justify-center gap-1.5 hover:text-pitch-black transition-colors cursor-pointer ${currentSort?.col === 'condition' ? 'text-prada-red font-extrabold' : 'text-muted-graphite'}" data-seller="${escapeHTML(seller.name)}" data-col="condition" title="Ordenar por Estado" data-tooltip="Ordenar por mejor/peor estado (Mint - Poor)" data-tooltip-pos="top">
+                  <span>ESTADO (VINILO / TAPA)</span>
+                  <span class="sort-icon font-mono text-[10px] ${currentSort?.col === 'condition' ? 'text-prada-red font-bold' : 'text-muted-graphite/50 font-normal'}">${currentSort?.col === 'condition' ? (currentSort.dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
+                <button type="button" class="btn-sort-col col-span-2 flex items-center justify-end gap-1.5 hover:text-pitch-black transition-colors cursor-pointer ${currentSort?.col === 'price' ? 'text-prada-red font-extrabold' : 'text-muted-graphite'}" data-seller="${escapeHTML(seller.name)}" data-col="price" title="Ordenar por Precio (Menor/Mayor)" data-tooltip="Ordenar por precio de menor a mayor o viceversa" data-tooltip-pos="top">
+                  <span>PRECIO ÍTEM</span>
+                  <span class="sort-icon font-mono text-[10px] ${currentSort?.col === 'price' ? 'text-prada-red font-bold' : 'text-muted-graphite/50 font-normal'}">${currentSort?.col === 'price' ? (currentSort.dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
+                <button type="button" class="btn-sort-col col-span-2 flex items-center justify-end gap-1.5 hover:text-pitch-black transition-colors cursor-pointer ${currentSort?.col === 'shipping' ? 'text-prada-red font-extrabold' : 'text-muted-graphite'}" data-seller="${escapeHTML(seller.name)}" data-col="shipping" title="Ordenar por Envío" data-tooltip="Ordenar por costo de envío individual" data-tooltip-pos="top">
+                  <span>ENVÍO APROX / LOTE</span>
+                  <span class="sort-icon font-mono text-[10px] ${currentSort?.col === 'shipping' ? 'text-prada-red font-bold' : 'text-muted-graphite/50 font-normal'}">${currentSort?.col === 'shipping' ? (currentSort.dir === 'asc' ? '↑' : '↓') : '↕'}</span>
+                </button>
                 <div class="col-span-1 text-center">ENLACE</div>
               </div>
               
               <!-- Rows container -->
-              <div class="divide-y divide-hairline-light">
+              <div class="divide-y divide-hairline-light" id="rows-${seller.name}">
                 ${listingsHtml}
               </div>
             </div>
@@ -1140,6 +1254,18 @@ function renderResults() {
       }
     });
   }
+
+  // Attach in-card column sort event listeners
+  document.querySelectorAll('.btn-sort-col').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const sName = btn.getAttribute('data-seller');
+      const col = btn.getAttribute('data-col');
+      if (sName && col && typeof handleSellerColumnSort === 'function') {
+        handleSellerColumnSort(sName, col);
+      }
+    });
+  });
 
   // Trigger background ASP banner verification for visible sellers that don't have it yet
   if (typeof verifyDisplayedSellersAsp === 'function') {
