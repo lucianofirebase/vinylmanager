@@ -1487,6 +1487,10 @@ document.addEventListener('DOMContentLoaded', () => {
       localStorage.setItem('filter_priority_only', 'false');
       if (filterFreeShipping) filterFreeShipping.checked = false;
       if (filterSearchRelease) filterSearchRelease.value = "";
+      if (typeof state !== 'undefined' && state) {
+        if (state.expandedSellers) state.expandedSellers.clear();
+        if (state.sellerCurrentPages) state.sellerCurrentPages.clear();
+      }
       renderResults();
     });
   }

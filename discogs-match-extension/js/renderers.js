@@ -724,6 +724,30 @@ function renderResults() {
   if (currentActiveTab === 'stats') {
     calculateAndRenderStats();
   }
+
+  // Preserve currently expanded seller cards & pagination state across re-renders
+  if (!state.expandedSellers) state.expandedSellers = new Set();
+  if (!state.sellerCurrentPages) state.sellerCurrentPages = new Map();
+  if (resultsGrid) {
+    resultsGrid.querySelectorAll('.seller-card.is-expanded, .listings-details').forEach(el => {
+      if (el.classList.contains('is-expanded')) {
+        const sName = el.id.replace('seller-card-', '');
+        if (sName) state.expandedSellers.add(sName);
+      } else if (el.style && el.style.display !== 'none' && el.id && el.id.startsWith('details-')) {
+        const sName = el.id.replace('details-', '');
+        if (sName) state.expandedSellers.add(sName);
+      }
+    });
+
+    resultsGrid.querySelectorAll('.seller-pagination').forEach(pEl => {
+      const sName = pEl.getAttribute('data-seller');
+      const curPage = parseInt(pEl.getAttribute('data-current-page'), 10) || 1;
+      if (sName && curPage > 1) {
+        state.sellerCurrentPages.set(sName, curPage);
+      }
+    });
+  }
+
   resultsGrid.innerHTML = '';
   
   // Render cards with isolated Error Boundary per seller
@@ -766,7 +790,8 @@ function renderResults() {
       const matchPct = ((activeListings.length / Math.max(state.wants.length, 1)) * 100).toFixed(1);
       const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
       const buyerCountryCode = buyerCountryVal.length <= 4 ? buyerCountryVal.toUpperCase() : buyerCountryVal.slice(0, 3).toUpperCase();
-      const isAutoExpanded = Boolean(searchQuery);
+      const isManuallyExpanded = Boolean(state.expandedSellers && state.expandedSellers.has(seller.name));
+      const isAutoExpanded = Boolean(searchQuery) || isManuallyExpanded;
 
       // Free shipping threshold evaluations
       const hasThreshold = Boolean(seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0);
@@ -794,7 +819,14 @@ function renderResults() {
         cardShippingBadgeClass = 'free-shipping-included';
       }
 
+      if (isAutoExpanded) {
+        cardShippingBadgeClass += ' is-expanded';
+      }
+
       card.className = `seller-card ${cardShippingBadgeClass}`.trim();
+      if (isAutoExpanded) {
+        card.style.borderColor = '#E02B20';
+      }
 
       // Generate deep-dive catalog rows
       let listingsHtml = '';
@@ -889,7 +921,7 @@ function renderResults() {
         <div class="h-1 bg-prada-red w-full ${isAutoExpanded ? '' : 'hidden'}" id="strip-indicator-${seller.name}"></div>
 
         <!-- Collapsed Header Strip -->
-        <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}">
+        <div class="px-4 sm:px-6 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-4 transition-colors shadow-sm bg-pure-white" id="header-strip-${seller.name}" style="${isAutoExpanded ? 'background-color: #FDF2F1;' : ''}">
           <div class="flex items-center gap-3 sm:gap-6 min-w-0 flex-1">
             <span class="font-mono font-bold text-xs text-prada-red bg-prada-red-bg px-2 py-0.5 border border-prada-red/30 shrink-0 cursor-help"
               data-tooltip="Posición #${rankNumber} en el ranking global de mejores vendedores" data-tooltip-pos="top">#${rankNumber}</span>
@@ -1100,6 +1132,15 @@ function renderResults() {
     }
   });
 
+  // Restore pagination pages for any re-rendered seller cards that were on page > 1
+  if (state.sellerCurrentPages) {
+    state.sellerCurrentPages.forEach((page, sName) => {
+      if (page > 1) {
+        goToSellerPage(sName, page);
+      }
+    });
+  }
+
   // Trigger background ASP banner verification for visible sellers that don't have it yet
   if (typeof verifyDisplayedSellersAsp === 'function') {
     const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
@@ -1110,6 +1151,15 @@ function renderResults() {
 
 // Background verification for official Discogs ASP banners on visible sellers
 let isVerifyingAsp = false;
+let aspRenderDebounceTimer = null;
+function scheduleAspRenderResults() {
+  if (aspRenderDebounceTimer) clearTimeout(aspRenderDebounceTimer);
+  aspRenderDebounceTimer = setTimeout(() => {
+    aspRenderDebounceTimer = null;
+    renderResults();
+  }, 250);
+}
+
 async function verifyDisplayedSellersAsp(displayedSellers) {
   console.log(`[DEBUG VERIFY] verifyDisplayedSellersAsp llamado con ${displayedSellers?.length || 0} vendedores. isVerifyingAsp = ${isVerifyingAsp}`);
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
@@ -1151,8 +1201,8 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
           seller.totalPrice = activeSubtotal + seller.estimatedShipping;
           updatedAny = true;
 
-          // Re-render immediately so the seller appears in results without waiting for the rest
-          renderResults();
+          // Re-render with debounce so rapid detections do not cause card flickering
+          scheduleAspRenderResults();
         }
       }));
 
@@ -1161,6 +1211,10 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
     }
 
     if (updatedAny) {
+      if (aspRenderDebounceTimer) {
+        clearTimeout(aspRenderDebounceTimer);
+        aspRenderDebounceTimer = null;
+      }
       renderResults();
     }
   } catch (e) {
@@ -1252,6 +1306,10 @@ function goToSellerPage(sellerName, newPage) {
 
 // Function to expand a seller card and reveal its vinyl inventory
 function expandSellerCard(sName) {
+  if (typeof state !== 'undefined' && state) {
+    if (!state.expandedSellers) state.expandedSellers = new Set();
+    state.expandedSellers.add(sName);
+  }
   const detailsDiv = document.getElementById(`details-${sName}`);
   const parentCard = document.getElementById(`seller-card-${sName}`);
   const stripIndicator = document.getElementById(`strip-indicator-${sName}`);
@@ -1280,6 +1338,9 @@ function expandSellerCard(sName) {
 
 // Function to collapse a seller card
 function collapseSellerCard(sName) {
+  if (typeof state !== 'undefined' && state && state.expandedSellers) {
+    state.expandedSellers.delete(sName);
+  }
   const detailsDiv = document.getElementById(`details-${sName}`);
   const parentCard = document.getElementById(`seller-card-${sName}`);
   const stripIndicator = document.getElementById(`strip-indicator-${sName}`);
@@ -1300,6 +1361,8 @@ function collapseSellerCard(sName) {
     collapseBtn.innerHTML = '<span class="material-symbols-outlined text-[16px] pointer-events-none">expand_more</span>';
   }
 }
+window.expandSellerCard = expandSellerCard;
+window.collapseSellerCard = collapseSellerCard;
 
 
 // Wantlist Manager UI functions
