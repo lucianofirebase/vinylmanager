@@ -119,7 +119,7 @@
     symbol: '€',
     defaultUnitsPerUSD: 0.92,
     flag: '🇫🇷',
-    aliases: ['france', 'francia', 'paris', 'fr']
+    aliases: ['france', 'francia', 'paris', 'lyon', 'marseille', 'fr']
   },
   'Italy': {
     name: 'Italia',
@@ -128,7 +128,7 @@
     symbol: '€',
     defaultUnitsPerUSD: 0.92,
     flag: '🇮🇹',
-    aliases: ['italy', 'italia', 'rome', 'milan', 'it']
+    aliases: ['italy', 'italia', 'roma', 'rome', 'milano', 'milan', 'napoli', 'it']
   },
   'Netherlands': {
     name: 'Países Bajos',
@@ -137,7 +137,7 @@
     symbol: '€',
     defaultUnitsPerUSD: 0.92,
     flag: '🇳🇱',
-    aliases: ['netherlands', 'holland', 'países bajos', 'amsterdam', 'nl']
+    aliases: ['netherlands', 'holland', 'países bajos', 'amsterdam', 'rotterdam', 'nl']
   },
   'Japan': {
     name: 'Japón',
@@ -146,7 +146,7 @@
     symbol: '¥',
     defaultUnitsPerUSD: 155.0,
     flag: '🇯🇵',
-    aliases: ['japan', 'japon', 'japón', 'tokyo', 'osaka', 'jp']
+    aliases: ['japan', 'japón', 'japon', 'tokyo', 'osaka', 'kyoto', 'jp']
   },
   'Canada': {
     name: 'Canadá',
@@ -164,7 +164,7 @@
     symbol: 'A$',
     defaultUnitsPerUSD: 1.50,
     flag: '🇦🇺',
-    aliases: ['australia', 'sydney', 'melbourne', 'au']
+    aliases: ['australia', 'sydney', 'melbourne', 'brisbane', 'au']
   },
   'Switzerland': {
     name: 'Suiza',
@@ -173,7 +173,7 @@
     symbol: 'CHF',
     defaultUnitsPerUSD: 0.89,
     flag: '🇨🇭',
-    aliases: ['switzerland', 'suiza', 'zurich', 'geneva', 'ch']
+    aliases: ['switzerland', 'suiza', 'schweiz', 'zurich', 'geneva', 'ch']
   },
   'Sweden': {
     name: 'Suecia',
@@ -182,7 +182,43 @@
     symbol: 'kr',
     defaultUnitsPerUSD: 10.5,
     flag: '🇸🇪',
-    aliases: ['sweden', 'suecia', 'stockholm', 'se']
+    aliases: ['sweden', 'suecia', 'stockholm', 'sverige', 'se']
+  },
+  'Norway': {
+    name: 'Noruega',
+    currency: 'NOK',
+    currencyName: 'Coronas Noruegas',
+    symbol: 'kr',
+    defaultUnitsPerUSD: 10.75,
+    flag: '🇳🇴',
+    aliases: ['norway', 'noruega', 'norge', 'oslo', 'no']
+  },
+  'Denmark': {
+    name: 'Dinamarca',
+    currency: 'DKK',
+    currencyName: 'Coronas Danesas',
+    symbol: 'kr',
+    defaultUnitsPerUSD: 7.14,
+    flag: '🇩🇰',
+    aliases: ['denmark', 'dinamarca', 'danmark', 'copenhagen', 'kobenhavn', 'dk']
+  },
+  'New Zealand': {
+    name: 'Nueva Zelanda',
+    currency: 'NZD',
+    currencyName: 'Dólares Neozelandeses',
+    symbol: 'NZ$',
+    defaultUnitsPerUSD: 1.64,
+    flag: '🇳🇿',
+    aliases: ['new zealand', 'nueva zelanda', 'auckland', 'wellington', 'nz']
+  },
+  'Other': {
+    name: 'Otro / Internacional',
+    currency: 'USD',
+    currencyName: 'Dólares',
+    symbol: '$',
+    defaultUnitsPerUSD: 1.0,
+    flag: '🌐',
+    aliases: ['other', 'otro', 'internacional', 'international', 'world']
   }
 };
 
@@ -195,14 +231,15 @@ class CurrencyService {
   getCountryFlag(country) {
     if (!country) return '🌐';
     const c = country.toLowerCase();
+    if (c.includes('other') || c.includes('otro') || c.includes('internacional') || c.includes('international') || c.includes('world')) return '🌐';
     if (c.includes('germany') || c.includes('alemania') || c.includes('deutschland')) return '🇩🇪';
     if (c.includes('united kingdom') || c.includes('reino unido') || c.includes('uk') || c.includes('great britain')) return '🇬🇧';
     if (c.includes('united states') || c.includes('estados unidos') || c.includes('usa') || c.includes('ee.uu')) return '🇺🇸';
     if (c.includes('spain') || c.includes('españa')) return '🇪🇸';
     if (c.includes('france') || c.includes('francia')) return '🇫🇷';
     if (c.includes('italy') || c.includes('italia')) return '🇮🇹';
-    if (c.includes('netherlands') || c.includes('países bajos') || c.includes('holanda') || c.includes('amsterdam')) return '🇳🇱';
-    if (c.includes('japan') || c.includes('japón') || c.includes('tokyo')) return '🇯🇵';
+    if (c.includes('netherlands') || c.includes('países bajos') || c.includes('holanda') || c.includes('amsterdam') || c.includes('rotterdam')) return '🇳🇱';
+    if (c.includes('japan') || c.includes('japón') || c.includes('japon') || c.includes('tokyo')) return '🇯🇵';
     if (c.includes('uruguay') || c.includes('montevideo')) return '🇺🇾';
     if (c.includes('argentina') || c.includes('buenos aires')) return '🇦🇷';
     if (c.includes('brazil') || c.includes('brasil')) return '🇧🇷';
@@ -211,11 +248,14 @@ class CurrencyService {
     if (c.includes('mexico') || c.includes('méxico')) return '🇲🇽';
     if (c.includes('hungary') || c.includes('hungría')) return '🇭🇺';
     if (c.includes('austria')) return '🇦🇹';
-    if (c.includes('switzerland') || c.includes('suiza')) return '🇨🇭';
+    if (c.includes('switzerland') || c.includes('suiza') || c.includes('schweiz')) return '🇨🇭';
     if (c.includes('canada') || c.includes('canadá')) return '🇨🇦';
     if (c.includes('australia')) return '🇦🇺';
     if (c.includes('belgium') || c.includes('bélgica')) return '🇧🇪';
-    if (c.includes('sweden') || c.includes('suecia')) return '🇸🇪';
+    if (c.includes('sweden') || c.includes('suecia') || c.includes('sverige')) return '🇸🇪';
+    if (c.includes('norway') || c.includes('noruega') || c.includes('norge')) return '🇳🇴';
+    if (c.includes('denmark') || c.includes('dinamarca') || c.includes('danmark')) return '🇩🇰';
+    if (c.includes('new zealand') || c.includes('nueva zelanda')) return '🇳🇿';
     if (c.includes('poland') || c.includes('polonia')) return '🇵🇱';
     return '📍';
   }
@@ -234,6 +274,7 @@ class CurrencyService {
   }
 
   getCurrencyUnitsPerUSD(currencyCode, countryName = null) {
+    if (!currencyCode || currencyCode === 'USD') return 1.0;
     try {
       const stored = localStorage.getItem(`rate_${currencyCode}`) || localStorage.getItem(`custom_rate_${currencyCode}`) || (currencyCode === 'UYU' ? localStorage.getItem('custom_uyu_rate') : null);
       if (stored) {
@@ -250,8 +291,8 @@ class CurrencyService {
         return cfg.defaultUnitsPerUSD;
       }
     }
-    if (this.currencyMap[currencyCode]) {
-      return 1.0 / this.currencyMap[currencyCode].rate;
+    if (this.currencyMap[currencyCode] && this.currencyMap[currencyCode].rate > 0) {
+      return +(1.0 / this.currencyMap[currencyCode].rate).toFixed(4);
     }
     return 1.0;
   }
@@ -298,7 +339,6 @@ class CurrencyService {
 
   formatPrice(amount, fromCurrency = 'USD', targetCurrencyOverride = null) {
     if (amount === undefined || amount === null || isNaN(amount)) return '—';
-    if (amount === 0) return '$0.00';
 
     let targetCurrency = targetCurrencyOverride;
     if (!targetCurrency) {
@@ -311,6 +351,17 @@ class CurrencyService {
       }
     }
 
+    const isNoCents = ['CLP', 'COP', 'JPY', 'ARS', 'UYU'].includes(targetCurrency);
+
+    if (amount === 0) {
+      if (targetCurrency === 'original') {
+        const info = this.currencyMap[fromCurrency] || { symbol: '$' };
+        return `${info.symbol}0.00`;
+      }
+      const info = this.currencyMap[targetCurrency] || { symbol: '$' };
+      return isNoCents ? `${info.symbol}0` : `${info.symbol}0.00`;
+    }
+
     if (targetCurrency === 'original') {
       const info = this.currencyMap[fromCurrency] || { symbol: fromCurrency + ' ' };
       return `${info.symbol}${amount.toFixed(2)}`;
@@ -319,8 +370,8 @@ class CurrencyService {
     const converted = this.convert(amount, fromCurrency, targetCurrency);
     const info = this.currencyMap[targetCurrency] || { symbol: targetCurrency + ' ' };
 
-    if (['CLP', 'COP', 'JPY', 'ARS'].includes(targetCurrency)) {
-      return `${info.symbol}${Math.round(converted).toLocaleString('es-ES')}`;
+    if (isNoCents) {
+      return `${info.symbol}${Math.round(converted).toLocaleString('es-UY')}`;
     }
     return `${info.symbol}${converted.toFixed(2)}`;
   }
@@ -336,13 +387,28 @@ CurrencyService.getCountryFlag = (country) => currencyService.getCountryFlag(cou
 CurrencyService.detectCurrencyInContext = (text, fallback) => {
   if (!text) return fallback || 'USD';
   const upper = text.toUpperCase();
+
+  // Multi-character and unambiguous currency tokens first
   if (upper.includes('EUR') || upper.includes('€')) return 'EUR';
   if (upper.includes('GBP') || upper.includes('£')) return 'GBP';
-  if (upper.includes('USD') || upper.includes('$')) return 'USD';
   if (upper.includes('JPY') || upper.includes('¥')) return 'JPY';
   if (upper.includes('CAD') || upper.includes('CA$')) return 'CAD';
   if (upper.includes('AUD') || upper.includes('AU$')) return 'AUD';
   if (upper.includes('BRL') || upper.includes('R$')) return 'BRL';
+  if (upper.includes('UYU') || upper.includes('$U')) return 'UYU';
+  if (upper.includes('MXN') || upper.includes('MEX$')) return 'MXN';
+  if (upper.includes('ARS') || upper.includes('AR$')) return 'ARS';
+  if (upper.includes('CLP') || upper.includes('CL$')) return 'CLP';
+  if (upper.includes('COP') || upper.includes('COL$')) return 'COP';
+  if (upper.includes('CHF')) return 'CHF';
+  if (upper.includes('SEK')) return 'SEK';
+  if (upper.includes('NOK')) return 'NOK';
+  if (upper.includes('DKK')) return 'DKK';
+  if (upper.includes('NZD') || upper.includes('NZ$')) return 'NZD';
+
+  // Generic USD dollar check as fallback
+  if (upper.includes('USD') || upper.includes('$')) return 'USD';
+
   return fallback || 'USD';
 };
 

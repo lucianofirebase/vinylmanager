@@ -226,6 +226,33 @@ const COUNTRY_CONFIG = {
     flag: '🇸🇪',
     aliases: ['sweden', 'suecia', 'stockholm', 'sverige', 'se']
   },
+  'Norway': {
+    name: 'Noruega',
+    currency: 'NOK',
+    currencyName: 'Coronas Noruegas',
+    symbol: 'kr',
+    defaultUnitsPerUSD: 10.75,
+    flag: '🇳🇴',
+    aliases: ['norway', 'noruega', 'norge', 'oslo', 'no']
+  },
+  'Denmark': {
+    name: 'Dinamarca',
+    currency: 'DKK',
+    currencyName: 'Coronas Danesas',
+    symbol: 'kr',
+    defaultUnitsPerUSD: 7.14,
+    flag: '🇩🇰',
+    aliases: ['denmark', 'dinamarca', 'danmark', 'copenhagen', 'kobenhavn', 'dk']
+  },
+  'New Zealand': {
+    name: 'Nueva Zelanda',
+    currency: 'NZD',
+    currencyName: 'Dólares Neozelandeses',
+    symbol: 'NZ$',
+    defaultUnitsPerUSD: 1.64,
+    flag: '🇳🇿',
+    aliases: ['new zealand', 'nueva zelanda', 'auckland', 'wellington', 'nz']
+  },
   'Other': {
     name: 'Otro / Internacional',
     currency: 'USD',
@@ -233,7 +260,7 @@ const COUNTRY_CONFIG = {
     symbol: '$',
     defaultUnitsPerUSD: 1.0,
     flag: '🌐',
-    aliases: []
+    aliases: ['other', 'otro', 'internacional', 'international', 'world']
   }
 };
 
@@ -243,7 +270,14 @@ const COUNTRY_CONFIG = {
 function getCurrencyForCountry(countryName) {
   if (!countryName) return 'USD';
   const cfg = COUNTRY_CONFIG[countryName];
-  return cfg ? cfg.currency : 'USD';
+  if (cfg) return cfg.currency;
+  const lower = countryName.toLowerCase().trim();
+  for (const [cName, c] of Object.entries(COUNTRY_CONFIG)) {
+    if (cName.toLowerCase() === lower || (c.aliases && c.aliases.includes(lower))) {
+      return c.currency;
+    }
+  }
+  return 'USD';
 }
 
 /**
@@ -398,14 +432,15 @@ function escapeHTML(str) {
 function getCountryFlag(country) {
   if (!country) return '🌐';
   const c = country.toLowerCase();
+  if (c.includes('other') || c.includes('otro') || c.includes('internacional') || c.includes('international') || c.includes('world')) return '🌐';
   if (c.includes('germany') || c.includes('alemania') || c.includes('deutschland')) return '🇩🇪';
   if (c.includes('united kingdom') || c.includes('reino unido') || c.includes('uk') || c.includes('great britain')) return '🇬🇧';
   if (c.includes('united states') || c.includes('estados unidos') || c.includes('usa') || c.includes('ee.uu')) return '🇺🇸';
   if (c.includes('spain') || c.includes('españa')) return '🇪🇸';
   if (c.includes('france') || c.includes('francia')) return '🇫🇷';
   if (c.includes('italy') || c.includes('italia')) return '🇮🇹';
-  if (c.includes('netherlands') || c.includes('países bajos') || c.includes('holanda') || c.includes('amsterdam')) return '🇳🇱';
-  if (c.includes('japan') || c.includes('japón') || c.includes('tokyo')) return '🇯🇵';
+  if (c.includes('netherlands') || c.includes('países bajos') || c.includes('holanda') || c.includes('amsterdam') || c.includes('rotterdam')) return '🇳🇱';
+  if (c.includes('japan') || c.includes('japón') || c.includes('japon') || c.includes('tokyo')) return '🇯🇵';
   if (c.includes('uruguay') || c.includes('montevideo')) return '🇺🇾';
   if (c.includes('argentina') || c.includes('buenos aires')) return '🇦🇷';
   if (c.includes('brazil') || c.includes('brasil')) return '🇧🇷';
@@ -414,11 +449,14 @@ function getCountryFlag(country) {
   if (c.includes('mexico') || c.includes('méxico')) return '🇲🇽';
   if (c.includes('hungary') || c.includes('hungría')) return '🇭🇺';
   if (c.includes('austria')) return '🇦🇹';
-  if (c.includes('switzerland') || c.includes('suiza')) return '🇨🇭';
+  if (c.includes('switzerland') || c.includes('suiza') || c.includes('schweiz')) return '🇨🇭';
   if (c.includes('canada') || c.includes('canadá')) return '🇨🇦';
   if (c.includes('australia')) return '🇦🇺';
   if (c.includes('belgium') || c.includes('bélgica')) return '🇧🇪';
-  if (c.includes('sweden') || c.includes('suecia')) return '🇸🇪';
+  if (c.includes('sweden') || c.includes('suecia') || c.includes('sverige')) return '🇸🇪';
+  if (c.includes('norway') || c.includes('noruega') || c.includes('norge')) return '🇳🇴';
+  if (c.includes('denmark') || c.includes('dinamarca') || c.includes('danmark')) return '🇩🇰';
+  if (c.includes('new zealand') || c.includes('nueva zelanda')) return '🇳🇿';
   if (c.includes('poland') || c.includes('polonia')) return '🇵🇱';
   return '📍';
 }
