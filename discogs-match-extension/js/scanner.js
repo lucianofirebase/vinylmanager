@@ -24,6 +24,30 @@ function clearScanSession() {
   }
 }
 
+// Persist final completed scan results across page reloads
+function saveCompletedScanResults() {
+  if (!state.groupedSellers || state.groupedSellers.length === 0) return;
+  const username = state.username || localStorage.getItem('discogs_username') || 'default';
+  const repo = typeof cacheRepository !== 'undefined' ? cacheRepository : (window.cacheRepository || null);
+  const payload = {
+    allListings: state.allListings,
+    groupedSellers: state.groupedSellers,
+    buyerCountry: state.buyerCountry || (buyerCountry ? buyerCountry.value : 'Uruguay'),
+    wantsCount: state.wants ? state.wants.length : 0
+  };
+
+  if (repo && typeof repo.saveCompletedScan === 'function') {
+    repo.saveCompletedScan(username, payload);
+  } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    const storageKey = `discogs_completed_scan_${encodeURIComponent(username.toLowerCase())}`;
+    chrome.storage.local.set({
+      [storageKey]: { timestamp: Date.now(), username, ...payload },
+      'discogs_completed_scan_last': { timestamp: Date.now(), username, ...payload }
+    });
+  }
+}
+window.saveCompletedScanResults = saveCompletedScanResults;
+
 // Verify if there is an interrupted session to restore
 function checkScanSession() {
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -959,6 +983,7 @@ async function startMarketplaceScan(startIndex = 0) {
     }
 
     renderResults();
+    saveCompletedScanResults();
     
   } catch (error) {
     if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {

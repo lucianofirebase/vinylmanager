@@ -358,6 +358,11 @@
         this.emit(events.SELLERS_UPDATED, { groupedSellers });
         this.emit(events.SCAN_COMPLETED, { allListings, groupedSellers });
 
+        if (this.cacheRepo && typeof this.cacheRepo.saveCompletedScan === 'function') {
+          const uName = this.store?.getState()?.username || global.state?.username || 'default';
+          this.cacheRepo.saveCompletedScan(uName, { allListings, groupedSellers, buyerCountry });
+        }
+
         return { allListings, groupedSellers };
       } catch (err) {
         this.emit(events.SCAN_ERROR, { error: err.message });

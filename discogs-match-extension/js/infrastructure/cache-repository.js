@@ -117,6 +117,67 @@ class CacheRepository {
     } catch (e) {}
   }
 
+  // --- Completed Scan Results Persistence ---
+  getCompletedScan(username) {
+    return new Promise((resolve) => {
+      const uKey = (username || 'default').toLowerCase();
+      const storageKey = `discogs_completed_scan_${encodeURIComponent(uKey)}`;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.get([storageKey, 'discogs_completed_scan_last'], (res) => {
+          const data = res ? (res[storageKey] || res['discogs_completed_scan_last']) : null;
+          resolve(data || null);
+        });
+      } else {
+        try {
+          const raw = localStorage.getItem(storageKey) || localStorage.getItem('discogs_completed_scan_last');
+          resolve(raw ? JSON.parse(raw) : null);
+        } catch (e) {
+          resolve(null);
+        }
+      }
+    });
+  }
+
+  saveCompletedScan(username, scanPayload) {
+    return new Promise((resolve) => {
+      const uKey = (username || 'default').toLowerCase();
+      const storageKey = `discogs_completed_scan_${encodeURIComponent(uKey)}`;
+      const payload = {
+        timestamp: Date.now(),
+        username: uKey,
+        ...scanPayload
+      };
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({
+          [storageKey]: payload,
+          'discogs_completed_scan_last': payload
+        }, () => resolve(true));
+      } else {
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(payload));
+          localStorage.setItem('discogs_completed_scan_last', JSON.stringify(payload));
+        } catch (e) {}
+        resolve(true);
+      }
+    });
+  }
+
+  clearCompletedScan(username) {
+    return new Promise((resolve) => {
+      const uKey = (username || 'default').toLowerCase();
+      const storageKey = `discogs_completed_scan_${encodeURIComponent(uKey)}`;
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.remove([storageKey, 'discogs_completed_scan_last'], () => resolve(true));
+      } else {
+        try {
+          localStorage.removeItem(storageKey);
+          localStorage.removeItem('discogs_completed_scan_last');
+        } catch (e) {}
+        resolve(true);
+      }
+    });
+  }
+
   // --- Global Cache Flush ---
   clearAllCaches() {
     try {

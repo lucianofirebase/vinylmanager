@@ -280,6 +280,11 @@ function disconnectUserSession(showNotification = true) {
   state.allListings = [];
   state.groupedSellers = [];
   
+  const repo = typeof cacheRepository !== 'undefined' ? cacheRepository : (window.cacheRepository || null);
+  if (repo && typeof repo.clearCompletedScan === 'function') {
+    repo.clearCompletedScan(state.username || 'default');
+  }
+
   setDisconnectedUser();
   
   // Reset navigation and views to initial choice
@@ -804,6 +809,69 @@ if (document.readyState === 'loading') {
 // Position the account dropdown using fixed coordinates computed from the user card's
 // bounding rect. This ensures the panel is never clipped by any parent overflow
 
+// Check and restore completed scan results if available for instant display
+async function restoreCompletedScanIfAvailable(savedUser) {
+  try {
+    const repo = typeof cacheRepository !== 'undefined' ? cacheRepository : (window.cacheRepository || null);
+    let data = null;
+    if (repo && typeof repo.getCompletedScan === 'function') {
+      data = await repo.getCompletedScan(savedUser);
+    } else if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      const storageKey = `discogs_completed_scan_${encodeURIComponent((savedUser || 'default').toLowerCase())}`;
+      data = await new Promise(r => chrome.storage.local.get([storageKey, 'discogs_completed_scan_last'], res => r(res ? (res[storageKey] || res['discogs_completed_scan_last']) : null)));
+    }
+
+    if (!data || !Array.isArray(data.groupedSellers) || data.groupedSellers.length === 0) {
+      return false;
+    }
+
+    // Verify age (valid for 48 hours)
+    const ageHours = (Date.now() - (data.timestamp || 0)) / (1000 * 60 * 60);
+    if (ageHours > 48) {
+      console.log(`[ScanPersistence] Análisis previo expirado (${ageHours.toFixed(1)} horas)`);
+      return false;
+    }
+
+    console.log(`[ScanPersistence] Restaurando análisis previo para ${savedUser}: ${data.groupedSellers.length} vendedores.`);
+
+    state.allListings = data.allListings || [];
+    state.groupedSellers = data.groupedSellers || [];
+    if (data.buyerCountry) {
+      state.buyerCountry = data.buyerCountry;
+      if (buyerCountry) buyerCountry.value = data.buyerCountry;
+      if (wizardBuyerCountry) wizardBuyerCountry.value = data.buyerCountry;
+    }
+
+    // Update UI counters
+    if (metricWantsCount) metricWantsCount.textContent = state.wants ? state.wants.length : (data.wantsCount || 0);
+    if (metricSellersCount) metricSellersCount.textContent = state.groupedSellers.length;
+    if (metricMatchesCount) metricMatchesCount.textContent = state.allListings.length;
+
+    // Enable filters
+    toggleFiltersState(true);
+
+    // Render results
+    renderResults();
+
+    // Navigate straight to results view
+    navigateToView('results-sellers', false);
+
+    // Show indicator toast & log
+    const diffMin = Math.round((Date.now() - data.timestamp) / 60000);
+    const ageStr = diffMin < 60 ? `${diffMin} min` : `${Math.round(diffMin / 60)} h`;
+    if (typeof showToast === 'function') {
+      showToast(`✓ Análisis previo cargado (${data.groupedSellers.length} tiendas con stock • guardado hace ${ageStr})`, 'info', 4500);
+    }
+    log(`✓ Análisis previo cargado automáticamente (${data.groupedSellers.length} tiendas • guardado hace ${ageStr}).`, 'success');
+
+    return true;
+  } catch (err) {
+    console.warn('Error restoring completed scan:', err);
+    return false;
+  }
+}
+window.restoreCompletedScanIfAvailable = restoreCompletedScanIfAvailable;
+
 // Initialize Application and detect user session
 async function initApp() {
   log('Iniciando Discogs Wishlist Matcher...');
@@ -864,6 +932,14 @@ async function initApp() {
     }
 
     updateForwardAndBackButtons();
+
+    // Check if there is a previous completed scan for this user to restore directly without re-scanning
+    const restoredScan = await restoreCompletedScanIfAvailable(savedUser);
+    if (!restoredScan) {
+      if (state.wants && state.wants.length > 0) {
+        showWantlistManager(false);
+      }
+    }
   } catch (error) {
     console.error('Session detection error:', error);
     showFallbackLogin();
@@ -1423,6 +1499,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (startScanBtn) startScanBtn.addEventListener('click', openScanCacheModal);
   const mobileStartScanBtn = document.getElementById('mobile-start-scan-btn');
   if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', openScanCacheModal);
+  const btnRescanResults = document.getElementById('btn-rescan-results');
+  if (btnRescanResults) btnRescanResults.addEventListener('click', openScanCacheModal);
   
   // Filters
   const displayCurrencySelect = document.getElementById('display-currency');
