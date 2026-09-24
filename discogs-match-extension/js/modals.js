@@ -362,21 +362,26 @@ function applySettingsFromModal() {
 }
 
 function clearScanCacheAction() {
-  const keysToRemove = [];
-  for (let i = 0; i < localStorage.length; i++) {
-    const key = localStorage.key(i);
-    if (key && (key.startsWith('marketplace_cache_') || key.startsWith('discogs_cache_') || key.startsWith('scan_session_') || key.startsWith('discogs_asp_banner_'))) {
-      keysToRemove.push(key);
+  if (typeof clearScanCache === 'function') {
+    clearScanCache();
+  } else if (typeof window !== 'undefined' && typeof window.clearScanCache === 'function') {
+    window.clearScanCache();
+  } else {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith('marketplace_cache_') || key.startsWith('discogs_cache_') || key.startsWith('scan_session_') || key.startsWith('discogs_asp_banner_') || key.startsWith('discogs_completed_scan_'))) {
+        keysToRemove.push(key);
+      }
     }
+    keysToRemove.forEach(k => localStorage.removeItem(k));
+    localStorage.removeItem('remember_scan_cache_choice');
+    showToast(`Caché liberado: ${keysToRemove.length} elementos eliminados`, 'info');
   }
-  keysToRemove.forEach(k => localStorage.removeItem(k));
-  localStorage.removeItem('remember_scan_cache_choice');
-
-  showToast(`Caché liberado: ${keysToRemove.length} elementos eliminados`, 'info');
 
   try {
     if (window.Telemetry?.track) {
-      window.Telemetry.track('CACHE_PURGED', `Caché de escaneo purgado (${keysToRemove.length} entradas)`, { itemsRemoved: keysToRemove.length });
+      window.Telemetry.track('CACHE_PURGED', 'Caché de escaneo purgado');
     }
   } catch (e) {}
 }

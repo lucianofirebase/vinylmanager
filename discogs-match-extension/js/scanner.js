@@ -1331,33 +1331,61 @@ function cancelScan() {
 
 
 async function clearScanCache() {
-  // Clear localStorage ASP banner cache
+  let localKeysCount = 0;
+  // Clear localStorage caches
   try {
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const k = localStorage.key(i);
-      if (k && k.startsWith('discogs_asp_banner_')) {
+      if (k && (k.startsWith('discogs_asp_banner_') || k.startsWith('marketplace_cache_') || k.startsWith('discogs_cache_') || k.startsWith('scan_session_') || k.startsWith('discogs_completed_scan_') || k === 'remember_scan_cache_choice')) {
         localStorage.removeItem(k);
+        localKeysCount++;
       }
     }
   } catch (e) {}
 
+  // Clear in-memory caches
+  if (typeof shopApiClient !== 'undefined' && shopApiClient._shippingCache) {
+    shopApiClient._shippingCache.clear();
+  }
+  if (typeof state !== 'undefined' && state) {
+    state.verifiedShipping = {};
+  }
+
+  // Clear chrome.storage.local
   if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
     chrome.storage.local.get(null, (items) => {
-      const keysToRemove = Object.keys(items).filter(k => k.startsWith('release_') || k.startsWith('discogs_asp_banner_'));
-      if (keysToRemove.length === 0) {
-        log('La caché de escaneo ya está vacía.', 'info');
-        showToast('La caché de escaneo ya está completamente vacía.', 'info');
-        return;
+      const keysToRemove = Object.keys(items || {}).filter(k => 
+        k.startsWith('release_') || 
+        k.startsWith('discogs_asp_banner_') || 
+        k.startsWith('discogs_completed_scan_') || 
+        k === 'scan_session'
+      );
+      
+      const totalPurged = localKeysCount + keysToRemove.length;
+      if (keysToRemove.length > 0) {
+        chrome.storage.local.remove(keysToRemove, () => {
+          log(`Caché purgada con éxito (${totalPurged} elementos eliminados de memoria y almacenamiento).`, 'success');
+          showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${totalPurged} elementos guardados.`, 'success');
+        });
+      } else {
+        if (totalPurged > 0) {
+          log(`Caché purgada con éxito (${localKeysCount} elementos eliminados de localStorage).`, 'success');
+          showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${localKeysCount} elementos guardados.`, 'success');
+        } else {
+          log('La caché de escaneo ya está completamente vacía.', 'info');
+          showToast('La caché de escaneo ya está completamente vacía.', 'info');
+        }
       }
-      chrome.storage.local.remove(keysToRemove, () => {
-        log(`Caché de escaneo limpiada con éxito (${keysToRemove.length} elementos eliminados).`, 'success');
-        showToast(`🧹 ¡Caché limpiada con éxito! Se eliminaron ${keysToRemove.length} elementos guardados.`, 'success');
-      });
     });
   } else {
-    showToast('La caché de almacenamiento local no está disponible.', 'error');
+    if (localKeysCount > 0) {
+      showToast(`🧹 ¡Caché limpiada! ${localKeysCount} elementos eliminados.`, 'success');
+    } else {
+      showToast('La caché ya está vacía.', 'info');
+    }
   }
 }
+window.clearScanCache = clearScanCache;
 
 
 
