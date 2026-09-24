@@ -158,12 +158,19 @@ class FilterEngine {
       const aPrice = typeof a.totalPrice === 'number' ? a.totalPrice : 99999;
       const bPrice = typeof b.totalPrice === 'number' ? b.totalPrice : 99999;
 
+      const aCount = Math.max(aMatches, 1);
+      const bCount = Math.max(bMatches, 1);
+
       if (sortBy === 'matches-desc') {
         if (bMatches !== aMatches) return bMatches - aMatches;
         return aPrice - bPrice;
       }
       if (sortBy === 'price-asc') {
-        return aPrice - bPrice;
+        // Average price per disc
+        const avgA = aPrice / aCount;
+        const avgB = bPrice / bCount;
+        if (Math.abs(avgA - avgB) > 0.01) return avgA - avgB;
+        return bMatches - aMatches;
       }
       if (sortBy === 'rating-desc') {
         const aRating = typeof a.rating === 'number' ? a.rating : 0;
@@ -171,7 +178,7 @@ class FilterEngine {
         if (bRating !== aRating) return bRating - aRating;
         return bMatches - aMatches;
       }
-      return 0;
+      return bMatches - aMatches;
     });
   }
 }

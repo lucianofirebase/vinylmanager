@@ -814,20 +814,38 @@ function renderResults() {
   
   // Sort list
   filtered.sort((a, b) => {
+    const countA = (a.displayListings || a.listings || []).length;
+    const countB = (b.displayListings || b.listings || []).length;
+
     if (sortCriteria === 'matches-desc') {
-      if (b.matchCount !== a.matchCount) {
-        return b.matchCount - a.matchCount; // Primary: matches
+      if (countB !== countA) {
+        return countB - countA; // Primary: mayor cantidad de coincidencias
       }
-      return a.totalPrice - b.totalPrice; // Secondary: price
+      return (a.totalPrice || 0) - (b.totalPrice || 0); // Secondary: menor precio total
     } else if (sortCriteria === 'price-asc') {
-      return a.totalPrice - b.totalPrice;
-    } else if (sortCriteria === 'rating-desc') {
-      if (b.rating !== a.rating) {
-        return b.rating - a.rating; // Primary: rating
+      // "MENOR PRECIO PROMEDIO": Costo promedio real por disco normalizado a USD
+      const rateA = (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP[a.currency]?.rate) || 1.0;
+      const rateB = (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP[b.currency]?.rate) || 1.0;
+      const avgA = ((a.totalPrice || 0) * rateA) / Math.max(countA, 1);
+      const avgB = ((b.totalPrice || 0) * rateB) / Math.max(countB, 1);
+      if (Math.abs(avgA - avgB) > 0.01) {
+        return avgA - avgB;
       }
-      return b.ratingCount - a.ratingCount; // Secondary: ratings count
+      return countB - countA; // Desempate: mayor cantidad de discos
+    } else if (sortCriteria === 'rating-desc') {
+      const ratingA = typeof a.rating === 'number' ? a.rating : parseFloat(a.rating) || 0;
+      const ratingB = typeof b.rating === 'number' ? b.rating : parseFloat(b.rating) || 0;
+      if (ratingB !== ratingA) {
+        return ratingB - ratingA; // Primary: mejor rating
+      }
+      const countRatingA = typeof a.ratingCount === 'number' ? a.ratingCount : parseInt(a.ratingCount, 10) || 0;
+      const countRatingB = typeof b.ratingCount === 'number' ? b.ratingCount : parseInt(b.ratingCount, 10) || 0;
+      if (countRatingB !== countRatingA) {
+        return countRatingB - countRatingA;
+      }
+      return countB - countA;
     }
-    return 0;
+    return countB - countA;
   });
   
   // UI Display
