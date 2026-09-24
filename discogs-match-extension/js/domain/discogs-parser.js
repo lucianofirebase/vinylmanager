@@ -646,6 +646,32 @@
         }
       });
 
+      let nextDataForSaleCount = 0;
+      const nextDataScript = doc.querySelector('script#__NEXT_DATA__');
+      if (nextDataScript && nextDataScript.textContent) {
+        try {
+          const nextData = JSON.parse(nextDataScript.textContent);
+          const pProps = nextData?.props?.pageProps;
+          const relData = pProps?.release || pProps?.data || pProps?.releaseData || pProps?.marketplace;
+          const candidateForSale = [
+            relData?.num_for_sale,
+            relData?.numForSale,
+            relData?.marketplace?.total,
+            relData?.total,
+            relData?.listingCount,
+            pProps?.totalListings
+          ];
+          for (const cand of candidateForSale) {
+            if (cand !== undefined && cand !== null) {
+              const parsed = typeof cand === 'number' ? cand : parseInt(String(cand).replace(/[^\d]/g, ''), 10);
+              if (!isNaN(parsed) && parsed > 0 && parsed > nextDataForSaleCount) {
+                nextDataForSaleCount = parsed;
+              }
+            }
+          }
+        } catch (e) {}
+      }
+
       let totalWorldListings = Math.max(
         rawRowsCount,
         unshippableCount,
