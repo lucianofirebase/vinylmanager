@@ -845,8 +845,49 @@ async function restoreCompletedScanIfAvailable(savedUser) {
       return false;
     }
 
-    console.log(`[ScanPersistence] Restaurando análisis previo para ${savedUser}: ${data.groupedSellers.length} vendedores.`);
+    // Calculate friendly relative age and exact formatted datetime
+    const diffMin = Math.round((Date.now() - (data.timestamp || Date.now())) / 60000);
+    const ageStr = diffMin < 1 ? 'menos de 1 minuto' : (diffMin < 60 ? `${diffMin} min` : (diffMin < 120 ? '1 hora' : `${Math.round(diffMin / 60)} horas`));
+    const scanDate = new Date(data.timestamp || Date.now());
+    const dateFormatted = scanDate.toLocaleDateString([], { day: '2-digit', month: 'short' });
+    const timeFormatted = scanDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fullTimeStr = `${dateFormatted}, ${timeFormatted} hs`;
 
+    console.log(`[ScanPersistence] Restaurando análisis previo para ${savedUser}: ${data.groupedSellers.length} vendedores (guardado hace ${ageStr}).`);
+
+    // 1. Show elegant Cache Restoration Loading Screen immediately
+    const loadingScreen = document.getElementById('cache-restoration-loading-screen');
+    const emptyStateEl = document.getElementById('empty-state');
+    const wantlistManagerEl = document.getElementById('wantlist-manager');
+    const resultsViewWrapperEl = document.getElementById('results-view-wrapper');
+
+    if (emptyStateEl) emptyStateEl.style.display = 'none';
+    if (wantlistManagerEl) wantlistManagerEl.style.display = 'none';
+    if (resultsViewWrapperEl) resultsViewWrapperEl.style.display = 'none';
+
+    if (loadingScreen) {
+      const ageSubtitle = document.getElementById('cache-restore-age-subtitle');
+      const sellersMetric = document.getElementById('cache-restore-sellers-metric');
+      const matchesMetric = document.getElementById('cache-restore-matches-metric');
+      const timeMetric = document.getElementById('cache-restore-time-metric');
+      const progressBar = document.getElementById('cache-restore-progress-bar');
+      const statusText = document.getElementById('cache-restore-status-text');
+
+      if (ageSubtitle) ageSubtitle.textContent = `Análisis guardado hace ${ageStr} (${fullTimeStr})`;
+      if (sellersMetric) sellersMetric.textContent = `${data.groupedSellers.length.toLocaleString()}`;
+      if (matchesMetric) matchesMetric.textContent = `${(data.allListings || []).length.toLocaleString()} ofertas`;
+      if (timeMetric) timeMetric.textContent = `Hace ${ageStr}`;
+      if (progressBar) progressBar.style.width = '30%';
+      if (statusText) statusText.textContent = 'Cargando datos guardados en memoria local...';
+
+      loadingScreen.style.display = 'flex';
+      loadingScreen.style.opacity = '1';
+    }
+
+    // Yield execution briefly to let browser paint loading screen
+    await new Promise(r => setTimeout(r, 200));
+
+    // Populate data in state
     state.allListings = data.allListings || [];
     state.groupedSellers = data.groupedSellers || [];
     if (data.buyerCountry) {
@@ -858,6 +899,12 @@ async function restoreCompletedScanIfAvailable(savedUser) {
       state.wants = data.wants;
     }
 
+    // Animate progress bar step 2
+    const progressBar = document.getElementById('cache-restore-progress-bar');
+    const statusText = document.getElementById('cache-restore-status-text');
+    if (progressBar) progressBar.style.width = '75%';
+    if (statusText) statusText.textContent = 'Reconstruyendo ranking y calculando consolidación...';
+
     // Update UI counters
     if (metricWantsCount) metricWantsCount.textContent = state.wants ? state.wants.length : (data.wantsCount || 0);
     if (metricSellersCount) metricSellersCount.textContent = state.groupedSellers.length;
@@ -866,23 +913,51 @@ async function restoreCompletedScanIfAvailable(savedUser) {
     // Enable filters
     toggleFiltersState(true);
 
+    // Populate persistent notice banner in results
+    const noticeBanner = document.getElementById('cached-scan-notice-banner');
+    if (noticeBanner) {
+      const ageText = document.getElementById('cached-scan-age-text');
+      const dtText = document.getElementById('cached-scan-datetime-text');
+      const sellersCount = document.getElementById('cached-scan-sellers-count');
+      const matchesCount = document.getElementById('cached-scan-matches-count');
+
+      if (ageText) ageText.textContent = ageStr;
+      if (dtText) dtText.textContent = `(${fullTimeStr})`;
+      if (sellersCount) sellersCount.textContent = `${state.groupedSellers.length.toLocaleString()}`;
+      if (matchesCount) matchesCount.textContent = `${state.allListings.length.toLocaleString()}`;
+      noticeBanner.style.display = 'flex';
+    }
+
     // Render results
     renderResults();
+
+    if (progressBar) progressBar.style.width = '100%';
+    if (statusText) statusText.textContent = '✓ ¡Listo! Abriendo ranking de vendedores...';
+
+    // Smooth pause so user sees confirmation and doesn't get a sudden jarring flash
+    await new Promise(r => setTimeout(r, 650));
+
+    // Fade out loading screen smoothly
+    if (loadingScreen) {
+      loadingScreen.style.opacity = '0';
+      await new Promise(r => setTimeout(r, 300));
+      loadingScreen.style.display = 'none';
+    }
 
     // Navigate straight to results view
     navigateToView('results-sellers', false);
 
     // Show indicator toast & log
-    const diffMin = Math.round((Date.now() - data.timestamp) / 60000);
-    const ageStr = diffMin < 60 ? `${diffMin} min` : `${Math.round(diffMin / 60)} h`;
     if (typeof showToast === 'function') {
-      showToast(`✓ Análisis previo cargado (${data.groupedSellers.length} tiendas con stock • guardado hace ${ageStr})`, 'info', 4500);
+      showToast(`✓ Análisis en caché cargado (${data.groupedSellers.length} tiendas • guardado hace ${ageStr})`, 'info', 5000);
     }
-    log(`✓ Análisis previo cargado automáticamente (${data.groupedSellers.length} tiendas • guardado hace ${ageStr}).`, 'success');
+    log(`✓ Análisis previo cargado automáticamente (${data.groupedSellers.length} tiendas • guardado hace ${ageStr} • ${fullTimeStr}).`, 'success');
 
     return true;
   } catch (err) {
     console.warn('Error restoring completed scan:', err);
+    const loadingScreen = document.getElementById('cache-restoration-loading-screen');
+    if (loadingScreen) loadingScreen.style.display = 'none';
     return false;
   }
 }
@@ -1517,6 +1592,8 @@ document.addEventListener('DOMContentLoaded', () => {
   if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', openScanCacheModal);
   const btnRescanResults = document.getElementById('btn-rescan-results');
   if (btnRescanResults) btnRescanResults.addEventListener('click', openScanCacheModal);
+  const btnCachedBannerRescan = document.getElementById('btn-cached-banner-rescan');
+  if (btnCachedBannerRescan) btnCachedBannerRescan.addEventListener('click', openScanCacheModal);
   
   // Filters
   const displayCurrencySelect = document.getElementById('display-currency');

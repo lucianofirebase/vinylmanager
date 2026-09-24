@@ -1038,6 +1038,8 @@ async function startMarketplaceScan(startIndex = 0) {
 
     renderResults();
     saveCompletedScanResults();
+    const cachedNotice = document.getElementById('cached-scan-notice-banner');
+    if (cachedNotice) cachedNotice.style.display = 'none';
     
   } catch (error) {
     if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {

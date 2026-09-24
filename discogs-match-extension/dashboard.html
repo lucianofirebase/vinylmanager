@@ -566,6 +566,56 @@
       <!-- RESULTS CONTAINER -->
       <div class="results-container flex-1 flex flex-col">
 
+        <!-- CACHE RESTORATION LOADING STATION (Smooth loading transition when resuming saved scan) -->
+        <div id="cache-restoration-loading-screen" class="border border-hairline-dark bg-pure-white p-8 sm:p-12 w-full max-w-2xl mx-auto my-12 shadow-[4px_4px_0px_rgba(0,0,0,0.06)] relative flex flex-col items-center text-center font-mono transition-opacity duration-300" style="display: none;">
+          <!-- Prada Linea Rossa Accent Stripe -->
+          <div class="absolute top-0 left-0 right-0 h-1.5 bg-prada-red"></div>
+
+          <div class="mb-6 flex flex-col items-center">
+            <div class="w-16 h-16 bg-pitch-black text-pure-white flex items-center justify-center mb-4 shadow-sm relative">
+              <span class="material-symbols-outlined text-3xl animate-spin" style="animation-duration: 2.2s;">album</span>
+              <div class="absolute -bottom-1 -right-1 w-5 h-5 bg-prada-red text-white flex items-center justify-center text-[10px] font-bold">
+                ✓
+              </div>
+            </div>
+            <span class="text-[10px] font-bold tracking-widest text-prada-red uppercase mb-1.5">[ MEMORIA LOCAL / CACHÉ ACTIVA ]</span>
+            <h2 class="font-sans font-black text-2xl uppercase tracking-tight text-pitch-black">RESTAURANDO ANÁLISIS PREVIO</h2>
+            <p class="text-xs text-muted-graphite font-mono mt-1" id="cache-restore-age-subtitle">
+              Cargando resultados guardados recientemente...
+            </p>
+          </div>
+
+          <!-- Info pill with scan metrics -->
+          <div class="w-full bg-ivory-warm border border-hairline-dark p-4 mb-6 text-left grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div>
+              <span class="text-[9px] uppercase tracking-wider text-muted-graphite block font-semibold">TIENDAS CON STOCK:</span>
+              <span class="text-base font-bold text-pitch-black" id="cache-restore-sellers-metric">—</span>
+            </div>
+            <div>
+              <span class="text-[9px] uppercase tracking-wider text-muted-graphite block font-semibold">OFERTAS EN STOCK:</span>
+              <span class="text-base font-bold text-prada-blue" id="cache-restore-matches-metric">—</span>
+            </div>
+            <div>
+              <span class="text-[9px] uppercase tracking-wider text-muted-graphite block font-semibold">GUARDADO HACE:</span>
+              <span class="text-base font-bold text-prada-red" id="cache-restore-time-metric">—</span>
+            </div>
+          </div>
+
+          <!-- Animated Progress / Status Bar -->
+          <div class="w-full max-w-md font-mono">
+            <div class="w-full bg-surface-low border border-hairline-dark h-2 overflow-hidden">
+              <div id="cache-restore-progress-bar" class="bg-prada-red h-full transition-all duration-500 ease-out" style="width: 15%;"></div>
+            </div>
+            <div class="flex justify-between items-center text-[11px] text-muted-graphite font-mono mt-2">
+              <span id="cache-restore-status-text" class="font-bold text-pitch-black uppercase truncate">Reconstruyendo ranking y calculando consolidación...</span>
+              <span class="text-emerald-700 font-bold uppercase text-[9px] flex items-center gap-1 shrink-0 ml-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                RESTAURANDO
+              </span>
+            </div>
+          </div>
+        </div>
+
         <!-- INTERACTIVE ONBOARDING / SELECTION PORTAL (EMPTY STATE) -->
         <div
           class="empty-state border border-hairline-dark bg-pure-white p-6 sm:p-10 w-full max-w-4xl relative flex flex-col items-center text-center mx-auto my-6 shadow-[4px_4px_0px_rgba(0,0,0,0.05)]"
@@ -954,7 +1004,39 @@
         </div>
 
         <!-- RESULTS RUNWAY WRAPPER (Stitch Runway Editorial Spread) -->
-        <div id="results-view-wrapper" class="w-full flex flex-col gap-10 mb-8" style="display: none;">
+        <div id="results-view-wrapper" class="w-full flex flex-col gap-8 mb-8" style="display: none;">
+
+          <!-- CACHED SCAN NOTIFICATION BANNER (Stitch Editorial Alert) -->
+          <div id="cached-scan-notice-banner" class="w-full bg-ivory-warm border border-hairline-dark p-3.5 sm:px-5 sm:py-3.5 flex flex-wrap items-center justify-between gap-4 font-mono shadow-xs relative" style="display: none;">
+            <div class="absolute top-0 left-0 bottom-0 w-1.5 bg-prada-blue"></div>
+            <div class="flex items-center gap-3.5 min-w-0">
+              <div class="w-9 h-9 bg-pure-white border border-hairline-dark flex items-center justify-center text-prada-blue shrink-0 shadow-2xs">
+                <span class="material-symbols-outlined text-[20px]">history</span>
+              </div>
+              <div class="flex flex-col min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100/80 text-blue-900 border border-blue-300">
+                    ANÁLISIS RESTAURADO DE CACHÉ
+                  </span>
+                  <span class="text-xs font-bold text-pitch-black">
+                    Guardado hace <span id="cached-scan-age-text">hace un momento</span>
+                  </span>
+                  <span class="text-[10px] text-muted-graphite font-normal" id="cached-scan-datetime-text">
+                    —
+                  </span>
+                </div>
+                <span class="text-[10px] text-muted-graphite mt-0.5 leading-relaxed">
+                  Mostrando <strong class="text-pitch-black" id="cached-scan-sellers-count">0</strong> tiendas y <strong class="text-pitch-black" id="cached-scan-matches-count">0</strong> ofertas cruzadas con tu lista sin tener que esperar otro escaneo largo.
+                </span>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button id="btn-cached-banner-rescan" type="button" class="px-3.5 py-1.5 bg-pure-white border border-hairline-dark hover:border-prada-red hover:text-prada-red text-pitch-black text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs" data-tooltip="Escanear en vivo el marketplace para actualizar precios y nuevo stock" data-tooltip-pos="top">
+                <span class="material-symbols-outlined text-[13px] text-prada-red">refresh</span>
+                <span>Actualizar Escaneo</span>
+              </button>
+            </div>
+          </div>
 
           <!-- SECTION 1: CRATE OPTIMIZER / RUNWAY BENTO (High-End Editorial Consolidation) -->
           <section class="flex flex-col gap-4">
