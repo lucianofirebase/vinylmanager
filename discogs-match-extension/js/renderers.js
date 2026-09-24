@@ -850,8 +850,8 @@ function renderResults() {
     currentAppView = 'results-no-results';
     updateForwardAndBackButtons();
 
-    // Trigger ASP verification for grouped sellers in case some have banners not yet fetched!
-    if (typeof verifyDisplayedSellersAsp === 'function' && state && state.groupedSellers) {
+    // Only verify ASP if free shipping filter is active
+    if (typeof verifyDisplayedSellersAsp === 'function' && state && state.groupedSellers && filterFreeShipping && filterFreeShipping.checked) {
       verifyDisplayedSellersAsp(state.groupedSellers);
     }
     return;
@@ -1267,11 +1267,13 @@ function renderResults() {
     });
   });
 
-  // Trigger background ASP banner verification for visible sellers that don't have it yet
+  // Trigger background ASP banner verification ONLY if free shipping filter is active
   if (typeof verifyDisplayedSellersAsp === 'function') {
     const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
-    const targetSellers = isFreeShipFilterActive ? (state.groupedSellers || filtered) : filtered;
-    verifyDisplayedSellersAsp(targetSellers);
+    if (isFreeShipFilterActive) {
+      const targetSellers = state.groupedSellers || filtered;
+      verifyDisplayedSellersAsp(targetSellers);
+    }
   }
 }
 
@@ -1287,23 +1289,22 @@ function scheduleAspRenderResults() {
 }
 
 async function verifyDisplayedSellersAsp(displayedSellers) {
-  console.log(`[DEBUG VERIFY] verifyDisplayedSellersAsp llamado con ${displayedSellers?.length || 0} vendedores. isVerifyingAsp = ${isVerifyingAsp}`);
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
+  if (!filterFreeShipping || !filterFreeShipping.checked) return;
   
   // Find sellers in view that haven't been checked yet, prioritized by match count descending
   const unchecked = displayedSellers
     .filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold)
     .sort((a, b) => ((b.displayListings || b.listings || []).length) - ((a.displayListings || a.listings || []).length));
     
-  console.log(`[DEBUG VERIFY] Vendedores pendientes por revisar (${unchecked.length}):`, unchecked.map(s => `${s.name} (${(s.displayListings || s.listings || []).length} matches)`));
   if (unchecked.length === 0) return;
 
   isVerifyingAsp = true;
   try {
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
-    // Check up to 250 candidate sellers with highest matches
-    const batch = unchecked.slice(0, 250);
+    // Check up to 15 candidate sellers with highest matches
+    const batch = unchecked.slice(0, 15);
     const CONCURRENCY = 4;
     let updatedAny = false;
 

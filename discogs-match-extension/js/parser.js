@@ -389,53 +389,8 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null, sellerId
   let threshold = null;
   let fetchSucceeded = false;
 
-  // 1. PRIMARY: Official Discogs Shipping Policies API
-  // https://api.discogs.com/v3/marketplace/shipping/policies?seller_id=${targetSellerId}&country=${encodeURIComponent(buyer)}
-  try {
-    let targetSellerId = sellerId;
-    if (!targetSellerId) {
-      targetSellerId = await resolveSellerId(cleanSeller);
-    }
-
-    if (targetSellerId) {
-      const policyApiUrl = `https://api.discogs.com/v3/marketplace/shipping/policies?seller_id=${targetSellerId}&country=${encodeURIComponent(buyer)}`;
-      console.log(`[DEBUG ASP] Solicitando API Oficial: ${policyApiUrl}`);
-
-      let policyJsonStr = null;
-      if (typeof fetchThroughTab === 'function') {
-        try {
-          policyJsonStr = await fetchThroughTab(policyApiUrl);
-        } catch (tabErr) {
-          console.warn(`[DEBUG ASP] fetchThroughTab error para API policies:`, tabErr.message);
-        }
-      }
-      if (!policyJsonStr && typeof fetchDirect === 'function') {
-        try {
-          policyJsonStr = await fetchDirect(policyApiUrl);
-        } catch (dirErr) {}
-      }
-
-      if (policyJsonStr) {
-        try {
-          const policyData = typeof policyJsonStr === 'object' ? policyJsonStr : JSON.parse(policyJsonStr);
-          if (policyData && Array.isArray(policyData.policies)) {
-            fetchSucceeded = true;
-            threshold = parseShippingPoliciesJson(policyData, buyer);
-            if (threshold) {
-              threshold.seller = cleanSeller;
-              console.log(`[DEBUG ASP] ✓ Umbral detectado vía API Oficial para ${cleanSeller}:`, threshold);
-            } else {
-              console.log(`[DEBUG ASP] ✗ API Oficial confirmó sin envío gratis para ${cleanSeller}`);
-            }
-          }
-        } catch (parseJsonErr) {
-          console.warn(`[DEBUG ASP] Error parseando respuesta JSON de policies:`, parseJsonErr);
-        }
-      }
-    }
-  } catch (apiErr) {
-    console.warn(`[DEBUG ASP] Falló consulta de API policies para ${cleanSeller}:`, apiErr.message);
-  }
+  // Discogs /v3/marketplace/shipping/policies endpoint requires OAuth seller-level auth
+  // and returns 400 Bad Request for 3rd-party queries. Skipped to prevent network errors.
 
   // 2. FALLBACK: Scrape seller wantlist store page HTML if API did not yield a valid response
   if (!fetchSucceeded && typeof fetchThroughTab === 'function') {
