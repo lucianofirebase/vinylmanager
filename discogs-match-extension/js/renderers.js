@@ -1978,7 +1978,7 @@ function calculateAndRenderStats() {
               </div>
               <button type="button" id="btn-toggle-not-for-sale-height" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1.5 shadow-2xs cursor-pointer ml-auto" data-tooltip="Alternar entre ajustar la lista al alto del bloque o desplegar todos los discos hacia abajo" data-tooltip-pos="top">
                 <span class="material-symbols-outlined text-[14px]">unfold_more</span>
-                <span class="btn-toggle-text">DESPLEGAR TODO</span>
+                <span class="btn-toggle-text">DESPLEGAR</span>
               </button>
             </div>
             
@@ -1991,6 +1991,7 @@ function calculateAndRenderStats() {
                   ✓ ¡Excelente! Todos los discos de tu lista tienen al menos una copia disponible para comprar hoy.
                 </p>
               `}
+              <div id="not-for-sale-empty-tab" class="font-mono text-xs text-muted-graphite p-8 text-center bg-ivory-warm border border-hairline-dark" style="display: none;"></div>
             </div>
           </div>
         </div>
@@ -2006,16 +2007,35 @@ function calculateAndRenderStats() {
 
     statsView.querySelectorAll('.not-for-sale-tab-btn[data-filter]').forEach(btn => {
       btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
         statsView.querySelectorAll('.not-for-sale-tab-btn[data-filter]').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         const filter = btn.dataset.filter;
+        let visibleCount = 0;
         statsView.querySelectorAll('.not-for-sale-row').forEach(row => {
           if (filter === 'all' || row.dataset.category === filter) {
             row.style.display = 'flex';
+            visibleCount++;
           } else {
             row.style.display = 'none';
           }
         });
+        const emptyTabEl = statsView.querySelector('#not-for-sale-empty-tab');
+        if (emptyTabEl) {
+          if (visibleCount === 0) {
+            emptyTabEl.style.display = 'block';
+            if (filter === 'blocked') {
+              emptyTabEl.innerHTML = `✓ No tienes vinilos bloqueados para envío a <strong>${escapeHTML(buyerCountryVal)}</strong>.`;
+            } else if (filter === 'zero') {
+              emptyTabEl.innerHTML = `✓ No tienes vinilos agotados mundialmente (0 copias).`;
+            } else {
+              emptyTabEl.innerHTML = `✓ No hay vinilos en esta categoría.`;
+            }
+          } else {
+            emptyTabEl.style.display = 'none';
+          }
+        }
         setTimeout(syncStatsColumnsHeight, 60);
       });
     });
@@ -2056,14 +2076,14 @@ function calculateAndRenderStats() {
         const text = toggleHeightBtn.querySelector('.btn-toggle-text');
         if (isExpanded) {
           if (icon) icon.textContent = 'unfold_less';
-          if (text) text.textContent = 'AJUSTAR A PREFERENCIAS';
+          if (text) text.textContent = 'COLAPSAR';
           if (col2Card) {
             col2Card.style.height = 'auto';
             col2Card.style.maxHeight = 'none';
           }
         } else {
           if (icon) icon.textContent = 'unfold_more';
-          if (text) text.textContent = 'DESPLEGAR TODO';
+          if (text) text.textContent = 'DESPLEGAR';
           syncStatsColumnsHeight();
         }
       });
@@ -2516,13 +2536,13 @@ function createCollectionVinylCard(record, index) {
 
   card.innerHTML = `
     <!-- Top Action Row (View on Discogs & Remove) -->
-    <div class="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+    <div class="collection-card-actions">
       ${discogsUrl ? `
-        <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer" class="w-6 h-6 bg-pure-white/95 hover:bg-pitch-black hover:text-pure-white border border-hairline-dark text-pitch-black flex items-center justify-center transition-colors shadow-xs cursor-pointer" title="Ver en Discogs" data-tooltip="Abrir release en Discogs" data-tooltip-pos="top" onclick="event.stopPropagation();">
+        <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer" class="collection-action-btn" title="Ver en Discogs" data-tooltip="Abrir release en Discogs" data-tooltip-pos="top" onclick="event.stopPropagation();">
           <span class="material-symbols-outlined text-[13px]">open_in_new</span>
         </a>
       ` : ''}
-      <button type="button" class="btn-remove-collection w-6 h-6 bg-pure-white/95 hover:bg-prada-red hover:text-pure-white border border-hairline-dark text-pitch-black flex items-center justify-center transition-colors shadow-xs cursor-pointer" title="Eliminar de mi colección" data-tooltip="Quitar de mi colección" data-tooltip-pos="top">
+      <button type="button" class="collection-action-btn btn-remove btn-remove-collection" title="Eliminar de mi colección" data-tooltip="Quitar de mi colección" data-tooltip-pos="top">
         <span class="material-symbols-outlined text-[13px]">delete</span>
       </button>
     </div>

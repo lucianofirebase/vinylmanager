@@ -1670,19 +1670,32 @@ document.addEventListener('click', (e) => {
   if (notForSaleTab) {
     e.preventDefault();
     const filter = notForSaleTab.getAttribute('data-filter');
-    const container = notForSaleTab.closest('.stats-card-rich');
+    const container = notForSaleTab.closest('.stats-card-rich') || notForSaleTab.closest('#stats-not-for-sale-card');
     if (container) {
       container.querySelectorAll('.not-for-sale-tab-btn').forEach(btn => btn.classList.remove('active'));
       notForSaleTab.classList.add('active');
       const rows = container.querySelectorAll('.not-for-sale-row');
+      let visibleCount = 0;
       rows.forEach(row => {
         const cat = row.getAttribute('data-category');
         if (filter === 'all' || filter === cat) {
           row.style.display = 'flex';
+          visibleCount++;
         } else {
           row.style.display = 'none';
         }
       });
+      const emptyTabEl = container.querySelector('#not-for-sale-empty-tab');
+      if (emptyTabEl) {
+        if (visibleCount === 0) {
+          emptyTabEl.style.display = 'block';
+          emptyTabEl.innerHTML = filter === 'blocked'
+            ? '✓ No tienes vinilos bloqueados para envío a tu país.'
+            : '✓ No hay vinilos en esta categoría.';
+        } else {
+          emptyTabEl.style.display = 'none';
+        }
+      }
     }
     return;
   }

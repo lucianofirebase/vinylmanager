@@ -5088,6 +5088,52 @@ select option {
   z-index: 1;
 }
 
+/* Floating Actions on Collection Cards */
+.collection-card-actions {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 30 !important;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+}
+
+.collection-vinyl-card:hover .collection-card-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.collection-action-btn {
+  width: 26px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid #1A1A1A;
+  color: #1A1A1A;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  text-decoration: none;
+}
+
+.collection-action-btn:hover {
+  background: #111111;
+  color: #FFFFFF;
+  transform: scale(1.05);
+}
+
+.collection-action-btn.btn-remove:hover {
+  background: #E02B20;
+  border-color: #E02B20;
+  color: #FFFFFF;
+}
+
 /* Active tab badge highlight in Prada Red */
 #tab-btn-collection.active #badge-collection-count,
 button.active #badge-collection-count {
