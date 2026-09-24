@@ -891,166 +891,131 @@ async function startMarketplaceScan(startIndex = 0) {
   state.wants.sort((a, b) => (b.isPriority ? 1 : 0) - (a.isPriority ? 1 : 0));
 
   const scanStartTime = Date.now();
+  let liveScannedCount = 0;
+  let currentBatchSize = 3;
+  let cooldownItemsLeft = 0;
   
   try {
-    log('Conectando con Discogs Shop API para escanear todas las ofertas activas...', 'action');
-    if (scanningEtaBadge) scanningEtaBadge.textContent = '⚡ Conexión Nativa';
-    if (scanningOffersBadge) scanningOffersBadge.textContent = 'Consultando ofertas...';
-
-    const PAGE_SIZE = 100;
-    // 1. Fetch initial page and determine total offers
-    const initialData = await shopApiClient.fetchShopItems({
-      count: PAGE_SIZE,
-      offset: 0,
-      sellerRatingMin: null,
-      sort: 'listedDate',
-      sortOrder: 'descending',
-      facets: true
-    });
-
-    const totalOffers = initialData.totalCount || (initialData.items ? initialData.items.length : 0);
-    log(`✓ Total de ofertas activas para tu Wantlist en Discogs: ${totalOffers.toLocaleString()} copias.`, 'success');
-
-    const updateRadarLiveProgress = (loadedCount, totalCount, sampleItem) => {
-      const pct = Math.min(100, Math.max(1, Math.round((loadedCount / Math.max(totalCount, 1)) * 100)));
-      progressBar.style.width = `${pct}%`;
-      progressPercent.textContent = `${pct}%`;
-      statusTitle.textContent = `Escaneando ofertas (${loadedCount.toLocaleString()} de ${totalCount.toLocaleString()})`;
-      progressText.textContent = `Procesando: ${loadedCount.toLocaleString()} ofertas recopiladas...`;
+    for (let i = startIndex; i < state.wants.length; i += currentBatchSize) {
+      if (state.cancelRequested) {
+        log('Escaneo cancelado por el usuario.', 'error');
+        break;
+      }
       
-      if (scanningBadgeStep) scanningBadgeStep.textContent = `${loadedCount.toLocaleString()} de ${totalCount.toLocaleString()} ofertas`;
-      if (scanningOffersBadge) {
-        scanningOffersBadge.textContent = `${state.allListings.length.toLocaleString()} ofertas activas`;
-        scanningOffersBadge.className = 'text-[11px] font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 rounded-full';
-      }
-      if (scanningEtaBadge) {
-        const elapsed = (Date.now() - scanStartTime) / 1000;
-        const rate = loadedCount / Math.max(elapsed, 0.1);
-        const remaining = Math.max(0, totalCount - loadedCount);
-        const estSec = Math.round(remaining / Math.max(rate, 1));
-        scanningEtaBadge.textContent = estSec > 0 ? `⏱️ Restan ~${estSec} seg` : 'Finalizando...';
+      // Adaptive batch throttling: if rate limit was triggered, switch to serial (1 by 1)
+      if (state.rateLimitTriggered || cooldownItemsLeft > 0) {
+        if (state.rateLimitTriggered) {
+          state.rateLimitTriggered = false;
+          cooldownItemsLeft = 4;
+          log('[Throttling Inteligente] Reduciendo concurrencia a 1 consulta por lote para restablecer margen de API...', 'action');
+        } else {
+          cooldownItemsLeft--;
+        }
+        currentBatchSize = 1;
+      } else {
+        currentBatchSize = 3;
       }
 
-      if (sampleItem) {
-        const displayArtist = sampleItem.release?.artists?.[0]?.name || '';
-        const displayTitle = sampleItem.release?.title || '';
-        if (scanningArtist && displayArtist) scanningArtist.textContent = displayArtist;
-        if (scanningTitle && displayTitle) scanningTitle.textContent = displayTitle;
-        const sampleImg = upgradeDiscogsImageUrl(sampleItem.release?.thumbnail || sampleItem.release?.image || '');
-        const scanningCoverArt = document.getElementById('scanning-cover-art');
-        const coverPlaceholder = document.getElementById('cover-placeholder');
-        if (scanningCoverArt) {
-          if (sampleImg) {
-            scanningCoverArt.style.backgroundImage = `url('${sampleImg}')`;
-            if (coverPlaceholder) coverPlaceholder.style.display = 'none';
-          }
+      const batchItems = state.wants.slice(i, i + currentBatchSize);
+      const remainingCount = state.wants.length - i;
+      const elapsedTimeSec = (Date.now() - scanStartTime) / 1000;
+      const avgSecPerItem = liveScannedCount > 0 ? (elapsedTimeSec / liveScannedCount) : 0.4;
+      const estSecRemaining = Math.round(remainingCount * avgSecPerItem);
+      
+      let timeEstText = '';
+      if (remainingCount > 0) {
+        if (estSecRemaining < 60) {
+          timeEstText = ` • ⏱️ Restan ~${Math.max(1, estSecRemaining)} seg`;
+        } else {
+          const mins = Math.floor(estSecRemaining / 60);
+          const secs = estSecRemaining % 60;
+          timeEstText = ` • ⏱️ Restan ~${mins} min ${secs > 0 ? secs + ' seg' : ''}`;
         }
       }
+      
+      // Execute batch in parallel
+      const results = await Promise.all(
+        batchItems.map((item, bIdx) => scanSingleRelease(item, i + bIdx, state.wants.length, timeEstText))
+      );
+      
+      let hasLiveFetch = false;
+      results.forEach((result, bIdx) => {
+        const item = batchItems[bIdx];
+        if (!result.isFromCache) {
+          liveScannedCount++;
+          hasLiveFetch = true;
+        }
+        state.allListings.push(...result.listings);
+        
+        item.totalWorldListings = result.totalWorldListings !== undefined 
+          ? result.totalWorldListings 
+          : (item.forSaleCount || (result.listings ? result.listings.length : 0));
+        item.unshippableCount = result.unshippableCount || 0;
+        item.unshippableLocations = result.unshippableLocations || [];
+        item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
+        item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
 
+        if (result.communityStats) {
+          if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
+          if (result.communityStats.haveCount !== null && result.communityStats.haveCount !== undefined) item.haveCount = result.communityStats.haveCount;
+          if (result.communityStats.lowPrice) item.lowPrice = result.communityStats.lowPrice;
+          if (result.communityStats.highPrice) item.highPrice = result.communityStats.highPrice;
+          if (result.communityStats.ratingValue) item.ratingValue = result.communityStats.ratingValue;
+          if (result.communityStats.catalogNumber) item.catalogNumber = result.communityStats.catalogNumber;
+          if (result.communityStats.recordLabel) item.recordLabel = result.communityStats.recordLabel;
+        }
+      });
+      
+      // Update stats on-the-fly
       const uniqueSellers = new Set(state.allListings.map(l => l.sellerName));
-      if (metricSellersCount) metricSellersCount.textContent = uniqueSellers.size.toLocaleString();
-      if (metricMatchesCount) metricMatchesCount.textContent = state.allListings.length.toLocaleString();
+      if (metricSellersCount) metricSellersCount.textContent = uniqueSellers.size;
+      if (metricMatchesCount) metricMatchesCount.textContent = state.allListings.length;
       const liveTickerSellers = document.getElementById('ticker-sellers-count');
       if (liveTickerSellers) liveTickerSellers.textContent = uniqueSellers.size.toLocaleString();
       const liveTickerMatches = document.getElementById('ticker-matches-count');
       if (liveTickerMatches) liveTickerMatches.textContent = state.allListings.length.toLocaleString();
-    };
-
-    // Process initial batch
-    if (initialData.items && initialData.items.length > 0) {
-      const mapped = initialData.items.map(it => shopApiClient.mapShopItemToListing(it)).filter(Boolean);
-      state.allListings.push(...mapped);
-      updateRadarLiveProgress(state.allListings.length, totalOffers, initialData.items[0]);
-    }
-
-    // 2. Fetch remaining pages with optimized concurrency
-    if (totalOffers > PAGE_SIZE && !state.cancelRequested) {
-      const offsets = [];
-      for (let off = PAGE_SIZE; off < totalOffers; off += PAGE_SIZE) {
-        offsets.push(off);
-      }
-
-      const CONCURRENCY = 4;
-      for (let i = 0; i < offsets.length; i += CONCURRENCY) {
-        if (state.cancelRequested) {
-          log('Escaneo cancelado por el usuario.', 'error');
-          break;
-        }
-
-        const chunkOffsets = offsets.slice(i, i + CONCURRENCY);
-        const results = await Promise.all(
-          chunkOffsets.map(offset =>
-            shopApiClient.fetchShopItems({
-              count: PAGE_SIZE,
-              offset,
-              sellerRatingMin: null,
-              sort: 'listedDate',
-              sortOrder: 'descending',
-              facets: false
-            }).catch(err => {
-              console.warn(`[ShopApiClient] Error consultando offset ${offset}:`, err.message);
-              return { items: [] };
-            })
-          )
-        );
-
-        let latestSample = null;
-        results.forEach(res => {
-          if (res && Array.isArray(res.items) && res.items.length > 0) {
-            const mapped = res.items.map(it => shopApiClient.mapShopItemToListing(it)).filter(Boolean);
-            state.allListings.push(...mapped);
-            latestSample = res.items[res.items.length - 1];
-          }
-        });
-
-        updateRadarLiveProgress(state.allListings.length, totalOffers, latestSample);
-
-        // Breath 80ms between chunks
-        if (i + CONCURRENCY < offsets.length) {
-          await new Promise(r => setTimeout(r, 80));
-        }
+      
+      // Save scan session progress
+      saveScanSession(Math.min(i + currentBatchSize - 1, state.wants.length - 1));
+      
+      // Short pause between live batches to respect Discogs server limits
+      if (hasLiveFetch) {
+        const pauseDelay = currentBatchSize === 1 ? 900 : 600;
+        await new Promise(resolve => setTimeout(resolve, pauseDelay));
       }
     }
-
-    // Correlate with state.wants for shipping restriction & world count classification
-    const listingsByRelease = new Map();
-    state.allListings.forEach(l => {
-      const rid = String(l.releaseId);
-      if (!listingsByRelease.has(rid)) listingsByRelease.set(rid, []);
-      listingsByRelease.get(rid).push(l);
-    });
-
-    state.wants.forEach(item => {
-      const rid = String(item.id || item.releaseId);
-      const matched = listingsByRelease.get(rid) || [];
-      if (matched.length > 0) {
-        item.totalWorldListings = matched.length;
-        item.unshippableCount = 0;
-        item.isBlockedByShipping = false;
-        item.hasShippingBlockNotice = false;
-        if (!item.image && matched[0].image) {
-          item.image = matched[0].image;
-        }
-      } else {
-        const worldCount = item.forSaleCount || 0;
-        if (worldCount > 0) {
-          item.totalWorldListings = worldCount;
-          item.unshippableCount = worldCount;
-          item.isBlockedByShipping = true;
-          item.hasShippingBlockNotice = true;
-        } else {
-          item.totalWorldListings = 0;
-          item.unshippableCount = 0;
-          item.isBlockedByShipping = false;
-          item.hasShippingBlockNotice = false;
-        }
-      }
-    });
-
-    log(`✓ Escaneo completado en ${((Date.now() - scanStartTime)/1000).toFixed(1)}s: ${state.allListings.length.toLocaleString()} ofertas activas agrupadas.`, 'success');
+    
+    log('Escaneo completado. Procesando y agrupando resultados...', 'success');
     
     // Group and show results
     groupListingsBySeller();
+
+    // Proactively verify official ASP banners for top matching sellers while the proxy tab is alive
+    if (state.groupedSellers && state.groupedSellers.length > 0 && typeof checkSellerAspBanner === 'function') {
+      const topCandidates = state.groupedSellers.slice(0, 50);
+      const uncheckedCandidates = topCandidates.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
+      if (uncheckedCandidates.length > 0) {
+        log(`Verificando políticas oficiales de envío en Discogs para los mejores vendedores (${uncheckedCandidates.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'info');
+        for (const seller of uncheckedCandidates) {
+          seller.aspChecked = true;
+          try {
+            const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
+            if (thresh) {
+              console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
+              seller.aspBannerThreshold = thresh;
+              seller.freeShippingThreshold = thresh;
+            }
+          } catch (e) {}
+        }
+        groupListingsBySeller();
+      }
+    }
+    
+    // Close background tab if we opened one
+    if (state.proxyTabId !== null) {
+      chrome.tabs.remove(state.proxyTabId);
+      state.proxyTabId = null;
+    }
 
     renderResults();
     saveCompletedScanResults();
