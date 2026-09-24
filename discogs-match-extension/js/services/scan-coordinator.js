@@ -202,6 +202,7 @@
           unshippableCount = parsed.unshippableCount || 0;
           unshippableLocations = parsed.unshippableLocations || [];
           communityStats = parsed.communityStats || {};
+          const isBlocked = !!parsed.isBlockedByShipping || (unshippableCount > 0 && listings.length === 0) || (totalWorldListings > 0 && listings.length === 0);
 
           // Store in cache
           this.cacheRepo.setReleaseListings(releaseId, buyerCountry, {
@@ -209,6 +210,7 @@
             totalWorldListings,
             unshippableCount,
             unshippableLocations,
+            isBlockedByShipping: isBlocked,
             communityStats
           });
         }
@@ -232,6 +234,7 @@
         totalWorldListings,
         unshippableCount,
         unshippableLocations,
+        isBlockedByShipping: (unshippableCount > 0 || totalWorldListings > 0) && listings.length === 0,
         communityStats,
         isFromCache
       };
@@ -315,6 +318,8 @@
             item.totalWorldListings = res.totalWorldListings;
             item.unshippableCount = res.unshippableCount;
             item.unshippableLocations = res.unshippableLocations;
+            item.isBlockedByShipping = !!res.isBlockedByShipping || (res.unshippableCount > 0 && (!res.listings || res.listings.length === 0)) || (res.totalWorldListings > 0 && (!res.listings || res.listings.length === 0));
+            item.hasShippingBlockNotice = !!res.hasShippingBlockNotice;
             if (res.communityStats) {
               Object.assign(item, res.communityStats);
             }

@@ -156,9 +156,16 @@ function parseWantlistHTML(html) {
 
     // Extract for sale count from row text (e.g. "3 en venta desde US$33,78" or "9 for sale from")
     let rowForSaleCount = 0;
-    const forSaleMatch = rowText.match(/(\d[\d.,]*)\s*(?:en venta|for sale)/i);
+    const forSaleMatch = rowText.match(/(\d[\d.,]*)\s*(?:en venta|for sale|a la venta|disponibles|copias|items)/i) ||
+                         rowText.match(/(?:en venta|for sale|a la venta|disponibles)\s*[:(]?\s*(\d[\d.,]*)/i);
     if (forSaleMatch) {
       rowForSaleCount = parseInt(forSaleMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+    } else {
+      const sellLink = row.querySelector('a[href*="/sell/release/"], a[href*="/sell/list"]');
+      if (sellLink) {
+        const sMatch = sellLink.textContent.match(/(\d[\d.,]*)/);
+        if (sMatch) rowForSaleCount = parseInt(sMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+      }
     }
     
     wants.push({
@@ -557,21 +564,41 @@ function parseReleaseHTML(html, releaseId) {
       }
     });
 
-    // Fallback: Check __NEXT_DATA__ JSON script tag if present
-    if (wantCount === null || haveCount === null) {
-      const nextDataScript = doc.querySelector('script#__NEXT_DATA__');
-      if (nextDataScript && nextDataScript.textContent) {
-        try {
-          const nextData = JSON.parse(nextDataScript.textContent);
-          const relData = nextData?.props?.pageProps?.release || nextData?.props?.pageProps?.data;
-          if (relData) {
-            if (relData.community?.want && wantCount === null) wantCount = parseInt(relData.community.want, 10);
-            if (relData.community?.have && haveCount === null) haveCount = parseInt(relData.community.have, 10);
-            if (relData.num_want && wantCount === null) wantCount = parseInt(relData.num_want, 10);
-            if (relData.num_have && haveCount === null) haveCount = parseInt(relData.num_have, 10);
+    let nextDataForSaleCount = 0;
+    const nextDataScript = doc.querySelector('script#__NEXT_DATA__');
+    if (nextDataScript && nextDataScript.textContent) {
+      try {
+        const nextData = JSON.parse(nextDataScript.textContent);
+        const pProps = nextData?.props?.pageProps;
+        const relData = pProps?.release || pProps?.data || pProps?.releaseData;
+        if (relData) {
+          if (relData.community?.want && wantCount === null) wantCount = parseInt(relData.community.want, 10);
+          if (relData.community?.have && haveCount === null) haveCount = parseInt(relData.community.have, 10);
+          if (relData.num_want && wantCount === null) wantCount = parseInt(relData.num_want, 10);
+          if (relData.num_have && haveCount === null) haveCount = parseInt(relData.num_have, 10);
+        }
+        const candidateForSale = [
+          relData?.num_for_sale,
+          relData?.numForSale,
+          relData?.community?.num_for_sale,
+          relData?.community?.for_sale,
+          pProps?.num_for_sale,
+          pProps?.numForSale,
+          pProps?.listingCount,
+          pProps?.totalListings,
+          pProps?.totalCount,
+          pProps?.marketplace?.num_for_sale,
+          pProps?.marketplace?.total,
+          pProps?.statistics?.for_sale,
+          pProps?.statistics?.total_for_sale
+        ];
+        for (const c of candidateForSale) {
+          const parsed = parseInt(c, 10);
+          if (!isNaN(parsed) && parsed > 0 && parsed > nextDataForSaleCount) {
+            nextDataForSaleCount = parsed;
           }
-        } catch (e) {}
-      }
+        }
+      } catch (e) {}
     }
 
     // Fallback: Precise regex matching on "miembros quieren esto" or "quieren esto"
@@ -611,28 +638,32 @@ function parseReleaseHTML(html, releaseId) {
 
   let jsonLdOffersCount = 0;
   try {
-    const jsonLdEl = doc.querySelector('script#release_schema, script[type="application/ld+json"]');
-    if (jsonLdEl) {
-      const data = JSON.parse(jsonLdEl.textContent);
-      if (data) {
-        if (data.catalogNumber) catalogNumber = data.catalogNumber;
-        if (data.recordLabel && Array.isArray(data.recordLabel) && data.recordLabel[0]?.name) {
-          recordLabel = data.recordLabel[0].name;
-        } else if (data.recordLabel?.name) {
-          recordLabel = data.recordLabel.name;
-        }
-        if (data.aggregateRating?.ratingValue) ratingValue = parseFloat(data.aggregateRating.ratingValue);
-        if (data.offers) {
-          lowPrice = parseFloat(data.offers.lowPrice) || null;
-          highPrice = parseFloat(data.offers.highPrice) || null;
-          if (data.offers.offerCount != null) {
-            jsonLdOffersCount = parseInt(data.offers.offerCount, 10) || 0;
-          } else if (Array.isArray(data.offers)) {
-            jsonLdOffersCount = data.offers.length;
+    const jsonLdEls = doc.querySelectorAll('script#release_schema, script[type="application/ld+json"]');
+    jsonLdEls.forEach(el => {
+      try {
+        const data = JSON.parse(el.textContent);
+        if (!data) return;
+        if (data.catalogNumber && !catalogNumber) catalogNumber = data.catalogNumber;
+        if (data.recordLabel && !recordLabel) {
+          if (Array.isArray(data.recordLabel) && data.recordLabel[0]?.name) {
+            recordLabel = data.recordLabel[0].name;
+          } else if (data.recordLabel?.name) {
+            recordLabel = data.recordLabel.name;
           }
         }
-      }
-    }
+        if (data.aggregateRating?.ratingValue && !ratingValue) ratingValue = parseFloat(data.aggregateRating.ratingValue);
+        if (data.offers) {
+          if (!lowPrice) lowPrice = parseFloat(data.offers.lowPrice) || null;
+          if (!highPrice) highPrice = parseFloat(data.offers.highPrice) || null;
+          if (data.offers.offerCount != null) {
+            const count = parseInt(data.offers.offerCount, 10) || 0;
+            if (count > jsonLdOffersCount) jsonLdOffersCount = count;
+          } else if (Array.isArray(data.offers)) {
+            if (data.offers.length > jsonLdOffersCount) jsonLdOffersCount = data.offers.length;
+          }
+        }
+      } catch (itemErr) {}
+    });
   } catch (ldErr) {
     console.warn('Error parsing release_schema JSON-LD:', ldErr);
   }
@@ -970,25 +1001,102 @@ function parseReleaseHTML(html, releaseId) {
     }
   });
   
-  let textOffersCount = 0;
   const bodyText = doc.body ? doc.body.textContent : html;
-  const offerMatch = bodyText.match(/(\d[\d.,]*)\s*(?:en venta|for sale|items? for sale)/i);
-  if (offerMatch) {
-    textOffersCount = parseInt(offerMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+  const bodyTextLower = bodyText.toLowerCase();
+
+  const hasShippingBlockNotice = 
+    bodyTextLower.includes('no hay artículos disponibles a la venta que se envíen a') ||
+    bodyTextLower.includes('no hay articulos disponibles a la venta que se envien a') ||
+    bodyTextLower.includes('no hay copias disponibles a la venta que se envíen a') ||
+    bodyTextLower.includes('no hay copias disponibles a la venta que se envien a') ||
+    bodyTextLower.includes('no hay artículos disponibles para enviar a') ||
+    bodyTextLower.includes('no hay articulos disponibles para enviar a') ||
+    bodyTextLower.includes('no se encontraron artículos que se envíen a') ||
+    bodyTextLower.includes('no se encontraron articulos que se envien a') ||
+    bodyTextLower.includes('no items found that ship to') ||
+    bodyTextLower.includes('no items currently available for sale that ship to') ||
+    bodyTextLower.includes('no items for sale that ship to') ||
+    bodyTextLower.includes('no copies available that ship to') ||
+    bodyTextLower.includes('no sellers currently ship to') ||
+    bodyTextLower.includes('does not ship to your location') ||
+    bodyTextLower.includes('does not ship to your country') ||
+    bodyTextLower.includes('items available from other countries') ||
+    bodyTextLower.includes('copias disponibles de otros países') ||
+    bodyTextLower.includes('copias disponibles de otros paises') ||
+    bodyTextLower.includes('artículos disponibles de otros países') ||
+    bodyTextLower.includes('articulos disponibles de otros paises');
+
+  let textOffersCount = 0;
+  const textMatches = [
+    // "Ver los 15 artículos", "Show all 15 items", "Ver todas las 15 copias"
+    bodyText.match(/(?:ver|show|view)\s+(?:todos?|all)?\s*(?:los|las)?\s*(\d[\d.,]*)\s*(?:artículos|items|copias|copies|disponibles|ofertas|listings)/i),
+    // "En venta: 15", "For sale: 15", "En venta (15)"
+    bodyText.match(/(?:en venta|for sale|a la venta|disponibles?)\s*[:(]\s*(\d[\d.,]*)/i),
+    // "15 en venta", "15 for sale", "15 a la venta", "15 copias disponibles"
+    bodyText.match(/(\d[\d.,]*)\s*(?:copias?|artículos?|items?|ofertas?)?\s*(?:en venta|for sale|a la venta|disponibles?)\b/i),
+    // "Mostrando 0 de 15 artículos", "Showing 0 of 15 items"
+    bodyText.match(/(?:mostrando|showing)\s+\d+\s*(?:–|-|a|to)?\s*\d*\s*(?:de|of)\s*(\d[\d.,]*)/i),
+    // "0 de 15 artículos", "0 of 15 items"
+    bodyText.match(/\b0\s+(?:de|of)\s+(\d[\d.,]*)\s*(?:artículos|items|copias|ofertas|resultados|results|listings)/i),
+    // "15 de otros países", "15 from other countries"
+    bodyText.match(/(\d[\d.,]*)\s*(?:items?|copias?|artículos?)?\s*(?:de otros países|de otros paises|from other countries)/i)
+  ];
+
+  for (const tm of textMatches) {
+    if (tm && tm[1]) {
+      const val = parseInt(tm[1].replace(/[^\d]/g, ''), 10) || 0;
+      if (val > textOffersCount) {
+        textOffersCount = val;
+      }
+    }
   }
 
-  const totalWorldListings = Math.max(
+  // Check specific marketplace release link anchors (e.g. <a href="/sell/release/1234">15 for sale</a>)
+  const sellAnchors = doc.querySelectorAll('a[href*="/sell/release/"], a[href*="ships_from="], a[href*="#marketplace"], .release_stats_for_sale, [data-testid*="for-sale"]');
+  sellAnchors.forEach(a => {
+    const aText = a.textContent.trim();
+    const aMatch = aText.match(/(\d[\d.,]*)/);
+    if (aMatch) {
+      const aCount = parseInt(aMatch[1].replace(/[^\d]/g, ''), 10) || 0;
+      if (aCount > textOffersCount) textOffersCount = aCount;
+    }
+  });
+
+  let totalWorldListings = Math.max(
     rawRowsCount,
     unshippableCount,
     jsonLdOffersCount || 0,
-    textOffersCount || 0
+    textOffersCount || 0,
+    nextDataForSaleCount || 0
   );
+
+  // If Discogs explicitly reported that copies exist but don't ship to buyer's country,
+  // or if we detected unshippable rows/locations while having 0 valid listings:
+  let isBlocked = false;
+  if (hasShippingBlockNotice) {
+    isBlocked = true;
+    if (unshippableCount === 0) {
+      unshippableCount = Math.max(1, totalWorldListings);
+    }
+    if (totalWorldListings === 0) {
+      totalWorldListings = unshippableCount;
+    }
+  } else if (unshippableCount > 0 && listings.length === 0) {
+    isBlocked = true;
+  } else if (totalWorldListings > 0 && listings.length === 0) {
+    isBlocked = true;
+    if (unshippableCount === 0) {
+      unshippableCount = totalWorldListings;
+    }
+  }
 
   return {
     listings: listings,
     totalWorldListings: totalWorldListings,
     unshippableCount: unshippableCount,
     unshippableLocations: unshippableLocations,
+    isBlockedByShipping: isBlocked,
+    hasShippingBlockNotice: hasShippingBlockNotice,
     communityStats: {
       haveCount,
       wantCount,

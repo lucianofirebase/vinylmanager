@@ -1620,19 +1620,23 @@ function calculateAndRenderStats() {
 
     // Helper to determine if a release has copies on Discogs that don't ship to the buyer
     const isBlockedByShipping = (w) => {
+      if (!w) return false;
+      if (w.isBlockedByShipping) return true;
+      if (w.hasShippingBlockNotice) return true;
       if (w.unshippableCount && w.unshippableCount > 0) return true;
       if (w.totalWorldListings && w.totalWorldListings > 0) return true;
       if (w.forSaleCount && w.forSaleCount > 0) return true;
       if (w.communityStats && w.communityStats.totalOffersCount > 0) return true;
+      if (w.unshippableLocations && w.unshippableLocations.length > 0) return true;
       return false;
     };
 
     const getWorldCount = (w) => {
-      return (typeof w.totalWorldListings === 'number' ? w.totalWorldListings : 0) ||
-             (typeof w.forSaleCount === 'number' ? w.forSaleCount : 0) ||
-             (w.communityStats && w.communityStats.totalOffersCount ? w.communityStats.totalOffersCount : 0) ||
+      return (typeof w.totalWorldListings === 'number' && w.totalWorldListings > 0 ? w.totalWorldListings : 0) ||
+             (typeof w.forSaleCount === 'number' && w.forSaleCount > 0 ? w.forSaleCount : 0) ||
+             (w.communityStats && w.communityStats.totalOffersCount > 0 ? w.communityStats.totalOffersCount : 0) ||
              (w.unshippableCount > 0 ? w.unshippableCount : 0) ||
-             0;
+             (isBlockedByShipping(w) ? 1 : 0);
     };
 
     const wantsBlockedByShipping = wantsNotForSale.filter(w => isBlockedByShipping(w));
@@ -1655,7 +1659,7 @@ function calculateAndRenderStats() {
            </div>`;
 
       const discogsBtn = isBlocked
-        ? `<a href="https://www.discogs.com/sell/release/${w ? w.id : ''}?limit=100" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver copias en venta en otros países"><span>OFERTAS (${worldCount || '↗'})</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`
+        ? `<a href="https://www.discogs.com/sell/release/${w ? w.id : ''}?limit=100" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver copias en venta en otros países"><span>OFERTAS (${worldCount > 0 ? worldCount : '↗'})</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`
         : `<a href="https://www.discogs.com/release/${w ? w.id : ''}" target="_blank" class="border border-hairline-dark hover:border-pitch-black bg-pure-white text-pitch-black font-mono text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 transition-colors whitespace-nowrap inline-flex items-center gap-1 shadow-2xs" title="Ver ficha técnica en Discogs"><span>FICHA DISCOGS</span><span class="material-symbols-outlined text-[12px]">open_in_new</span></a>`;
 
       return `

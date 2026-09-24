@@ -854,6 +854,9 @@ async function restoreCompletedScanIfAvailable(savedUser) {
       if (buyerCountry) buyerCountry.value = data.buyerCountry;
       if (wizardBuyerCountry) wizardBuyerCountry.value = data.buyerCountry;
     }
+    if (Array.isArray(data.wants) && data.wants.length > 0) {
+      state.wants = data.wants;
+    }
 
     // Update UI counters
     if (metricWantsCount) metricWantsCount.textContent = state.wants ? state.wants.length : (data.wantsCount || 0);

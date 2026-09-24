@@ -33,8 +33,15 @@ function saveCompletedScanResults() {
     allListings: state.allListings,
     groupedSellers: state.groupedSellers,
     buyerCountry: state.buyerCountry || (buyerCountry ? buyerCountry.value : 'Uruguay'),
-    wantsCount: state.wants ? state.wants.length : 0
+    wantsCount: state.wants ? state.wants.length : 0,
+    wants: state.wants || []
   };
+
+  if (state.wants && state.wants.length > 0) {
+    try {
+      localStorage.setItem(`discogs_wants_cache_${username.toLowerCase()}`, JSON.stringify(state.wants));
+    } catch (e) {}
+  }
 
   if (repo && typeof repo.saveCompletedScan === 'function') {
     repo.saveCompletedScan(username, payload);
@@ -481,7 +488,16 @@ async function loadWantlist() {
         isPriority: !!w.isPriority,
         haveCount: w.haveCount,
         wantCount: w.wantCount,
-        year: w.year
+        year: w.year,
+        forSaleCount: w.forSaleCount || 0,
+        totalWorldListings: w.totalWorldListings || 0,
+        unshippableCount: w.unshippableCount || 0,
+        unshippableLocations: w.unshippableLocations || [],
+        isBlockedByShipping: !!w.isBlockedByShipping,
+        hasShippingBlockNotice: !!w.hasShippingBlockNotice,
+        lowPrice: w.lowPrice || null,
+        highPrice: w.highPrice || null,
+        ratingValue: w.ratingValue || null
       }));
       localStorage.setItem(`discogs_wants_cache_${(state.username || 'user').toLowerCase()}`, JSON.stringify(compact));
     } catch (cacheErr) {
@@ -663,7 +679,8 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
         }
       }
       
-      if (cacheData && cacheData.version === 3) {
+      // Allow version 4, or version 3 ONLY if it had valid listings (ignore stale 0-listing v3 caches to re-detect shipping restrictions)
+      if (cacheData && (cacheData.version === 4 || (cacheData.version === 3 && cacheData.listings && cacheData.listings.length > 0))) {
         const now = Date.now();
         cacheAgeHours = (now - cacheData.timestamp) / (1000 * 60 * 60);
         
@@ -694,7 +711,8 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
       isFromCache: true,
       totalWorldListings: totalWorldListings,
       unshippableCount: unshippableCount,
-      unshippableLocations: unshippableLocations
+      unshippableLocations: unshippableLocations,
+      isBlockedByShipping: (unshippableCount > 0 || totalWorldListings > 0) && parsedListings.length === 0
     };
   }
   
@@ -703,23 +721,25 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   try {
     const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
     const html = await fetchThroughTab(url);
-    const result = parseReleaseHTML(html, item.id);
+    const result = parseReleaseHTML(html, item.id, buyerCountryVal);
     parsedListings = result.listings;
     communityStats = result.communityStats;
     totalWorldListings = result.totalWorldListings !== undefined ? result.totalWorldListings : (item.forSaleCount || (parsedListings ? parsedListings.length : 0));
     unshippableCount = result.unshippableCount || 0;
     unshippableLocations = result.unshippableLocations || [];
+    const isBlocked = !!result.isBlockedByShipping || (unshippableCount > 0 && (!parsedListings || parsedListings.length === 0)) || (totalWorldListings > 0 && (!parsedListings || parsedListings.length === 0));
     updateOffersDisplay(parsedListings);
     
-    // Save to cache with version 3 tag
+    // Save to cache with version 4 tag
     const cacheObj = {
       timestamp: Date.now(),
-      version: 3,
+      version: 4,
       listings: parsedListings,
       communityStats: communityStats,
       totalWorldListings: totalWorldListings,
       unshippableCount: unshippableCount,
-      unshippableLocations: unshippableLocations
+      unshippableLocations: unshippableLocations,
+      isBlockedByShipping: isBlocked
     };
     const cacheKey = `release_${item.id}_${buyerCountryVal}`;
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -736,7 +756,8 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
       isFromCache: false,
       totalWorldListings: totalWorldListings,
       unshippableCount: unshippableCount,
-      unshippableLocations: unshippableLocations
+      unshippableLocations: unshippableLocations,
+      isBlockedByShipping: isBlocked
     };
   } catch (e) {
     // If Discogs session is expired or requires human verification, bubble up immediately
@@ -919,6 +940,8 @@ async function startMarketplaceScan(startIndex = 0) {
           : (item.forSaleCount || (result.listings ? result.listings.length : 0));
         item.unshippableCount = result.unshippableCount || 0;
         item.unshippableLocations = result.unshippableLocations || [];
+        item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
+        item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
 
         if (result.communityStats) {
           if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
@@ -1185,6 +1208,8 @@ async function refreshWantlistIncremental() {
             : (item.forSaleCount || (result.listings ? result.listings.length : 0));
           item.unshippableCount = result.unshippableCount || 0;
           item.unshippableLocations = result.unshippableLocations || [];
+          item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
+          item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
           if (result.communityStats) {
             if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
             if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
