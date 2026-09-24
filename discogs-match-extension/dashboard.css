@@ -5214,4 +5214,23 @@ button.active #badge-local-count {
   border-left: 4px solid #10b981 !important;
 }
 
+/* Cached Scan Floating Notification (Slide-Down Toast) */
+#cached-scan-floating-notification {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translate(-50%, -160%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 0.42s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  z-index: 9999;
+}
+
+#cached-scan-floating-notification.show {
+  transform: translate(-50%, 0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+
 

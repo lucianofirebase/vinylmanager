@@ -49,6 +49,46 @@
     </div>
   </aside>
 
+  <!-- TOP SLIDE-DOWN CACHE RESTORATION NOTIFICATION -->
+  <div id="cached-scan-floating-notification"
+    class="w-[92%] max-w-2xl bg-pure-white border border-hairline-dark shadow-[0_12px_36px_rgba(0,0,0,0.18)] font-mono"
+    style="display: none;">
+    <!-- Top Linea Rossa Accent Stripe -->
+    <div class="h-1 bg-prada-blue w-full"></div>
+
+    <div class="p-3 sm:px-4 sm:py-3.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="w-9 h-9 bg-ivory-warm border border-hairline-dark flex items-center justify-center text-prada-blue shrink-0 shadow-2xs">
+          <span class="material-symbols-outlined text-[19px]">history</span>
+        </div>
+        <div class="flex flex-col min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-50 text-prada-blue border border-prada-blue/30">
+              ANÁLISIS RESTAURADO DE CACHÉ
+            </span>
+            <span class="text-xs font-bold text-pitch-black">
+              Guardado hace <span id="cached-notice-age">hace un momento</span>
+            </span>
+            <span class="text-[10px] text-muted-graphite font-normal" id="cached-notice-datetime">
+              —
+            </span>
+          </div>
+          <span class="text-[10.5px] text-muted-graphite mt-0.5 truncate sm:whitespace-normal">
+            Mostrando <strong class="text-pitch-black" id="cached-notice-sellers">0</strong> tiendas y <strong class="text-pitch-black" id="cached-notice-matches">0</strong> ofertas vinculadas sin re-escanear.
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2 shrink-0">
+        <button id="btn-close-cached-notice" type="button"
+          class="w-7 h-7 flex items-center justify-center border border-hairline-light hover:border-pitch-black hover:bg-surface-low text-muted-graphite hover:text-pitch-black transition-colors cursor-pointer"
+          data-tooltip="Cerrar notificación" data-tooltip-pos="bottom" aria-label="Cerrar">
+          <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- MASTER LUXURY HEADER (Prada Archetype) -->
   <header id="top-navbar" class="sticky top-0 z-50 bg-ivory-warm/95 backdrop-blur-md border-b border-hairline-light">
     <!-- Top row: Brand Monogram, Editorial Title & Global Controls -->
@@ -1004,39 +1044,7 @@
         </div>
 
         <!-- RESULTS RUNWAY WRAPPER (Stitch Runway Editorial Spread) -->
-        <div id="results-view-wrapper" class="w-full flex flex-col gap-8 mb-8" style="display: none;">
-
-          <!-- CACHED SCAN NOTIFICATION BANNER (Stitch Editorial Alert) -->
-          <div id="cached-scan-notice-banner" class="w-full bg-ivory-warm border border-hairline-dark p-3.5 sm:px-5 sm:py-3.5 flex flex-wrap items-center justify-between gap-4 font-mono shadow-xs relative" style="display: none;">
-            <div class="absolute top-0 left-0 bottom-0 w-1.5 bg-prada-blue"></div>
-            <div class="flex items-center gap-3.5 min-w-0">
-              <div class="w-9 h-9 bg-pure-white border border-hairline-dark flex items-center justify-center text-prada-blue shrink-0 shadow-2xs">
-                <span class="material-symbols-outlined text-[20px]">history</span>
-              </div>
-              <div class="flex flex-col min-w-0">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 bg-blue-100/80 text-blue-900 border border-blue-300">
-                    ANÁLISIS RESTAURADO DE CACHÉ
-                  </span>
-                  <span class="text-xs font-bold text-pitch-black">
-                    Guardado hace <span id="cached-scan-age-text">hace un momento</span>
-                  </span>
-                  <span class="text-[10px] text-muted-graphite font-normal" id="cached-scan-datetime-text">
-                    —
-                  </span>
-                </div>
-                <span class="text-[10px] text-muted-graphite mt-0.5 leading-relaxed">
-                  Mostrando <strong class="text-pitch-black" id="cached-scan-sellers-count">0</strong> tiendas y <strong class="text-pitch-black" id="cached-scan-matches-count">0</strong> ofertas cruzadas con tu lista sin tener que esperar otro escaneo largo.
-                </span>
-              </div>
-            </div>
-            <div class="flex items-center gap-2 shrink-0">
-              <button id="btn-cached-banner-rescan" type="button" class="px-3.5 py-1.5 bg-pure-white border border-hairline-dark hover:border-prada-red hover:text-prada-red text-pitch-black text-[10px] font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs" data-tooltip="Escanear en vivo el marketplace para actualizar precios y nuevo stock" data-tooltip-pos="top">
-                <span class="material-symbols-outlined text-[13px] text-prada-red">refresh</span>
-                <span>Actualizar Escaneo</span>
-              </button>
-            </div>
-          </div>
+        <div id="results-view-wrapper" class="w-full flex flex-col gap-10 mb-8" style="display: none;">
 
           <!-- SECTION 1: CRATE OPTIMIZER / RUNWAY BENTO (High-End Editorial Consolidation) -->
           <section class="flex flex-col gap-4">

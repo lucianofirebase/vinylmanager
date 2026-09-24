@@ -796,6 +796,15 @@ async function startMarketplaceScan(startIndex = 0) {
   
   // Lock filters dynamically while scanning
   toggleFiltersState(false);
+  if (typeof dismissCachedNotification === 'function') {
+    dismissCachedNotification();
+  } else {
+    const floatingNotice = document.getElementById('cached-scan-floating-notification');
+    if (floatingNotice) {
+      floatingNotice.classList.remove('show');
+      floatingNotice.style.display = 'none';
+    }
+  }
   
   if (startIndex === 0) {
     state.allListings = [];
@@ -1038,8 +1047,15 @@ async function startMarketplaceScan(startIndex = 0) {
 
     renderResults();
     saveCompletedScanResults();
-    const cachedNotice = document.getElementById('cached-scan-notice-banner');
-    if (cachedNotice) cachedNotice.style.display = 'none';
+    if (typeof dismissCachedNotification === 'function') {
+      dismissCachedNotification();
+    } else {
+      const floatingNotice = document.getElementById('cached-scan-floating-notification');
+      if (floatingNotice) {
+        floatingNotice.classList.remove('show');
+        floatingNotice.style.display = 'none';
+      }
+    }
     
   } catch (error) {
     if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {

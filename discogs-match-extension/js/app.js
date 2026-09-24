@@ -913,19 +913,23 @@ async function restoreCompletedScanIfAvailable(savedUser) {
     // Enable filters
     toggleFiltersState(true);
 
-    // Populate persistent notice banner in results
-    const noticeBanner = document.getElementById('cached-scan-notice-banner');
-    if (noticeBanner) {
-      const ageText = document.getElementById('cached-scan-age-text');
-      const dtText = document.getElementById('cached-scan-datetime-text');
-      const sellersCount = document.getElementById('cached-scan-sellers-count');
-      const matchesCount = document.getElementById('cached-scan-matches-count');
+    // Populate and show top floating cache notification (slides down from top and stays until dismissed)
+    const floatingNotice = document.getElementById('cached-scan-floating-notification');
+    if (floatingNotice) {
+      const ageEl = document.getElementById('cached-notice-age');
+      const dtEl = document.getElementById('cached-notice-datetime');
+      const sellersEl = document.getElementById('cached-notice-sellers');
+      const matchesEl = document.getElementById('cached-notice-matches');
 
-      if (ageText) ageText.textContent = ageStr;
-      if (dtText) dtText.textContent = `(${fullTimeStr})`;
-      if (sellersCount) sellersCount.textContent = `${state.groupedSellers.length.toLocaleString()}`;
-      if (matchesCount) matchesCount.textContent = `${state.allListings.length.toLocaleString()}`;
-      noticeBanner.style.display = 'flex';
+      if (ageEl) ageEl.textContent = ageStr;
+      if (dtEl) dtEl.textContent = `(${fullTimeStr})`;
+      if (sellersEl) sellersEl.textContent = `${state.groupedSellers.length.toLocaleString()}`;
+      if (matchesEl) matchesEl.textContent = `${state.allListings.length.toLocaleString()}`;
+
+      floatingNotice.style.display = 'block';
+      requestAnimationFrame(() => {
+        floatingNotice.classList.add('show');
+      });
     }
 
     // Render results
@@ -1590,10 +1594,41 @@ document.addEventListener('DOMContentLoaded', () => {
   if (startScanBtn) startScanBtn.addEventListener('click', openScanCacheModal);
   const mobileStartScanBtn = document.getElementById('mobile-start-scan-btn');
   if (mobileStartScanBtn) mobileStartScanBtn.addEventListener('click', openScanCacheModal);
+  // Helper to dismiss top floating cache notification
+  function dismissCachedNotification() {
+    const floatingNotice = document.getElementById('cached-scan-floating-notification');
+    if (floatingNotice) {
+      floatingNotice.classList.remove('show');
+      setTimeout(() => {
+        floatingNotice.style.display = 'none';
+      }, 450);
+    }
+  }
+  window.dismissCachedNotification = dismissCachedNotification;
+
+  // RE-ANALIZAR button in results ranking: directly starts fresh live scan without asking
   const btnRescanResults = document.getElementById('btn-rescan-results');
-  if (btnRescanResults) btnRescanResults.addEventListener('click', openScanCacheModal);
-  const btnCachedBannerRescan = document.getElementById('btn-cached-banner-rescan');
-  if (btnCachedBannerRescan) btnCachedBannerRescan.addEventListener('click', openScanCacheModal);
+  if (btnRescanResults) {
+    btnRescanResults.addEventListener('click', (e) => {
+      e.preventDefault();
+      // Dismiss top floating notification if visible
+      dismissCachedNotification();
+      if (typeof showToast === 'function') {
+        showToast('Iniciando re-análisis en vivo del marketplace...', 'action', 3000);
+      }
+      // Direct live scan: force up-to-date data without prompt
+      syncCacheState(false);
+      startMarketplaceScan();
+    });
+  }
+
+  // Close button for top floating cache notification
+  const btnCloseCachedNotice = document.getElementById('btn-close-cached-notice');
+  if (btnCloseCachedNotice) {
+    btnCloseCachedNotice.addEventListener('click', () => {
+      dismissCachedNotification();
+    });
+  }
   
   // Filters
   const displayCurrencySelect = document.getElementById('display-currency');
