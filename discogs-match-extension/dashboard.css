@@ -5072,9 +5072,9 @@ select option {
 }
 
 .collection-vinyl-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
   border-color: #000000 !important;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 3px 3px 0px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.06) !important;
 }
 
 .collection-sleeve-wrapper {
@@ -5083,44 +5083,24 @@ select option {
   background-color: #F8FAFD;
 }
 
-/* Turntable Vinyl disc sliding peek effect on card hover */
-.collection-vinyl-disc {
-  position: absolute;
-  top: 6%;
-  right: -30%;
-  width: 88%;
-  height: 88%;
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #181818 0%, #111111 25%, #242424 45%, #141414 70%, #080808 100%);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
-  opacity: 0;
-  transform: translateX(0) rotate(0deg);
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
-  z-index: 1;
-  pointer-events: none;
-}
-
-.collection-vinyl-disc::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 32%;
-  height: 32%;
-  border-radius: 50%;
-  background-color: #E02B20;
-  border: 2px solid #FFFFFF;
-}
-
-.collection-vinyl-card:hover .collection-vinyl-disc {
-  opacity: 0.95;
-  transform: translateX(24%) rotate(30deg);
-}
-
 .collection-cover-img {
   position: relative;
-  z-index: 2;
+  z-index: 1;
+}
+
+/* Active tab badge highlight in Prada Red */
+#tab-btn-collection.active #badge-collection-count,
+button.active #badge-collection-count {
+  background-color: #E02B20 !important;
+  color: #FFFFFF !important;
+  border-color: #E02B20 !important;
+}
+
+#tab-btn-local.active #badge-local-count,
+button.active #badge-local-count {
+  background-color: #E02B20 !important;
+  color: #FFFFFF !important;
+  border-color: #E02B20 !important;
 }
 
 /* Purchased action button on wantlist cards */

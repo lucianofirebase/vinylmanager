@@ -2337,27 +2337,27 @@ function renderCollectionView(resetPage = false) {
     <div class="w-full flex flex-col gap-6 mb-12">
       <!-- SECTION 1: RUNWAY BENTO HEADER (Prada Luxury Archival Header) -->
       <section class="flex flex-col gap-4">
-        <div class="flex flex-wrap items-baseline justify-between border-b-2 border-pitch-black pb-2">
-          <div class="flex items-baseline gap-4">
-            <span class="font-mono text-xs font-bold tracking-widest text-prada-red uppercase">[ VAULT • COLECCIÓN ]</span>
-            <h1 class="font-sans font-extrabold text-2xl uppercase tracking-widest text-pitch-black">MIS DISCOS COMPRADOS</h1>
-            <span class="text-prada-blue text-xs font-mono tracking-wider font-semibold">// ARCHIVO PERSONAL Y BIBLIOTECA DE VINILOS</span>
+        <div class="flex flex-wrap items-end justify-between border-b-2 border-pitch-black pb-3 gap-4">
+          <div>
+            <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1">[ ARCHIVO PERSONAL • COLECCIÓN ]</span>
+            <h1 class="font-sans font-black text-2xl sm:text-3xl uppercase tracking-widest text-pitch-black leading-none">MIS DISCOS COMPRADOS</h1>
+            <p class="text-muted-graphite text-xs font-mono tracking-wider mt-1.5 font-medium">Catálogo físico y biblioteca de vinilos adquiridos</p>
           </div>
           <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
             <button id="btn-sync-collection" type="button"
-              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pure-white hover:bg-surface-low border border-hairline-dark hover:border-pitch-black px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-pitch-black"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pure-white hover:bg-surface-low border border-hairline-dark hover:border-pitch-black px-3.5 py-2 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs text-pitch-black"
               data-tooltip="Sincronizar discos de tu colección oficial de Discogs" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[15px] text-prada-red">sync</span>
               <span>SINCRONIZAR DISCOGS</span>
             </button>
             <button id="btn-add-collection-manual" type="button"
-              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pitch-black text-pure-white hover:bg-prada-red px-3.5 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider bg-pitch-black text-pure-white hover:bg-prada-red px-3.5 py-2 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
               data-tooltip="Registrar una compra externa o disco manual" data-tooltip-pos="top">
               <span class="material-symbols-outlined text-[15px]">add</span>
               <span>AGREGAR DISCO</span>
             </button>
             <button id="btn-export-collection-csv" type="button"
-              class="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-graphite hover:text-pitch-black underline px-2 py-1 cursor-pointer"
+              class="font-mono text-[11px] font-bold uppercase tracking-wider text-muted-graphite hover:text-pitch-black border border-transparent hover:border-hairline-light px-2.5 py-1.5 transition-colors cursor-pointer"
               data-tooltip="Exportar tu archivo de colección a planilla CSV" data-tooltip-pos="top">
               EXPORTAR CSV
             </button>
@@ -2366,29 +2366,29 @@ function renderCollectionView(resetPage = false) {
 
         <!-- Bento Stats Bar -->
         <div class="grid grid-cols-2 md:grid-cols-4 gap-3 font-mono">
-          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden group hover:border-pitch-black transition-colors">
             <div class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></div>
-            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">TOTAL COMPRADOS</p>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">TOTAL DISCOS</p>
             <p class="font-sans font-black text-2xl text-pitch-black mt-1">${totalCount}</p>
             <p class="text-[10px] text-zinc-500 mt-0.5">${formatsSummary}</p>
           </div>
-          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden group hover:border-pitch-black transition-colors">
             <div class="absolute top-0 left-0 right-0 h-0.5 bg-pitch-black"></div>
             <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">ARTISTAS ÚNICOS</p>
             <p class="font-sans font-black text-2xl text-pitch-black mt-1">${uniqueArtists}</p>
             <p class="text-[10px] text-zinc-500 mt-0.5">En catálogo personal</p>
           </div>
-          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-0.5 bg-prada-blue"></div>
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden group hover:border-pitch-black transition-colors">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-prada-red"></div>
             <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">RANGO TEMPORAL</p>
             <p class="font-sans font-black text-2xl text-pitch-black mt-1">${yearsRangeStr}</p>
             <p class="text-[10px] text-zinc-500 mt-0.5">Años de prensado</p>
           </div>
-          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden">
-            <div class="absolute top-0 left-0 right-0 h-0.5 bg-emerald-500"></div>
-            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">ESTADO DE ARCHIVO</p>
-            <p class="font-sans font-black text-2xl text-emerald-700 mt-1">${totalCount > 0 ? 'SINCRONIZADO' : 'PENDIENTE'}</p>
-            <p class="text-[10px] text-zinc-500 mt-0.5">${totalCount > 0 ? 'Caché activa' : 'Requiere sincronizar'}</p>
+          <div class="bg-pure-white border border-hairline-dark p-3.5 shadow-xs relative overflow-hidden group hover:border-pitch-black transition-colors">
+            <div class="absolute top-0 left-0 right-0 h-0.5 bg-pitch-black"></div>
+            <p class="text-[10px] text-muted-graphite uppercase tracking-wider font-bold">FORMATO PRINCIPAL</p>
+            <p class="font-sans font-black text-2xl text-pitch-black mt-1">${vinylCount > 0 ? 'VINILO / LP' : 'VARIOS'}</p>
+            <p class="text-[10px] text-zinc-500 mt-0.5">${totalCount > 0 ? `${vinylCount} vinilos físicos` : 'Sin registros'}</p>
           </div>
         </div>
       </section>
@@ -2396,14 +2396,14 @@ function renderCollectionView(resetPage = false) {
       <!-- SECTION 2: COLLECTION TOOLBAR (Search, Format Filter, Sort) -->
       <section class="border border-hairline-dark bg-pure-white p-3 shadow-xs flex flex-wrap items-center justify-between gap-3 font-mono text-xs">
         <div class="flex flex-wrap items-center gap-3 flex-1">
-          <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-xs w-full sm:w-80">
+          <div class="relative flex items-center border border-hairline-dark bg-pure-white px-3 py-1.5 shadow-2xs w-full sm:w-80 focus-within:border-pitch-black transition-colors">
             <span class="material-symbols-outlined text-[16px] text-prada-red mr-2 shrink-0">search</span>
             <input id="collection-search-input" type="text" value="${escapeHTML(collectionSearchQuery)}" placeholder="BUSCAR EN TUS COMPRADOS..." class="bg-transparent text-xs font-mono tracking-wide uppercase placeholder:text-muted-graphite focus:outline-none text-pitch-black w-full">
             ${collectionSearchQuery ? `<button id="btn-clear-collection-search" class="text-muted-graphite hover:text-pitch-black text-xs font-bold ml-1 cursor-pointer">✕</button>` : ''}
           </div>
           <div class="flex items-center gap-2">
             <span class="text-[10px] uppercase font-bold text-muted-graphite">FORMATO:</span>
-            <select id="collection-filter-format" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none cursor-pointer">
+            <select id="collection-filter-format" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none focus:border-pitch-black cursor-pointer shadow-2xs">
               <option value="all" ${collectionFormatFilter === 'all' ? 'selected' : ''}>TODOS LOS FORMATOS</option>
               <option value="vinyl" ${collectionFormatFilter === 'vinyl' ? 'selected' : ''}>VINILO (LP/12"/7")</option>
               <option value="lp" ${collectionFormatFilter === 'lp' ? 'selected' : ''}>LP</option>
@@ -2415,7 +2415,7 @@ function renderCollectionView(resetPage = false) {
           </div>
           <div class="flex items-center gap-2">
             <span class="text-[10px] uppercase font-bold text-muted-graphite">ORDEN:</span>
-            <select id="collection-sort-by" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none cursor-pointer">
+            <select id="collection-sort-by" class="border border-hairline-dark bg-pure-white px-2.5 py-1.5 text-xs font-mono uppercase text-pitch-black focus:outline-none focus:border-pitch-black cursor-pointer shadow-2xs">
               <option value="recent" ${collectionSortBy === 'recent' ? 'selected' : ''}>MÁS RECIENTES PRIMERO</option>
               <option value="artist-asc" ${collectionSortBy === 'artist-asc' ? 'selected' : ''}>ARTISTA (A - Z)</option>
               <option value="title-asc" ${collectionSortBy === 'title-asc' ? 'selected' : ''}>TÍTULO (A - Z)</option>
@@ -2436,7 +2436,7 @@ function renderCollectionView(resetPage = false) {
           <div class="w-16 h-16 bg-ivory-warm border border-hairline-dark flex items-center justify-center mx-auto mb-4 shadow-xs">
             <span class="material-symbols-outlined text-3xl text-prada-red">album</span>
           </div>
-          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1.5">[ VAULT VACÍO ]</span>
+          <span class="font-mono text-[10px] font-bold tracking-widest text-prada-red uppercase block mb-1.5">[ ARCHIVO VACÍO ]</span>
           <h2 class="font-sans font-extrabold text-2xl uppercase tracking-tight text-pitch-black mb-2">Aún no tienes discos comprados registrados</h2>
           <p class="text-muted-graphite text-xs font-mono mb-6 max-w-md mx-auto leading-relaxed">
             Sincroniza directamente tu colección personal de Discogs o agrega manualmente vinilos que ya poseas o hayas adquirido.
@@ -2515,33 +2515,28 @@ function createCollectionVinylCard(record, index) {
   const discogsUrl = record.id ? `https://www.discogs.com/release/${record.id}` : null;
 
   card.innerHTML = `
-    <!-- Top Action Row (Remove / Edit) -->
+    <!-- Top Action Row (View on Discogs & Remove) -->
     <div class="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+      ${discogsUrl ? `
+        <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer" class="w-6 h-6 bg-pure-white/95 hover:bg-pitch-black hover:text-pure-white border border-hairline-dark text-pitch-black flex items-center justify-center transition-colors shadow-xs cursor-pointer" title="Ver en Discogs" data-tooltip="Abrir release en Discogs" data-tooltip-pos="top" onclick="event.stopPropagation();">
+          <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+        </a>
+      ` : ''}
       <button type="button" class="btn-remove-collection w-6 h-6 bg-pure-white/95 hover:bg-prada-red hover:text-pure-white border border-hairline-dark text-pitch-black flex items-center justify-center transition-colors shadow-xs cursor-pointer" title="Eliminar de mi colección" data-tooltip="Quitar de mi colección" data-tooltip-pos="top">
         <span class="material-symbols-outlined text-[13px]">delete</span>
       </button>
     </div>
 
-    <!-- Vinyl Sleeve with Turntable Peek Effect -->
-    <div class="collection-sleeve-wrapper w-full aspect-square bg-surface-low mb-2 overflow-hidden border border-hairline-light flex items-center justify-center relative shadow-xs group-hover:border-hairline-dark">
-      <!-- Vinyl record peek behind sleeve -->
-      <div class="collection-vinyl-disc" aria-hidden="true"></div>
-
-      <!-- High-res sleeve cover -->
+    <!-- Vinyl Sleeve -->
+    <div class="collection-sleeve-wrapper w-full aspect-square bg-surface-low mb-2 overflow-hidden border border-hairline-light flex items-center justify-center relative shadow-xs group-hover:border-pitch-black transition-colors">
       ${displayImage ? `
         <img src="${displayImage}" referrerpolicy="no-referrer" class="collection-cover-img w-full h-full object-cover select-none transition-transform duration-300 group-hover:scale-105" alt="${escapeHTML(displayTitle)}" loading="lazy">
       ` : `
         <span class="material-symbols-outlined text-3xl text-muted-graphite">album</span>
       `}
 
-      <!-- Status Tag -->
-      <div class="absolute bottom-1 left-1 bg-pitch-black/90 text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 tracking-wider uppercase border border-white/20 flex items-center gap-1 shadow-sm">
-        <span class="w-1.5 h-1.5 bg-emerald-400"></span>
-        <span>COMPRADO</span>
-      </div>
-
       ${displayYear ? `
-        <div class="absolute top-1 left-1 bg-pure-white/90 text-pitch-black text-[9px] font-mono font-bold px-1 py-0.5 border border-hairline-dark shadow-xs">
+        <div class="absolute bottom-1 right-1 bg-pitch-black/85 backdrop-blur-xs text-pure-white text-[9px] font-mono font-bold px-1.5 py-0.5 tracking-wider border border-white/10 shadow-2xs">
           ${escapeHTML(displayYear)}
         </div>
       ` : ''}
@@ -2550,26 +2545,27 @@ function createCollectionVinylCard(record, index) {
     <!-- Album & Artist Typography -->
     <div class="w-full text-center px-0.5 flex-1 flex flex-col justify-between">
       <div>
-        <p class="font-sans font-extrabold text-[11px] uppercase tracking-tight text-pitch-black truncate w-full leading-tight mb-1" title="${escapeHTML(displayTitle)}">
+        <p class="font-sans font-extrabold text-[11.5px] uppercase tracking-tight text-pitch-black truncate w-full leading-tight mb-0.5 group-hover:text-prada-red transition-colors" title="${escapeHTML(displayTitle)}">
           ${escapeHTML(displayTitle)}
         </p>
-        <p class="font-mono text-[10px] uppercase tracking-wider text-muted-graphite truncate w-full leading-tight font-medium mb-1" title="${escapeHTML(displayArtist)}">
+        <p class="font-mono text-[10px] uppercase tracking-wider text-muted-graphite truncate w-full leading-tight font-medium" title="${escapeHTML(displayArtist)}">
           ${escapeHTML(displayArtist)}
         </p>
       </div>
 
-      <!-- Format & Details pill -->
-      <div class="pt-1.5 border-t border-hairline-light flex items-center justify-between text-[9px] font-mono text-muted-graphite">
-        <span class="truncate max-w-[80px]" title="${escapeHTML(displayFormat)}">${escapeHTML(displayFormat)}</span>
-        ${discogsUrl ? `
-          <a href="${discogsUrl}" target="_blank" rel="noopener noreferrer" class="text-prada-blue hover:text-prada-red flex items-center gap-0.5 uppercase font-bold" data-tooltip="Ver release oficial en Discogs" data-tooltip-pos="top" onclick="event.stopPropagation();">
-            <span>DISCOGS</span>
-            <span class="material-symbols-outlined text-[10px]">open_in_new</span>
-          </a>
-        ` : '<span>PROPIO</span>'}
+      <!-- Format meta -->
+      <div class="pt-1.5 mt-1 border-t border-hairline-light flex items-center justify-center text-[9px] font-mono text-zinc-400">
+        <span class="truncate max-w-full uppercase tracking-wider" title="${escapeHTML(displayFormat)}">${escapeHTML(displayFormat)}</span>
       </div>
     </div>
   `;
+
+  if (discogsUrl) {
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('button') || e.target.closest('a')) return;
+      window.open(discogsUrl, '_blank', 'noopener,noreferrer');
+    });
+  }
 
   // Handle image error fallback
   const img = card.querySelector('.collection-cover-img');
