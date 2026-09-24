@@ -444,6 +444,16 @@ function motionShowScanCard() {
   const card = document.getElementById('status-card');
   const dock = document.getElementById('scan-logger-dock');
   if (dock) dock.style.display = 'block';
+
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
+  if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
+  const smartPurchaseCard = document.getElementById('smart-purchase-card');
+  if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+  const statsView = document.getElementById('stats-view');
+  if (statsView) statsView.style.display = 'none';
+  const wantlistManager = document.getElementById('wantlist-manager');
+  if (wantlistManager) wantlistManager.style.display = 'none';
+
   if (!card) return;
 
   card.style.display = 'block';
@@ -451,6 +461,7 @@ function motionShowScanCard() {
   card.classList.add('entering');
   card.addEventListener('animationend', () => card.classList.remove('entering'), { once: true });
 
+  window.scrollTo({ top: 0, behavior: 'instant' });
   motionStartTurntable();
 }
 

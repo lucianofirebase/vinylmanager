@@ -128,6 +128,14 @@
       if (emptyState) emptyState.style.display = 'none';
       if (wantlistManager) wantlistManager.style.display = 'none';
       if (resultsGrid) resultsGrid.style.display = 'none';
+      const resultsViewWrapper = document.getElementById('results-view-wrapper');
+      if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
+      const smartPurchaseCard = document.getElementById('smart-purchase-card');
+      if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+      const localView = document.getElementById('local-view');
+      if (localView) localView.style.display = 'none';
+      const collectionView = document.getElementById('collection-view');
+      if (collectionView) collectionView.style.display = 'none';
       if (noResultsState) noResultsState.style.display = 'none';
       if (headerNavRow) headerNavRow.style.display = 'none';
       if (tabNavigation) tabNavigation.style.display = 'none';
@@ -138,6 +146,7 @@
       if (scanLoggerDock) scanLoggerDock.style.display = 'block';
       if (logoVinyl) logoVinyl.classList.add('spinning');
 
+      window.scrollTo({ top: 0, behavior: 'instant' });
       this.startRadarCanvas();
     },
 

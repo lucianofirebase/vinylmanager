@@ -859,6 +859,15 @@ async function startMarketplaceScan(startIndex = 0) {
   wantlistManager.style.display = 'none';
   resultsGrid.style.display = 'none';
   noResultsState.style.display = 'none';
+
+  const resultsViewWrapper = document.getElementById('results-view-wrapper');
+  if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
+  const smartPurchaseCard = document.getElementById('smart-purchase-card');
+  if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+  const localView = document.getElementById('local-view');
+  if (localView) localView.style.display = 'none';
+  const collectionView = document.getElementById('collection-view');
+  if (collectionView) collectionView.style.display = 'none';
   
   const headerNavRow = document.getElementById('header-nav-row');
   if (headerNavRow) headerNavRow.style.display = 'none';
@@ -874,6 +883,9 @@ async function startMarketplaceScan(startIndex = 0) {
     tabBtnSellers.classList.add('active');
     tabBtnStats.classList.remove('active');
   }
+
+  // Scroll to top immediately to prevent the split page artifact with prior results
+  window.scrollTo({ top: 0, behavior: 'instant' });
   
   // Sort wants so priority/starred items are scanned FIRST
   state.wants.sort((a, b) => (b.isPriority ? 1 : 0) - (a.isPriority ? 1 : 0));
@@ -1178,12 +1190,30 @@ async function refreshWantlistIncremental() {
       state.wants.push(...newlyAddedWants);
       metricWantsCount.textContent = state.wants.length;
       
+      const resultsViewWrapper = document.getElementById('results-view-wrapper');
+      if (resultsViewWrapper) resultsViewWrapper.style.display = 'none';
+      const smartPurchaseCard = document.getElementById('smart-purchase-card');
+      if (smartPurchaseCard) smartPurchaseCard.style.display = 'none';
+      const localView = document.getElementById('local-view');
+      if (localView) localView.style.display = 'none';
+      const collectionView = document.getElementById('collection-view');
+      if (collectionView) collectionView.style.display = 'none';
+      const headerNavRow = document.getElementById('header-nav-row');
+      if (headerNavRow) headerNavRow.style.display = 'none';
+      const tabNavigation = document.getElementById('tab-navigation');
+      if (tabNavigation) tabNavigation.style.display = 'none';
+      const filterToolbar = document.getElementById('filter-toolbar');
+      if (filterToolbar) filterToolbar.style.display = 'none';
+      const statsView = document.getElementById('stats-view');
+      if (statsView) statsView.style.display = 'none';
+
       statusCard.style.display = 'block';
       if (scanLoggerDock) scanLoggerDock.style.display = 'block';
       startRadarShaderCanvas();
       const turntableVinyl = document.getElementById('turntable-vinyl') || document.getElementById('loading-turntable-container');
       if (turntableVinyl) turntableVinyl.classList.add('spinning');
       if (logoVinyl) logoVinyl.classList.add('spinning');
+      window.scrollTo({ top: 0, behavior: 'instant' });
       
       log(`Escaneando ${newlyAddedWants.length} nuevos discos en venta...`);
       
