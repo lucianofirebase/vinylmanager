@@ -582,11 +582,7 @@ function renderLocalMatches() {
   
   if (matches.length === 0) {
     localView.innerHTML = `
-      <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
-        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs" data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
-          <span class="material-symbols-outlined text-[15px]">arrow_back</span>
-          <span>VOLVER A VENDEDORES MARKETPLACE</span>
-        </button>
+      <div class="flex items-center justify-end mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
         <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-widest">COINCIDENCIAS CON CATÁLOGO LOCAL</span>
       </div>
       <div class="border-2 border-dashed border-hairline-dark bg-pure-white p-10 sm:p-14 text-center max-w-xl mx-auto my-8 shadow-xs">
@@ -604,20 +600,13 @@ function renderLocalMatches() {
     const btnEmpty = document.getElementById('btn-open-local-modal-empty');
     if (btnEmpty) btnEmpty.addEventListener('click', openLocalSheetModal);
     
-    localView.querySelectorAll('.btn-back-to-sellers').forEach(btn => {
-      btn.addEventListener('click', () => switchTab('sellers'));
-    });
     return;
   }
   
   const priorityMatchesCount = matches.filter(m => m.wantItem && m.wantItem.isPriority).length;
   
   let html = `
-    <div class="flex items-center justify-between mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
-      <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs" data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
-        <span class="material-symbols-outlined text-[15px]">arrow_back</span>
-        <span>VOLVER A VENDEDORES MARKETPLACE</span>
-      </button>
+    <div class="flex items-center justify-end mb-4 pb-3 border-b border-hairline-light flex-wrap gap-2">
       <span class="font-mono text-[10px] text-muted-graphite uppercase tracking-widest">COINCIDENCIAS CON CATÁLOGO LOCAL</span>
     </div>
 

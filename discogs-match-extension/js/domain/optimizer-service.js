@@ -247,6 +247,7 @@
       const shippingCostA = Math.max(totalCostA - subtotalA, 0);
       const estSavingsA = Math.max(((sellerA.listings?.length || 1) - 1) * 18.50, 24);
       const coveragePercentA = (((sellerA.listings?.length || 0) / Math.max(totalWantsCount, 1)) * 100).toFixed(2);
+      const avgCostPerPieceA = totalCostA / Math.max(sellerA.listings?.length || 1, 1);
 
       const sellerB = topSellersB[0] || topSellersA[1] || topSellersA[0];
       const subtotalB = (sellerB.listings || []).reduce((sum, l) => sum + (l.priceVal || 0), 0);
@@ -262,6 +263,7 @@
           totalCost: totalCostA,
           estSavings: estSavingsA,
           coveragePercent: coveragePercentA,
+          avgCostPerPiece: avgCostPerPieceA,
           allCandidates: topSellersA
         },
         sellerB: {

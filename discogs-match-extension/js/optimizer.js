@@ -243,6 +243,7 @@ function renderSmartPurchase(filteredSellers) {
   const shippingCostA = Math.max(totalCostA - subtotalA, 0);
   const estSavingsA = Math.max((sellerA.listings.length - 1) * 18.50, 24);
   const coveragePercentA = ((sellerA.listings.length / Math.max(state.wants.length, 1)) * 100).toFixed(2);
+  const avgCostPerPieceA = totalCostA / Math.max(sellerA.listings.length, 1);
 
   // 6 visual covers for Option A (up to 5 covers + 1 overflow tile if > 6)
   let galleryAHtml = '';
@@ -369,11 +370,11 @@ function renderSmartPurchase(filteredSellers) {
               </div>
             </div>
             <div class="text-right shrink-0">
-              <span class="inline-block bg-prada-ochre-bg border border-prada-ochre text-amber-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">
-                ${sellerA.listings.length} DISCOS EN STOCK
+              <span class="inline-block bg-emerald-50 border border-emerald-300 text-emerald-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">
+                ${formatPrice(avgCostPerPieceA, sellerA.currency)} / DISCO
               </span>
-              <div class="font-mono text-[11px] text-prada-red font-bold uppercase tracking-wider mt-1.5">
-                ★ CONSOLIDA MÁS EN 1 ENVÍO (${coveragePercentA}%)
+              <div class="font-mono text-[11px] text-prada-red font-bold uppercase tracking-wider mt-1.5 flex items-center justify-end gap-1">
+                <span>★</span> MAYOR CATÁLOGO (${sellerA.listings.length} DISCOS · ${coveragePercentA}%)
               </div>
             </div>
           </div>

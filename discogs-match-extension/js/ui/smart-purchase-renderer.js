@@ -91,6 +91,7 @@
 
       const galleryAHtml = generateGalleryHtml(sA, 'red');
       const galleryBHtml = generateGalleryHtml(sB, 'blue');
+      const avgCostA = sellerA.avgCostPerPiece || (sellerA.totalCost / Math.max(sA.listings?.length || 1, 1));
 
       const bentoGridHtml = `
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
@@ -126,8 +127,10 @@
                   </div>
                 </div>
                 <div class="text-right shrink-0">
-                  <span class="inline-block bg-prada-ochre-bg border border-prada-ochre text-amber-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">${sA.listings.length} DISCOS EN STOCK</span>
-                  <div class="font-mono text-[11px] text-prada-red font-bold uppercase tracking-wider mt-1.5">★ CONSOLIDA MÁS EN 1 ENVÍO (${sellerA.coveragePercent}%)</div>
+                  <span class="inline-block bg-emerald-50 border border-emerald-300 text-emerald-950 font-mono font-bold text-sm px-3 py-1 tracking-wider shadow-xs">${formatPrice(avgCostA, sA.currency)} / DISCO</span>
+                  <div class="font-mono text-[11px] text-prada-red font-bold uppercase tracking-wider mt-1.5 flex items-center justify-end gap-1">
+                    <span>★</span> MAYOR CATÁLOGO (${sA.listings.length} DISCOS · ${sellerA.coveragePercent}%)
+                  </div>
                 </div>
               </div>
 

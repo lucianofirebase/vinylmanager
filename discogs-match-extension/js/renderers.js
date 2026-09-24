@@ -1844,13 +1844,8 @@ function calculateAndRenderStats() {
     
     // Render layout
     let html = `
-      <!-- Top Sub-View Header & Navigation Bar -->
-      <div class="flex items-center justify-between mb-6 pb-3 border-b border-hairline-light flex-wrap gap-3 font-mono">
-        <button type="button" class="btn-back-to-sellers border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-mono text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-          data-tooltip="Volver al ranking consolidado de vendedores del marketplace" data-tooltip-pos="top">
-          <span class="material-symbols-outlined text-[15px]">arrow_back</span>
-          <span>VOLVER A VENDEDORES MARKETPLACE</span>
-        </button>
+      <!-- Top Sub-View Header -->
+      <div class="flex items-center justify-end mb-6 pb-3 border-b border-hairline-light flex-wrap gap-3 font-mono">
         <span class="text-[10px] text-muted-graphite uppercase tracking-widest">[ ANÁLISIS DE CATÁLOGO / MÉTRICAS ]</span>
       </div>
 
