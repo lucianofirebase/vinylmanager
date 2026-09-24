@@ -21,21 +21,24 @@ class ShopApiClient {
    * @returns {Promise<{ items: Array, totalCount: number, facetCounts: Object, bucketCounts: Object }>}
    */
   async fetchShopItems({
-    count = 25,
+    count = 100,
     offset = 0,
-    sellerRatingMin = 90,
+    sellerRatingMin = null,
     sort = 'listedDate',
     sortOrder = 'descending',
-    facets = true
+    facets = false
   } = {}) {
     const params = new URLSearchParams({
-      sellerRatingMin: String(sellerRatingMin),
       sort: sort,
       sortOrder: sortOrder,
       count: String(count),
       offset: String(offset),
       facets: facets ? 'true' : 'false'
     });
+
+    if (sellerRatingMin !== null && sellerRatingMin !== undefined && Number(sellerRatingMin) > 0) {
+      params.set('sellerRatingMin', String(sellerRatingMin));
+    }
 
     const url = `${this.BASE_URL}/sell_item?${params.toString()}`;
     console.log(`[ShopApiClient] Fetching shop items: offset=${offset}, count=${count}...`);
@@ -97,6 +100,84 @@ class ShopApiClient {
       throw err;
     }
   }
+
+  /**
+   * Transforms a raw item from sell_item endpoint into the standard domain listing structure
+   * @param {Object} it - Raw item from Discogs Shop API
+   * @returns {Object} Domain listing object compatible with groupListingsBySeller & renderResults
+   */
+  mapShopItemToListing(it) {
+    if (!it) return null;
+    const releaseId = it.release?.id ? String(it.release.id) : '';
+    const sellerName = (it.seller?.name || '').trim() || 'Vendedor Desconocido';
+    const sellerId = it.seller?.uid ? Number(it.seller.uid) : null;
+    const rating = typeof it.seller?.score === 'number' 
+      ? it.seller.score 
+      : (parseFloat(it.seller?.score || it.seller?.rating) || 100);
+    const ratingCount = parseInt(it.seller?.ratingCount || 0, 10);
+    const shipsFrom = (it.seller?.shipsFrom || 'Internacional').trim();
+
+    const priceVal = parseFloat(it.price?.amount || 0) || 0;
+    const currency = (it.price?.currencyCode || 'USD').toUpperCase();
+
+    // Shipping calculated natively by Discogs Shop API for buyer destination:
+    const rawShipping = it.shipping?.buyerShippingPrice !== undefined && it.shipping?.buyerShippingPrice !== null
+      ? it.shipping.buyerShippingPrice
+      : it.shipping?.amount;
+    const shippingVal = parseFloat(rawShipping) || 0;
+    const isDirectFree = it.shipping?.isFree === true || shippingVal === 0;
+
+    // Media condition normalization
+    const rawCond = it.mediaCondition || 'Very Good Plus (VG+)';
+    let mediaCondition = 'VG+';
+    if (/Near Mint|\bNM\b|\bM-\b/i.test(rawCond)) mediaCondition = 'NM';
+    else if (/\bMint\b|\bM\b/i.test(rawCond) && !/Near/i.test(rawCond)) mediaCondition = 'M';
+    else if (/Very Good Plus|VG\+|VGplus/i.test(rawCond)) mediaCondition = 'VG+';
+    else if (/Very Good|\bVG\b/i.test(rawCond)) mediaCondition = 'VG';
+    else if (/Good Plus|G\+|Gplus/i.test(rawCond)) mediaCondition = 'G+';
+    else if (/\bGood\b|\bG\b/i.test(rawCond)) mediaCondition = 'G';
+    else if (/\bFair\b|\bF\b/i.test(rawCond)) mediaCondition = 'F';
+    else if (/\bPoor\b|\bP\b/i.test(rawCond)) mediaCondition = 'P';
+
+    let mediaCondClass = mediaCondition;
+    if (mediaCondClass === 'VG+') mediaCondClass = 'VGplus';
+    if (mediaCondClass === 'G+') mediaCondClass = 'Gplus';
+
+    const sleeveCondition = it.sleeveCondition || 'Generic';
+    const listingId = it.id ? String(it.id) : '';
+    const listingUrl = listingId ? `https://www.discogs.com/sell/item/${listingId}` : '';
+
+    const releaseTitle = it.release?.title || '';
+    const releaseArtist = it.release?.artists?.[0]?.name || '';
+    const releaseImage = it.release?.thumbnail || it.release?.image || '';
+
+    return {
+      releaseId,
+      sellerName,
+      sellerId,
+      rating,
+      ratingCount,
+      shipsFrom,
+      priceVal,
+      shippingVal,
+      currency,
+      isShippingEstimated: false,
+      isDirectFree,
+      freeShippingThreshold: null,
+      thresholds: {},
+      mediaCondition,
+      mediaCondClass,
+      sleeveCondition,
+      listingUrl,
+      listingId,
+      releaseTitle,
+      releaseArtist,
+      image: releaseImage,
+      comments: it.comments || '',
+      buyerItemPrice: it.price?.buyerItemPrice || priceVal,
+      buyerShippingPrice: it.shipping?.buyerShippingPrice || shippingVal
+    };
+  }
 }
 
 // Global instance
@@ -142,8 +223,9 @@ async function testShopApi(count = 5) {
 if (typeof window !== 'undefined') {
   window.ShopApiClient = ShopApiClient;
   window.shopApiClient = shopApiClient;
+  window.mapShopItemToListing = (it) => shopApiClient.mapShopItemToListing(it);
   window.testShopApi = testShopApi;
 }
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { ShopApiClient, shopApiClient, testShopApi };
+  module.exports = { ShopApiClient, shopApiClient, testShopApi, mapShopItemToListing: (it) => shopApiClient.mapShopItemToListing(it) };
 }
