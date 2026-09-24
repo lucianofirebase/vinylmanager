@@ -89,6 +89,17 @@
         return 0;
       }
 
+      // Check if we have an official verified shipping price from Discogs API
+      if (seller?.isShippingOfficial && typeof seller.officialShippingPrice === 'number') {
+        if (seller.officialShippingPrice === 0) return 0;
+        let baseOfficial = seller.officialShippingPrice;
+        if (seller.officialShippingCurrency && sellerCurrency && seller.officialShippingCurrency !== sellerCurrency) {
+          const offRate = currSvc.getCurrencyRate(seller.officialShippingCurrency);
+          baseOfficial = (baseOfficial / offRate) * sellerRate;
+        }
+        return baseOfficial + (listCount - 1) * extraItemInSellerCurrency;
+      }
+
       // Check if we parsed actual shipping costs from listings
       const shippingValues = (listingsList || []).map(l => l.shippingVal).filter(v => v > 0);
       if (shippingValues.length > 0) {

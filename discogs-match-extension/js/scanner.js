@@ -990,22 +990,41 @@ async function startMarketplaceScan(startIndex = 0) {
     // Group and show results
     groupListingsBySeller();
 
-    // Proactively verify official ASP banners for top matching sellers while the proxy tab is alive
-    if (state.groupedSellers && state.groupedSellers.length > 0 && typeof checkSellerAspBanner === 'function') {
-      const topCandidates = state.groupedSellers.slice(0, 50);
-      const uncheckedCandidates = topCandidates.filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold);
-      if (uncheckedCandidates.length > 0) {
-        log(`Verificando políticas oficiales de envío en Discogs para los mejores vendedores (${uncheckedCandidates.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'info');
-        for (const seller of uncheckedCandidates) {
+    // Proactively verify official Discogs shipping rates & ASP banners for top matching sellers while the proxy tab is alive
+    if (state.groupedSellers && state.groupedSellers.length > 0) {
+      const topCandidates = state.groupedSellers.slice(0, 30);
+      const candidatesToVerify = topCandidates.filter(s => s && s.name && (!s.isShippingOfficial || (!s.aspChecked && !s.aspBannerThreshold)));
+      if (candidatesToVerify.length > 0) {
+        log(`Verificando tarifas y políticas oficiales en Discogs para las mejores tiendas (${candidatesToVerify.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'action');
+        for (const seller of candidatesToVerify.slice(0, 15)) {
           seller.aspChecked = true;
-          try {
-            const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
-            if (thresh) {
-              console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
-              seller.aspBannerThreshold = thresh;
-              seller.freeShippingThreshold = thresh;
-            }
-          } catch (e) {}
+          // 1. Query official Discogs Shop API shipping calculation
+          if (typeof shopApiClient !== 'undefined' && typeof shopApiClient.fetchSellerShipping === 'function' && !seller.isShippingOfficial) {
+            try {
+              const official = await shopApiClient.fetchSellerShipping(seller.name, seller.sellerId);
+              if (official && official.isOfficial) {
+                seller.isShippingOfficial = true;
+                seller.officialShippingPrice = official.shippingPrice;
+                seller.officialShippingCurrency = official.currency;
+                seller.isShippingEstimated = false;
+                if (!state.verifiedShipping) state.verifiedShipping = {};
+                state.verifiedShipping[seller.name.toLowerCase()] = official;
+                console.log(`[ShopApiClient] ✓ Tarifa oficial confirmada para ${seller.name}: ${official.shippingPrice} ${official.currency}`);
+              }
+            } catch (e) {}
+          }
+
+          // 2. Also check ASP banner if not yet set
+          if (!seller.aspBannerThreshold && typeof checkSellerAspBanner === 'function') {
+            try {
+              const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
+              if (thresh) {
+                console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
+                seller.aspBannerThreshold = thresh;
+                seller.freeShippingThreshold = thresh;
+              }
+            } catch (e) {}
+          }
         }
         groupListingsBySeller();
       }
@@ -1540,6 +1559,45 @@ async function syncDiscogsCollection(silent = false) {
   return merged;
 }
 
+async function verifyOfficialSellerShipping(sellerName) {
+  if (!sellerName) return null;
+  const clean = sellerName.trim();
+  const seller = (state.groupedSellers || []).find(s => s && s.name && s.name.toLowerCase() === clean.toLowerCase());
+  if (!seller) return null;
+  
+  if (typeof log === 'function') {
+    log(`Consultando tarifa oficial en Discogs para ${seller.name}...`, 'action');
+  }
+
+  if (typeof shopApiClient !== 'undefined' && typeof shopApiClient.fetchSellerShipping === 'function') {
+    try {
+      const official = await shopApiClient.fetchSellerShipping(seller.name, seller.sellerId);
+      if (official && official.isOfficial) {
+        seller.isShippingOfficial = true;
+        seller.officialShippingPrice = official.shippingPrice;
+        seller.officialShippingCurrency = official.currency;
+        seller.isShippingEstimated = false;
+        if (!state.verifiedShipping) state.verifiedShipping = {};
+        state.verifiedShipping[clean.toLowerCase()] = official;
+        if (typeof showToast === 'function') {
+          showToast(`✓ Tarifa oficial de Discogs para ${seller.name}: ${official.shippingPrice} ${official.currency}`, 'success', 4000);
+        }
+        if (typeof groupListingsBySeller === 'function') groupListingsBySeller();
+        if (typeof renderResults === 'function') renderResults();
+        return official;
+      } else {
+        if (typeof showToast === 'function') {
+          showToast(`No se detectó tarifa automatizada en Discogs para ${seller.name}. Se mantiene estimación.`, 'info', 4000);
+        }
+      }
+    } catch (e) {
+      console.warn(`[verifyOfficialSellerShipping] Error para ${seller.name}:`, e.message);
+    }
+  }
+  return null;
+}
+
+window.verifyOfficialSellerShipping = verifyOfficialSellerShipping;
 window.startMarketplaceScan = startMarketplaceScan;
 window.loadWantlist = loadWantlist;
 window.syncDiscogsCollection = syncDiscogsCollection;

@@ -68,6 +68,73 @@ class ShopApiClient {
   }
 
   /**
+   * Fetches official Discogs shipping calculation for a specific seller
+   * @param {string} sellerName - Seller username
+   * @param {number|string} [sellerId] - Optional seller UID
+   * @returns {Promise<{ isOfficial: boolean, shippingPrice: number, currency: string, isFree: boolean, methodName?: string } | null>}
+   */
+  async fetchSellerShipping(sellerName, sellerId = null) {
+    if (!sellerName) return null;
+    const cleanName = sellerName.trim();
+    if (!this._shippingCache) this._shippingCache = new Map();
+    const cacheKey = cleanName.toLowerCase();
+    if (this._shippingCache.has(cacheKey)) {
+      return this._shippingCache.get(cacheKey);
+    }
+
+    try {
+      const params = new URLSearchParams({
+        seller: cleanName,
+        count: '3',
+        offset: '0',
+        facets: 'false'
+      });
+      if (sellerId) params.set('seller_id', String(sellerId));
+
+      const url = `${this.BASE_URL}/sell_item?${params.toString()}`;
+      let rawText = '';
+      if (typeof fetchThroughTab === 'function') {
+        rawText = await fetchThroughTab(url);
+      } else if (typeof fetchDirect === 'function') {
+        rawText = await fetchDirect(url);
+      } else {
+        const resp = await fetch(url, { credentials: 'include' });
+        rawText = await resp.text();
+      }
+
+      if (!rawText) return null;
+      const data = JSON.parse(rawText);
+      if (!data || !Array.isArray(data.items) || data.items.length === 0) {
+        return null;
+      }
+
+      const itemWithShipping = data.items.find(it => it.shipping && (it.shipping.buyerShippingPrice !== undefined || it.shipping.amount !== undefined)) || data.items[0];
+      if (!itemWithShipping || !itemWithShipping.shipping) return null;
+
+      const rawPrice = itemWithShipping.shipping.buyerShippingPrice !== undefined && itemWithShipping.shipping.buyerShippingPrice !== null
+        ? itemWithShipping.shipping.buyerShippingPrice
+        : itemWithShipping.shipping.amount;
+      const shippingPrice = parseFloat(rawPrice) || 0;
+      const currency = (itemWithShipping.shipping.currencyCode || itemWithShipping.price?.currencyCode || 'USD').toUpperCase();
+      const isFree = itemWithShipping.shipping.isFree === true || shippingPrice === 0;
+
+      const result = {
+        isOfficial: true,
+        shippingPrice,
+        currency,
+        isFree,
+        methodName: itemWithShipping.shipping.methodName || ''
+      };
+
+      this._shippingCache.set(cacheKey, result);
+      return result;
+    } catch (err) {
+      console.warn(`[ShopApiClient] Error consultando shipping para ${cleanName}:`, err.message);
+      return null;
+    }
+  }
+
+  /**
    * Fetches seller inventory match counts for multiple seller IDs
    * @param {Array<number|string>} sellerIds - Array of Discogs seller UIDs
    * @returns {Promise<{ countsBySeller: Object }>}

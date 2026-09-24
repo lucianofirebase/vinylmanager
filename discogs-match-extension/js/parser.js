@@ -56,6 +56,18 @@ function calculateSellerShipping(seller, listingsList) {
     return 0;
   }
 
+  // Check if we have an official verified shipping price from Discogs API
+  if (seller?.isShippingOfficial && typeof seller.officialShippingPrice === 'number') {
+    if (seller.officialShippingPrice === 0) return 0;
+    let baseOfficial = seller.officialShippingPrice;
+    if (seller.officialShippingCurrency && seller.currency && seller.officialShippingCurrency !== seller.currency) {
+      const offRate = CURRENCY_MAP[seller.officialShippingCurrency]?.rate || 1.0;
+      const selRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+      baseOfficial = (baseOfficial / offRate) * selRate;
+    }
+    return baseOfficial + (listCount - 1) * extraItemInSellerCurrency;
+  }
+
   // Check if we parsed actual shipping costs from listings
   const shippingValues = listingsList.map(l => l.shippingVal).filter(v => v > 0);
   if (shippingValues.length > 0) {
@@ -1124,6 +1136,8 @@ function groupListingsBySeller() {
       const rawRatingCount = typeof listing.ratingCount === 'number' ? listing.ratingCount : parseInt(listing.ratingCount, 10);
       
       const cachedThresh = (listing.thresholds && listing.thresholds.aspBannerThreshold) || getCachedAspBanner(sName, buyerCountryVal) || null;
+      const cachedOfficial = (typeof state !== 'undefined' && state?.verifiedShipping && state.verifiedShipping[sName.toLowerCase()]) || 
+                             (typeof shopApiClient !== 'undefined' && shopApiClient._shippingCache && shopApiClient._shippingCache.get(sName.toLowerCase())) || null;
 
       sellersMap[sName] = {
         name: sName,
@@ -1134,6 +1148,9 @@ function groupListingsBySeller() {
         currency: listing.currency || 'USD',
         aspBannerThreshold: cachedThresh,
         freeShippingThreshold: cachedThresh,
+        isShippingOfficial: Boolean(cachedOfficial?.isOfficial),
+        officialShippingPrice: cachedOfficial ? cachedOfficial.shippingPrice : null,
+        officialShippingCurrency: cachedOfficial ? cachedOfficial.currency : null,
         listings: []
       };
     } else {
@@ -1143,6 +1160,12 @@ function groupListingsBySeller() {
       if (!sellersMap[sName].aspBannerThreshold && listing.thresholds && listing.thresholds.aspBannerThreshold) {
         sellersMap[sName].aspBannerThreshold = listing.thresholds.aspBannerThreshold;
         sellersMap[sName].freeShippingThreshold = listing.thresholds.aspBannerThreshold;
+      }
+      if (!sellersMap[sName].isShippingOfficial && typeof state !== 'undefined' && state?.verifiedShipping && state.verifiedShipping[sName.toLowerCase()]) {
+        const off = state.verifiedShipping[sName.toLowerCase()];
+        sellersMap[sName].isShippingOfficial = true;
+        sellersMap[sName].officialShippingPrice = off.shippingPrice;
+        sellersMap[sName].officialShippingCurrency = off.currency;
       }
     }
     
@@ -1208,7 +1231,10 @@ function groupListingsBySeller() {
       totalPrice: parseFloat(totalPrice.toFixed(2)),
       isDomestic,
       isEUToEU,
-      isShippingEstimated: (seller.listings || []).some(l => l && l.isShippingEstimated),
+      isShippingEstimated: seller.isShippingOfficial ? false : (seller.listings || []).some(l => l && l.isShippingEstimated),
+      isShippingOfficial: Boolean(seller.isShippingOfficial),
+      officialShippingPrice: seller.officialShippingPrice !== undefined ? seller.officialShippingPrice : null,
+      officialShippingCurrency: seller.officialShippingCurrency || null,
       freeShippingThreshold: seller.freeShippingThreshold || null,
       hasFreeShippingUnlocked
     };
