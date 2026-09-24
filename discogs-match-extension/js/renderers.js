@@ -1030,7 +1030,7 @@ function renderResults() {
       const sellerShippingWarning = seller.isShippingOfficial 
         ? `<span class="inline-flex items-center text-[8.5px] font-bold bg-emerald-100 text-emerald-800 px-1 py-0.5 border border-emerald-300 rounded font-mono ml-1 shadow-2xs" data-tooltip="Tarifa oficial verificada por la API de Discogs para tu país" data-tooltip-pos="top">✓ OFICIAL</span>` 
         : (seller.isShippingEstimated 
-            ? `<span class="shipping-estimate-warning" style="color: var(--color-amber); cursor: pointer; margin-left: 4px;" title="Envío estimado. Haz clic para verificar tarifa oficial con Discogs." data-tooltip="Envío estimado automáticamente. Haz clic para verificar tarifa oficial en Discogs." data-tooltip-pos="top" onclick="window.verifyOfficialSellerShipping && window.verifyOfficialSellerShipping('${escapeHTML(seller.name)}')">⚠️</span>` 
+            ? `<button type="button" class="shipping-estimate-warning border-none bg-transparent cursor-pointer ml-1 p-0 text-amber-500 hover:scale-125 transition-transform inline-flex items-center" title="Haz clic para ver detalles del envío estimado" onclick="event.stopPropagation(); event.preventDefault(); if (window.checkManualSellerShipping) window.checkManualSellerShipping('${escapeHTML(seller.name)}', ${seller.sellerId || 'null'}, '${escapeHTML(seller.shipsFrom || '')}');">⚠️</button>` 
             : '');
       
       const hasFreeShippingFeature = Boolean(isThresholdUnlocked || hasThreshold || isDirectFreeShipping);

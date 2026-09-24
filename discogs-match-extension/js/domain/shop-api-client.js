@@ -83,6 +83,12 @@ class ShopApiClient {
     }
 
     try {
+      if (!sellerId && typeof resolveSellerId === 'function') {
+        try {
+          sellerId = await resolveSellerId(cleanName);
+        } catch (e) {}
+      }
+
       const params = new URLSearchParams({
         seller: cleanName,
         count: '3',
@@ -108,7 +114,12 @@ class ShopApiClient {
         return null;
       }
 
-      const itemWithShipping = data.items.find(it => it.shipping && (it.shipping.buyerShippingPrice !== undefined || it.shipping.amount !== undefined)) || data.items[0];
+      const itemsForSeller = data.items.filter(it => 
+        (it.seller?.name && it.seller.name.toLowerCase() === cleanName.toLowerCase()) ||
+        (sellerId && it.seller?.uid && String(it.seller.uid) === String(sellerId))
+      );
+      const candidates = itemsForSeller.length > 0 ? itemsForSeller : data.items;
+      const itemWithShipping = candidates.find(it => it.shipping && (it.shipping.buyerShippingPrice !== undefined || it.shipping.amount !== undefined));
       if (!itemWithShipping || !itemWithShipping.shipping) return null;
 
       const rawPrice = itemWithShipping.shipping.buyerShippingPrice !== undefined && itemWithShipping.shipping.buyerShippingPrice !== null

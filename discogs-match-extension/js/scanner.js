@@ -1625,6 +1625,47 @@ async function verifyOfficialSellerShipping(sellerName) {
   return null;
 }
 
+async function checkManualSellerShipping(sellerName, sellerId = null, shipsFrom = '') {
+  if (!sellerName) return;
+  const clean = sellerName.trim();
+  const seller = (state.groupedSellers || []).find(s => s && s.name && s.name.toLowerCase() === clean.toLowerCase());
+  if (!seller) return;
+
+  if (typeof showToast === 'function') {
+    showToast(`Consultando tarifas de ${clean} en Discogs...`, 'info', 2500);
+  }
+
+  let official = null;
+  if (typeof shopApiClient !== 'undefined' && typeof shopApiClient.fetchSellerShipping === 'function') {
+    try {
+      official = await shopApiClient.fetchSellerShipping(clean, sellerId || seller.sellerId);
+    } catch (e) {
+      console.warn(`[checkManualSellerShipping] Error consultando shipping:`, e);
+    }
+  }
+
+  if (official && official.isOfficial) {
+    seller.isShippingOfficial = true;
+    seller.officialShippingPrice = official.shippingPrice;
+    seller.officialShippingCurrency = official.currency;
+    seller.isShippingEstimated = false;
+    if (!state.verifiedShipping) state.verifiedShipping = {};
+    state.verifiedShipping[clean.toLowerCase()] = official;
+    if (typeof showToast === 'function') {
+      showToast(`✓ Tarifa oficial de Discogs confirmada para ${clean}: ${official.shippingPrice} ${official.currency}`, 'success', 5000);
+    }
+    if (typeof groupListingsBySeller === 'function') groupListingsBySeller();
+    if (typeof renderResults === 'function') renderResults();
+  } else {
+    const origin = shipsFrom || seller.shipsFrom || 'el exterior';
+    if (typeof showToast === 'function') {
+      showToast(`⚠️ ${clean} no tiene tarifa fija a Uruguay en Discogs. Para comprarle este disco, Discogs solicita consultar el envío al vendedor por mensaje privado. El monto actual ($U ${seller.estimatedShipping || 0}) es un estimado referencial desde ${origin}.`, 'warning', 7500);
+    }
+    console.info(`[Shipping Verification] ${clean} no tiene política ASP automatizada hacia Uruguay en Discogs.`);
+  }
+}
+
+window.checkManualSellerShipping = checkManualSellerShipping;
 window.verifyOfficialSellerShipping = verifyOfficialSellerShipping;
 window.startMarketplaceScan = startMarketplaceScan;
 window.loadWantlist = loadWantlist;
