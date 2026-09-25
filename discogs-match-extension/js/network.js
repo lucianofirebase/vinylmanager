@@ -108,6 +108,118 @@ async function fetchDirect(url, options = {}) {
   });
 }
 
+// Singleton lock for proxy tab creation to eliminate race conditions
+let activeProxyTabPromise = null;
+const managedProxyTabIds = new Set();
+
+/**
+ * Ensures there is at most ONE valid Discogs proxy tab available.
+ * Multiple concurrent callers await the exact same Promise,
+ * completely preventing multiple duplicate tabs from being opened!
+ */
+async function getOrCreateProxyTab() {
+  // 1. If user already has any Discogs tab open, use it directly (0 new tabs opened!)
+  try {
+    const existingTabs = await new Promise((resolve) => {
+      chrome.tabs.query({ url: "*://*.discogs.com/*" }, (result) => resolve(result || []));
+    });
+    if (existingTabs.length > 0) {
+      console.log(`[ProxyFetch] Usando pestaña Discogs abierta del usuario (ID: ${existingTabs[0].id})`);
+      return existingTabs[0];
+    }
+  } catch (e) {}
+
+  // 2. If we previously created a proxy tab and it's still alive, reuse it
+  if (state.proxyTabId !== null) {
+    try {
+      const existingProxy = await new Promise((resolve, reject) => {
+        chrome.tabs.get(state.proxyTabId, (tabInfo) => {
+          if (chrome.runtime.lastError || !tabInfo) reject();
+          else resolve(tabInfo);
+        });
+      });
+      if (existingProxy) {
+        console.log(`[ProxyFetch] Reusando pestaña proxy creada previamente (ID: ${existingProxy.id})`);
+        return existingProxy;
+      }
+    } catch (e) {
+      state.proxyTabId = null;
+    }
+  }
+
+  // 3. If a tab creation is already in progress, await the existing promise!
+  if (activeProxyTabPromise) {
+    console.log('[ProxyFetch] Esperando pestaña proxy ya en creación (evitando pestañas duplicadas)...');
+    return await activeProxyTabPromise;
+  }
+
+  // 4. Create single background tab with mutex lock
+  activeProxyTabPromise = new Promise((resolve, reject) => {
+    console.log('[ProxyFetch] Creando una única pestaña de Discogs en segundo plano...');
+    chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
+      if (chrome.runtime.lastError || !tab) {
+        activeProxyTabPromise = null;
+        return reject(chrome.runtime.lastError || new Error("Failed to create tab"));
+      }
+
+      state.proxyTabId = tab.id;
+      managedProxyTabIds.add(tab.id);
+
+      const listener = (tabId, changeInfo) => {
+        if (tabId === tab.id && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          console.log(`[ProxyFetch] Pestaña proxy única lista (ID: ${tab.id})`);
+          setTimeout(() => {
+            activeProxyTabPromise = null;
+            resolve(tab);
+          }, 350);
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+
+      // Safety timeout in case onUpdated doesn't fire
+      setTimeout(() => {
+        chrome.tabs.onUpdated.removeListener(listener);
+        activeProxyTabPromise = null;
+        resolve(tab);
+      }, 7000);
+    });
+  });
+
+  return await activeProxyTabPromise;
+}
+
+/**
+ * Closes all proxy tabs created by the extension to leave zero orphan tabs.
+ */
+function closeAllProxyTabs() {
+  if (managedProxyTabIds.size > 0) {
+    managedProxyTabIds.forEach((tabId) => {
+      try {
+        chrome.tabs.remove(tabId, () => {
+          if (chrome.runtime.lastError) {}
+        });
+      } catch (e) {}
+    });
+    managedProxyTabIds.clear();
+  }
+  if (state.proxyTabId !== null) {
+    try {
+      chrome.tabs.remove(state.proxyTabId, () => {});
+    } catch (e) {}
+    state.proxyTabId = null;
+  }
+  activeProxyTabPromise = null;
+}
+window.closeAllProxyTabs = closeAllProxyTabs;
+
+// Clean up tabs on dashboard unload so no orphan tabs are left behind
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    closeAllProxyTabs();
+  });
+}
+
 // Fetch helper using the content script proxy to bypass Cloudflare
 async function fetchThroughTab(url, options = {}) {
   // If requesting api.discogs.com in an extension context, direct fetch with the Client token works immediately and natively!
@@ -130,57 +242,16 @@ async function fetchThroughTab(url, options = {}) {
   return retryOnRateLimit(async () => {
     console.log(`[ProxyFetch] Solicitando URL a través de pestaña proxy: ${url}`);
     
-    // Query all active tabs on Discogs
-    let tabs = await new Promise((resolve) => {
-      chrome.tabs.query({ url: "*://*.discogs.com/*" }, (result) => {
-        resolve(result || []);
-      });
-    });
+    let activeProxyTab;
+    try {
+      activeProxyTab = await getOrCreateProxyTab();
+    } catch (e) {
+      console.warn('[ProxyFetch] No se pudo obtener pestaña proxy, usando fallback directo:', e.message);
+      return fetchDirect(url, options);
+    }
 
-    let activeProxyTab = null;
-
-    if (tabs.length > 0) {
-      // If a tab is open, use the first one
-      activeProxyTab = tabs[0];
-      console.log(`[ProxyFetch] Usando pestaña Discogs abierta (ID: ${activeProxyTab.id})`);
-    } else {
-      // If no tab is open and we have already created a background proxy tab, use it
-      if (state.proxyTabId !== null) {
-        try {
-          const tab = await new Promise((resolve, reject) => {
-            chrome.tabs.get(state.proxyTabId, (tabInfo) => {
-              if (chrome.runtime.lastError) reject();
-              else resolve(tabInfo);
-            });
-          });
-          activeProxyTab = tab;
-          console.log(`[ProxyFetch] Reusando pestaña proxy creada previamente (ID: ${activeProxyTab.id})`);
-        } catch (e) {
-          state.proxyTabId = null;
-        }
-      }
-
-      // If no tab is available at all, create one in the background
-      if (activeProxyTab === null) {
-        console.log('[ProxyFetch] Creando nueva pestaña de Discogs en segundo plano...');
-        activeProxyTab = await new Promise((resolve) => {
-          chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
-            state.proxyTabId = tab.id;
-            
-            const listener = (tabId, changeInfo) => {
-              if (tabId === tab.id && changeInfo.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                console.log(`[ProxyFetch] Nueva pestaña proxy creada y cargada (ID: ${tab.id})`);
-                // Pequeño retardo de seguridad para asegurar la inyección de content scripts
-                setTimeout(() => {
-                  resolve(tab);
-                }, 200);
-              }
-            };
-            chrome.tabs.onUpdated.addListener(listener);
-          });
-        });
-      }
+    if (!activeProxyTab || !activeProxyTab.id) {
+      return fetchDirect(url, options);
     }
 
     // Send request message to the proxy tab with a timeout
@@ -201,26 +272,6 @@ async function fetchThroughTab(url, options = {}) {
           });
       };
 
-      const createFreshProxyTab = () => {
-        return new Promise((resolveFresh, rejectFresh) => {
-          console.log('[ProxyFetch] Creando pestaña proxy de Discogs dedicada en segundo plano...');
-          chrome.tabs.create({ url: "https://www.discogs.com/", active: false }, (tab) => {
-            if (chrome.runtime.lastError || !tab) {
-              return rejectFresh(chrome.runtime.lastError || new Error("Failed to create tab"));
-            }
-            state.proxyTabId = tab.id;
-            const listener = (tabId, changeInfo) => {
-              if (tabId === tab.id && changeInfo.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                console.log(`[ProxyFetch] Pestaña proxy dedicada lista (ID: ${tab.id})`);
-                setTimeout(() => resolveFresh(tab), 400);
-              }
-            };
-            chrome.tabs.onUpdated.addListener(listener);
-          });
-        });
-      };
-
       const sendMessageToTab = (tabId, isRetry = false) => {
         console.log(`[ProxyFetch] Enviando mensaje fetchUrl a pestaña ${tabId} para URL: ${url}`);
         chrome.tabs.sendMessage(tabId, { action: "fetchUrl", url, headers: options.headers }, (response) => {
@@ -234,20 +285,13 @@ async function fetchThroughTab(url, options = {}) {
                 files: ['content.js']
               }, () => {
                 if (chrome.runtime.lastError) {
-                  console.warn(`[ProxyFetch] Falló inyección dinámica (${chrome.runtime.lastError.message}). Abriendo pestaña proxy dedicada...`);
-                  createFreshProxyTab()
-                    .then(freshTab => sendMessageToTab(freshTab.id, true))
-                    .catch(() => doDirectFallback());
+                  console.warn(`[ProxyFetch] Falló inyección dinámica (${chrome.runtime.lastError.message}). Fallback directo...`);
+                  doDirectFallback();
                 } else {
-                  console.log(`[ProxyFetch] Inyección exitosa. Reintentando mensaje en 200ms...`);
-                  setTimeout(() => sendMessageToTab(tabId, true), 200);
+                  console.log(`[ProxyFetch] Inyección exitosa. Reintentando mensaje en 250ms...`);
+                  setTimeout(() => sendMessageToTab(tabId, true), 250);
                 }
               });
-            } else if (!isRetry) {
-              console.log(`[ProxyFetch] Pestaña no disponible, abriendo pestaña proxy dedicada...`);
-              createFreshProxyTab()
-                .then(freshTab => sendMessageToTab(freshTab.id, true))
-                .catch(() => doDirectFallback());
             } else {
               doDirectFallback();
             }

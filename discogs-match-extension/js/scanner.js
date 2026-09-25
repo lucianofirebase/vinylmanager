@@ -1040,7 +1040,9 @@ async function startMarketplaceScan(startIndex = 0) {
     }
     
     // Close background tab if we opened one
-    if (state.proxyTabId !== null) {
+    if (typeof closeAllProxyTabs === 'function') {
+      closeAllProxyTabs();
+    } else if (state.proxyTabId !== null) {
       chrome.tabs.remove(state.proxyTabId);
       state.proxyTabId = null;
     }
@@ -1068,6 +1070,9 @@ async function startMarketplaceScan(startIndex = 0) {
       log(`Error crítico durante el escaneo: ${error.message}`, 'error');
     }
   } finally {
+    if (typeof closeAllProxyTabs === 'function') {
+      closeAllProxyTabs();
+    }
     state.isScanning = false;
     startScanBtn.disabled = false;
     loadWantsBtn.disabled = false;
@@ -1292,7 +1297,9 @@ async function refreshWantlistIncremental() {
         }
       }
       
-      if (state.proxyTabId !== null) {
+      if (typeof closeAllProxyTabs === 'function') {
+        closeAllProxyTabs();
+      } else if (state.proxyTabId !== null) {
         chrome.tabs.remove(state.proxyTabId);
         state.proxyTabId = null;
       }
