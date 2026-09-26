@@ -252,19 +252,19 @@ function detectCurrencyInContext(text, fallbackCurrency = 'USD') {
   return fallbackCurrency;
 }
 
-const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
+const OFFICIAL_ASP_BANNER_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece|offers|bietet|offre)\s+(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)?|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
 
-const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece\s+|offers\s+|bietet\s+|offre\s+)(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
+const OFFICIAL_ASP_BANNER_GLOBAL_REGEX = /(?:(?!(?:ofrece|offers|bietet|offre))\b([a-zA-Z0-9_\-\.]{1,50})\s+)?(?:ofrece|offers|bietet|offre)\s+(?:env[íi]o\s+(?:gratuito|gratis)|free\s+shipping|kostenlosen?\s+versand|frais\s+de\s+port\s+gratuits?|la\s+livraison\s+gratuite|spedizione\s+gratuita)\s+(?:en\s+pedidos\s+(?:de(?:\s+m[áa]s\s+de)?|a\s+partir\s+de)?|on\s+orders\s+(?:of|over|from)|for\s+orders\s+(?:of|over)|f[üu]r\s+bestellungen\s+ab|ab|d[èe]s|pour\s+les\s+commandes\s+de|per\s+ordini\s+di)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/gi;
 
-const ASP_CACHE_PREFIX = 'discogs_asp_banner_v9_';
+const ASP_CACHE_PREFIX = 'discogs_asp_banner_v12_';
 const ASP_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const SELLER_ID_CACHE_PREFIX = 'discogs_seller_id_';
 
-// Cleanup legacy cache keys on load
+// Cleanup legacy cache keys on load (purge all entries older than v12 which were fetched without country filtering)
 try {
   for (let i = localStorage.length - 1; i >= 0; i--) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v9_')) {
+    if (k && k.startsWith('discogs_asp_banner_') && !k.startsWith('discogs_asp_banner_v12_')) {
       localStorage.removeItem(k);
     }
   }
@@ -289,8 +289,8 @@ function getCachedAspBanner(sellerName, buyerCountryVal = null) {
 
 function setCachedAspBanner(sellerName, buyerCountryVal, threshold) {
   if (!sellerName) return;
-  const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
   const cleanSeller = sellerName.trim();
+  const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
   const cacheKey = `${ASP_CACHE_PREFIX}${cleanSeller.toLowerCase()}_${buyer.toLowerCase()}`;
   try {
     localStorage.setItem(cacheKey, JSON.stringify({
@@ -384,47 +384,171 @@ async function resolveSellerId(sellerName) {
   return null;
 }
 
-async function checkSellerAspBanner(sellerName, buyerCountryVal = null, sellerId = null) {
+let aspRateLimitCooldownUntil = 0;
+
+function isAspRateLimited() {
+  return Date.now() < aspRateLimitCooldownUntil;
+}
+if (typeof window !== 'undefined') {
+  window.isAspRateLimited = isAspRateLimited;
+}
+
+/**
+ * Maps a country name to its ISO-3166-1 alpha-2 code for use in Discogs country-filtered URLs.
+ * Returns null if no mapping is found (will use unfiltered URL as fallback).
+ */
+function countryNameToCode(countryName) {
+  if (!countryName) return null;
+  const lower = countryName.toLowerCase().trim();
+  const map = {
+    'uruguay': 'UY', 'argentina': 'AR', 'brazil': 'BR', 'chile': 'CL', 'colombia': 'CO',
+    'peru': 'PE', 'mexico': 'MX', 'united states': 'US', 'usa': 'US', 'us': 'US',
+    'canada': 'CA', 'united kingdom': 'GB', 'uk': 'GB', 'great britain': 'GB',
+    'germany': 'DE', 'deutschland': 'DE', 'france': 'FR', 'spain': 'ES', 'españa': 'ES',
+    'italy': 'IT', 'netherlands': 'NL', 'belgium': 'BE', 'sweden': 'SE', 'norway': 'NO',
+    'denmark': 'DK', 'finland': 'FI', 'poland': 'PL', 'czech republic': 'CZ',
+    'austria': 'AT', 'switzerland': 'CH', 'portugal': 'PT', 'greece': 'GR',
+    'australia': 'AU', 'new zealand': 'NZ', 'japan': 'JP', 'south korea': 'KR',
+    'china': 'CN', 'india': 'IN', 'russia': 'RU', 'south africa': 'ZA',
+    'israel': 'IL', 'turkey': 'TR', 'indonesia': 'ID', 'philippines': 'PH',
+    'thailand': 'TH', 'malaysia': 'MY', 'singapore': 'SG', 'hong kong': 'HK',
+    'taiwan': 'TW', 'ukraine': 'UA', 'hungary': 'HU', 'romania': 'RO',
+    'slovakia': 'SK', 'croatia': 'HR', 'slovenia': 'SI', 'serbia': 'RS',
+    'bulgaria': 'BG', 'estonia': 'EE', 'latvia': 'LV', 'lithuania': 'LT',
+    'ireland': 'IE', 'iceland': 'IS', 'luxembourg': 'LU', 'malta': 'MT',
+    'cyprus': 'CY', 'latvia': 'LV'
+  };
+  return map[lower] || null;
+}
+
+/**
+ * Parse the seller's storefront HTML DOM for official Discogs ASP free-shipping promo banners.
+ * Looks for the dedicated banner element Discogs renders (e.g. <div class="seller-promo"> or 
+ * similar promo text blocks), then falls back to regex on page text.
+ * Returns threshold object or null.
+ */
+function parseStorefrontHtmlForBanner(html, buyer, sellerShipsFrom) {
+  if (!html || html.length < 200) return null;
+
+  try {
+    const domParser = new DOMParser();
+    const doc = domParser.parseFromString(html, 'text/html');
+
+    // 1. Check if seller explicitly does NOT ship to buyer country (hard negative)
+    const bodyText = (doc.body ? doc.body.textContent : html);
+    const buyerLower = buyer.toLowerCase();
+    const doesNotShipPatterns = [
+      /does\s+not\s+ship\s+to/i,
+      /no\s+hace?\s+env[íi]os?\s+a/i,
+      /no\s+envia?\s+a/i,
+      /not\s+available\s+in/i,
+      /no\s+disponible\s+en/i
+    ];
+    // Only mark as hard negative if the text mentions the buyer country explicitly
+    for (const pat of doesNotShipPatterns) {
+      const match = bodyText.match(pat);
+      if (match) {
+        const context = bodyText.slice(
+          Math.max(0, (bodyText.indexOf(match[0])) - 5),
+          Math.min(bodyText.length, (bodyText.indexOf(match[0])) + match[0].length + 60)
+        ).toLowerCase();
+        if (context.includes(buyerLower) || context.includes('uruguay') && buyerLower.includes('urug')) {
+          console.log(`[DEBUG ASP] Hard negative: seller does not ship to "${buyer}"`);
+          return { _hardNegative: true };
+        }
+      }
+    }
+
+    // 2. DOM-first: look for Discogs promo/banner elements
+    const bannerSelectors = [
+      '.seller-promo', '.seller-promo-banner', '[class*="seller-promo"]',
+      '[class*="sellerPromo"]', '[class*="promo-banner"]', '[class*="PromoBanner"]',
+      '.asp-banner', '[data-asp]', '[class*="free-shipping-banner"]',
+      '[class*="freeShipping"]', '.marketplace-promo', '[class*="marketplacePromo"]'
+    ];
+
+    for (const sel of bannerSelectors) {
+      const el = doc.querySelector(sel);
+      if (el) {
+        const bannerText = el.textContent || '';
+        const parsed = parseFreeShippingThresholds(bannerText, null, buyer, sellerShipsFrom);
+        if (parsed?.aspBannerThreshold) {
+          console.log(`[DEBUG ASP] ✓ Banner DOM element found (${sel}):`, parsed.aspBannerThreshold);
+          return parsed.aspBannerThreshold;
+        }
+      }
+    }
+
+    // 3. Regex on full page text (existing approach)
+    const parsed = parseFreeShippingThresholds(html, null, buyer, sellerShipsFrom);
+    if (parsed?.aspBannerThreshold) {
+      console.log(`[DEBUG ASP] ✓ Banner found via regex on page text:`, parsed.aspBannerThreshold);
+      return parsed.aspBannerThreshold;
+    }
+  } catch (e) {
+    console.warn('[DEBUG ASP] Error parsing storefront HTML:', e.message);
+  }
+
+  return null;
+}
+
+async function checkSellerAspBanner(sellerName, buyerCountryVal = null, sellerId = null, sellerShipsFrom = null) {
   if (!sellerName) return null;
   const cleanSeller = sellerName.trim();
   const buyer = buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
   
-  console.group(`🔍 [DEBUG ASP] "${sellerName}" para país "${buyer}"`);
+  if (Date.now() < aspRateLimitCooldownUntil) {
+    console.warn(`[DEBUG ASP] Cooldown activo por 429 (${Math.ceil((aspRateLimitCooldownUntil - Date.now()) / 1000)}s restantes). Omitiendo "${cleanSeller}".`);
+    return null;
+  }
 
   const cached = getCachedAspBanner(sellerName, buyer);
   if (cached !== undefined) {
-    console.log(`[DEBUG ASP] Encontrado en caché:`, cached);
-    console.groupEnd();
     return cached;
   }
+
+  console.group(`🔍 [DEBUG ASP] "${cleanSeller}" para país "${buyer}"`);
 
   let threshold = null;
   let fetchSucceeded = false;
 
-  // Discogs /v3/marketplace/shipping/policies endpoint requires OAuth seller-level auth
-  // and returns 400 Bad Request for 3rd-party queries. Skipped to prevent network errors.
+  // Build country-filtered storefront URL so Discogs shows only listings/banners valid for buyer's country
+  const countryCode = countryNameToCode(buyer);
+  const storeBaseUrl = `https://www.discogs.com/seller/${encodeURIComponent(cleanSeller)}`;
+  const storeUrl = countryCode
+    ? `${storeBaseUrl}?ships_to=${encodeURIComponent(countryCode)}`
+    : storeBaseUrl;
 
-  // 2. FALLBACK: Scrape seller wantlist store page HTML if API did not yield a valid response
-  if (!fetchSucceeded && typeof fetchThroughTab === 'function') {
+  // Scrape seller storefront page HTML (with country filter applied)
+  if (typeof fetchThroughTab === 'function') {
     try {
-      const mywantsUrl = `https://www.discogs.com/es/seller/${encodeURIComponent(cleanSeller)}/mywants`;
-      console.log(`[DEBUG ASP] Solicitando URL Fallback HTML (mywants): ${mywantsUrl}`);
-      const html = await fetchThroughTab(mywantsUrl);
-      if (html && html.length > 200) {
+      console.log(`[DEBUG ASP] Solicitando URL (storefront con país "${buyer}" / código "${countryCode || 'N/A'}"): ${storeUrl}`);
+      const storeHtml = await fetchThroughTab(storeUrl);
+      if (storeHtml && storeHtml.length > 200) {
         fetchSucceeded = true;
-        const parsed = parseFreeShippingThresholds(html);
-        threshold = parsed?.aspBannerThreshold || null;
-        console.log(`[DEBUG ASP] Resultado parseo Fallback HTML:`, threshold);
+        const result = parseStorefrontHtmlForBanner(storeHtml, buyer, sellerShipsFrom);
+        if (result && result._hardNegative) {
+          // Seller explicitly does not ship to buyer's country → cache as confirmed no-banner
+          console.log(`[DEBUG ASP] Seller "${cleanSeller}" confirmed does not ship to "${buyer}". Caching negative.`);
+          console.groupEnd();
+          setCachedAspBanner(cleanSeller, buyer, null);
+          return null;
+        }
+        threshold = result || null;
       }
-    } catch (errHtml) {
-      console.warn(`[DEBUG ASP] Fallback HTML falló para ${cleanSeller}:`, errHtml.message);
+    } catch (errStore) {
+      console.warn(`[DEBUG ASP] Storefront falló para ${cleanSeller}:`, errStore.message);
+      if (errStore.isRateLimited || errStore.status === 429 || (errStore.message && errStore.message.includes('429'))) {
+        aspRateLimitCooldownUntil = Date.now() + 30000;
+        console.warn(`[DEBUG ASP] 429 Detectado en Discogs. Activando cooldown de 30 segundos.`);
+      }
     }
   }
 
   if (threshold) {
     console.log(`[DEBUG ASP] ✓ Encontrado umbral oficial para ${cleanSeller}:`, threshold);
   } else {
-    console.log(`[DEBUG ASP] ✗ Sin umbral de envío gratis oficial para ${cleanSeller}`);
+    console.log(`[DEBUG ASP] ✗ Sin umbral de envío gratis oficial para ${cleanSeller} hacia ${buyer}`);
   }
 
   console.groupEnd();
@@ -440,8 +564,40 @@ async function checkSellerAspBanner(sellerName, buyerCountryVal = null, sellerId
 
 const OFFICIAL_MODAL_SHIPPING_REGEX = /(?:free\s+shipping|env[íi]o\s+(?:gratuito|gratis)|kostenloser\s+versand|frais\s+de\s+port\s+gratuits?|livraison\s+gratuite|spedizione\s+gratuita)\s*:\s*[\s\S]{0,100}?\b(?:subtotal|zwischensumme|sous-total|subtotale|pedido|order)\b[\s\S]{0,80}?(?:debe\s+ser|must\s+be|doit\s+[êe]tre|muss\s+mindestens|deve\s+essere|al\s+menos|at\s+least|mindestens)[\s\S]{0,40}?(?:de\s+|d'au\s+moins\s+)?(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
 
-function parseFreeShippingThresholds(fullRowText, currency) {
+const GENERAL_FREE_SHIP_REGEX = /(?:free\s+(?:(?:worldwide|international|domestic|airmail|standard|express)\s+)?(?:shipping|delivery|postage)|env[íi]o\s+(?:(?:internacional|dom[ée]stico|est[áa]ndar|express)\s+)?(?:gratis|gratuito)|port\s+gratuit|livraison\s+gratuite|kostenloser\s+versand|spedizione\s+gratuita)\s*(?:on\s+orders\s+over|for\s+orders\s+over|orders\s+over|orders\s+from|over|from|a\s+partir\s+de|en\s+pedidos\s+(?:de\s+m[áa]s\s+de|superiores\s+a|a\s+partir\s+de)?|superando\s+(?:los\s+)?|en\s+compras\s+mayores\s+a|ab|d[èe]s|oltre)\s*(?:[€$£¥]\s*|\b(?:eur|usd|gbp|cad|aud)\b\s*)?([0-9]+(?:[.,][0-9]{1,2})?)/i;
+
+function doesRegionMatchBuyer(regionName, buyerCountryVal) {
+  if (!regionName || !buyerCountryVal) return false;
+  const reg = regionName.toLowerCase().trim();
+  const buyer = buyerCountryVal.toLowerCase().trim();
+
+  // Worldwide indicators
+  if (/\b(worldwide|international|internacional|all\s+countries|rest\s+of\s+(?:the\s+)?world|global|everywhere|cualquier\s+pa[íi]s|todos\s+los\s+pa[íi]ses)\b/i.test(reg)) {
+    return true;
+  }
+
+  // Exact or substring match
+  if (reg.includes(buyer) || buyer.includes(reg)) {
+    return true;
+  }
+
+  // Common aliases
+  if (buyer === 'uruguay' && /\b(uruguay|sudam[ée]rica|south\s+america|am[ée]rica\s+del\s+sur|mercosur)\b/i.test(reg)) return true;
+  if ((buyer === 'united states' || buyer === 'usa' || buyer === 'us') && /\b(united\s+states|usa|u\.s\.a\.|u\.s\.|us|domestic)\b/i.test(reg)) return true;
+  if ((buyer === 'united kingdom' || buyer === 'uk') && /\b(united\s+kingdom|uk|great\s+britain|gb|england)\b/i.test(reg)) return true;
+  if ((buyer === 'germany' || buyer === 'deutschland') && /\b(germany|deutschland|de)\b/i.test(reg)) return true;
+  if ((buyer === 'spain' || buyer === 'españa') && /\b(spain|españa|es)\b/i.test(reg)) return true;
+
+  // Europe / EU
+  const isBuyerEU = typeof isCountryEU === 'function' ? isCountryEU(buyerCountryVal) : false;
+  if (isBuyerEU && /\b(europe|europa|eu|european\s+union)\b/i.test(reg)) return true;
+
+  return false;
+}
+
+function parseFreeShippingThresholds(fullRowText, currency = 'USD', buyerCountryVal = 'Uruguay', sellerShipsFrom = '') {
   if (!fullRowText) return null;
+  const buyer = (buyerCountryVal || (typeof buyerCountry !== 'undefined' && buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state?.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay').trim();
 
   // Normalize text if it contains HTML tags (e.g. from raw page HTML)
   const textToMatch = fullRowText.includes('<') ? fullRowText.replace(/<[^>]+>/g, ' ') : fullRowText;
@@ -472,7 +628,7 @@ function parseFreeShippingThresholds(fullRowText, currency) {
     }
   }
 
-  // 2. Official Discogs ASP Banner (e.g. "sze20 ofrece ENVÍO GRATUITO en pedidos de 330,00 € o más")
+  // 2. Official Discogs ASP Banner (Strict: requires seller action verb like "offers", "ofrece", "bietet", "offre")
   const aspMatch = textToMatch.match(OFFICIAL_ASP_BANNER_REGEX);
   if (aspMatch) {
     const rawVal = (aspMatch[2] || '').trim();
@@ -493,6 +649,142 @@ function parseFreeShippingThresholds(fullRowText, currency) {
             currency: threshCur,
             raw: aspMatch[0].trim(),
             seller: aspMatch[1] ? aspMatch[1].trim() : null,
+            scope: 'asp_banner'
+          }
+        };
+      }
+    }
+  }
+
+  // 3. Official Next.js __NEXT_DATA__ JSON inspection (Discogs Next.js pages)
+  if (fullRowText && fullRowText.includes('__NEXT_DATA__')) {
+    try {
+      const jsonMatch = fullRowText.match(/<script\s+id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/i);
+      if (jsonMatch && jsonMatch[1]) {
+        const nextData = JSON.parse(jsonMatch[1]);
+        const searchJsonForFreeShipping = (obj) => {
+          if (!obj || typeof obj !== 'object') return null;
+          if (obj.free_shipping_min_order_val || obj.freeShippingMinOrderValue || obj.freeShippingThreshold) {
+            const val = parseFloat(obj.free_shipping_min_order_val || obj.freeShippingMinOrderValue || obj.freeShippingThreshold);
+            if (val > 0) {
+              return {
+                amount: val,
+                currency: obj.currency || obj.currencyCode || currency || 'EUR',
+                scope: 'asp_banner',
+                raw: `Envío gratis a partir de ${val}`
+              };
+            }
+          }
+          if (obj.free_shipping === true && typeof obj.min_order_val === 'number' && obj.min_order_val > 0) {
+            return {
+              amount: obj.min_order_val,
+              currency: obj.currency || currency || 'EUR',
+              scope: 'asp_banner',
+              raw: `Envío gratis a partir de ${obj.min_order_val}`
+            };
+          }
+          for (const k of Object.keys(obj)) {
+            if (typeof obj[k] === 'object') {
+              const res = searchJsonForFreeShipping(obj[k]);
+              if (res) return res;
+            }
+          }
+          return null;
+        };
+        const nextResult = searchJsonForFreeShipping(nextData?.props?.pageProps);
+        if (nextResult) {
+          return { aspBannerThreshold: nextResult };
+        }
+      }
+    } catch (e) {}
+  }
+
+  // 4. Structured Multi-Country Shipping Sections (e.g. [b]United States[/b], [b]Canada[/b], [b]Rest of World[/b])
+  const sectionRegex = /(?:\[b\]|\*\*|<h3>|^)([\w\s,&.\-–—/()]+?)(?:\[\/b\]|\*\*|<\/h3>|:)\s*\n([\s\S]*?)(?=(?:\[b\]|\*\*|<h3>|\n\n\[b\]|$))/gim;
+  let secMatch;
+  const sections = [];
+  while ((secMatch = sectionRegex.exec(fullRowText)) !== null) {
+    const header = (secMatch[1] || '').trim();
+    const body = (secMatch[2] || '').trim();
+    if (header && !/^(shipping\s+terms|delivery|returns|payment|grading|about\s+us|records|disclaimer)$/i.test(header)) {
+      sections.push({ header, body });
+    }
+  }
+
+  if (sections.length > 0) {
+    // Priority: 1. Specific country match (e.g. "Uruguay"), 2. Regional match (e.g. "Europe"), 3. "Rest of World" fallback
+    let matchedSection = sections.find(s => doesRegionMatchBuyer(s.header, buyer) && !/rest\s+of\s+(?:the\s+)?world/i.test(s.header));
+    if (!matchedSection) {
+      matchedSection = sections.find(s => /rest\s+of\s+(?:the\s+)?world|worldwide|international/i.test(s.header));
+    }
+
+    if (matchedSection) {
+      const secGenMatch = matchedSection.body.match(GENERAL_FREE_SHIP_REGEX);
+      if (secGenMatch) {
+        const rawVal = (secGenMatch[1] || '').trim();
+        const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+        if (cleanDigits) {
+          const threshCur = detectCurrencyInContext(matchedSection.body, currency || 'USD');
+          const val = parseLocalePrice(cleanDigits, threshCur);
+          if (val > 0) {
+            return {
+              aspBannerThreshold: {
+                amount: val,
+                currency: threshCur,
+                raw: secGenMatch[0].trim(),
+                region: matchedSection.header,
+                scope: 'asp_banner'
+              }
+            };
+          }
+        }
+      }
+      // Section matched buyer's country, but NO free shipping was offered in that section
+      return null;
+    } else {
+      // The seller has structured sections, but NONE of them matched buyer country
+      return null;
+    }
+  }
+
+  // 5. Fallback: General free shipping threshold regex for un-sectioned text
+  const genMatch = textToMatch.match(GENERAL_FREE_SHIP_REGEX);
+  if (genMatch) {
+    const matchIndex = genMatch.index || 0;
+    const surroundingContext = textToMatch.slice(
+      Math.max(0, matchIndex - 60),
+      Math.min(textToMatch.length, matchIndex + genMatch[0].length + 60)
+    );
+
+    const isDomestic = typeof isDomesticSeller === 'function' ? isDomesticSeller(sellerShipsFrom, buyer) : false;
+    const contextLower = surroundingContext.toLowerCase();
+
+    // Check for restrictive destination tags in the context
+    const hasDomesticRestriction = /\b(us\s+only|usa\s+only|within\s+(?:the\s+)?(?:us|usa|uk)|domestic\s+only|solo\s+españa|nur\s+deutschland|continental\s+us|lower\s+48)\b/i.test(contextLower);
+    const hasWorldwideExplicit = /\b(worldwide|international|internacional|all\s+countries|global|everywhere|cualquier\s+pa[íi]s|todos\s+los\s+pa[íi]ses)\b/i.test(contextLower);
+    const hasBuyerMention = doesRegionMatchBuyer(surroundingContext, buyer);
+
+    // If text states "US only" or domestic only, and seller is not domestic to buyer, reject
+    if (hasDomesticRestriction && !isDomestic) {
+      return null;
+    }
+
+    // If international buyer and not domestic seller: only accept if explicit worldwide/buyer mention
+    if (!isDomestic && !hasWorldwideExplicit && !hasBuyerMention) {
+      return null;
+    }
+
+    const rawVal = (genMatch[1] || '').trim();
+    const cleanDigits = rawVal.replace(/[^\d.,]/g, '');
+    if (cleanDigits) {
+      const threshCur = detectCurrencyInContext(surroundingContext, currency || 'EUR');
+      const val = parseLocalePrice(cleanDigits, threshCur);
+      if (val > 0) {
+        return {
+          aspBannerThreshold: {
+            amount: val,
+            currency: threshCur,
+            raw: genMatch[0].trim(),
             scope: 'asp_banner'
           }
         };
@@ -903,8 +1195,16 @@ function parseReleaseHTML(html, releaseId) {
         }
       }
 
-      // STRICT: Only official Discogs ASP banner sets freeShippingThreshold
+      // Free Shipping Threshold (from official ASP banner or listing row shipping terms)
       let freeShippingThreshold = parsedThresholds.aspBannerThreshold || null;
+      if (!freeShippingThreshold) {
+        const fullRowText = (row.textContent || '') + ' ' + (shippingText || '');
+        const parsedRowThresh = parseFreeShippingThresholds(fullRowText, currency, buyerCountryVal, shipsFrom);
+        if (parsedRowThresh && parsedRowThresh.aspBannerThreshold) {
+          freeShippingThreshold = parsedRowThresh.aspBannerThreshold;
+          parsedThresholds.aspBannerThreshold = freeShippingThreshold;
+        }
+      }
 
       // 6. Condition (Avoid regex \b boundary bug on '+')
       const conditionEl = row.querySelector('.item_condition, .condition');
@@ -1205,9 +1505,24 @@ function groupListingsBySeller() {
     seller.isDomestic = isDomestic;
     seller.isEUToEU = isEUToEU;
 
-    // STRICT RULE: Free shipping threshold ONLY comes from official Discogs ASP banner!
-    // "solo condiciona a partir de este Detección de la barra oficial de Discogs (ASP Banner): si no tiene este no tiene envio gratis."
-    seller.freeShippingThreshold = seller.aspBannerThreshold || null;
+    // Free shipping threshold resolution:
+    // 1. Authoritative cache for buyer's country takes absolute priority (handles both positive thresholds and verified negative nulls)
+    // 2. Listing-level threshold detected during scan (only if domestic or matches region/worldwide)
+    const cachedAspForSeller = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
+    let finalThresh = null;
+    if (cachedAspForSeller !== undefined) {
+      finalThresh = cachedAspForSeller;
+    } else if (seller.aspBannerThreshold) {
+      finalThresh = seller.aspBannerThreshold;
+    } else {
+      const listingThresh = (seller.listings || []).find(l => l && (l.freeShippingThreshold || l.thresholds?.aspBannerThreshold));
+      const detectedThresh = listingThresh?.freeShippingThreshold || listingThresh?.thresholds?.aspBannerThreshold || null;
+      if (detectedThresh && (isDomestic || detectedThresh.region || /(?:worldwide|international)/i.test(detectedThresh.raw || ''))) {
+        finalThresh = detectedThresh;
+      }
+    }
+    seller.aspBannerThreshold = finalThresh;
+    seller.freeShippingThreshold = finalThresh;
     
     let hasFreeShippingUnlocked = false;
     if (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {

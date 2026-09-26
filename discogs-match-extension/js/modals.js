@@ -17,7 +17,8 @@ function closeAllModals() {
     document.getElementById('resume-modal'),
     document.getElementById('scan-cache-modal'),
     document.getElementById('settings-modal'),
-    document.getElementById('add-collection-modal')
+    document.getElementById('add-collection-modal'),
+    document.getElementById('quick-inspector-modal')
   ];
   let closedAny = false;
   modals.forEach(m => {
@@ -26,6 +27,11 @@ function closeAllModals() {
       closedAny = true;
     }
   });
+
+  // Stop YouTube iframe audio playback immediately on modal close
+  const ytIframe = document.getElementById('inspector-youtube-iframe');
+  if (ytIframe) ytIframe.src = '';
+
   return closedAny;
 }
 
@@ -692,3 +698,351 @@ window.openSettingsModal = openSettingsModal;
 window.closeSettingsModal = closeSettingsModal;
 window.updateSettingsExchangeRateUI = updateSettingsExchangeRateUI;
 window.closeAllModals = closeAllModals;
+
+// ==========================================
+// QUICK INSPECTOR & YOUTUBE AUDIO PREVIEW
+// ==========================================
+
+const GOLDMINE_DESCRIPTIONS = {
+  'M': 'Mint (M): Disco absolutamente nuevo, precintado o sin ninguna reproducción.',
+  'NM': 'Near Mint (NM): Prácticamente perfecto. Sin marcas perceptibles, reproduce sin ruidos de fondo.',
+  'VG+': 'Very Good Plus (VG+): Mínimas señales de uso superficiales. No afecta la reproducción; sonido claro.',
+  'VG': 'Very Good (VG): Marcas visibles y ruido superficial suave en partes lentas, sin saltos.',
+  'G+': 'Good Plus (G+): Desgaste moderado, ruido de fondo constante pero reproduce completo.',
+  'G': 'Good (G): Desgaste pronunciado, posibles saltos o ruidos notorios.',
+  'F': 'Fair (F): Estado muy deteriorado.',
+  'P': 'Poor (P): Disco rayado o inutilizado.',
+  'GENERIC': 'Funda genérica de distribuidora.'
+};
+
+const inspectorReleaseCache = new Map();
+
+async function openQuickInspector(sellerName, releaseId, listingId = null) {
+  const modal = document.getElementById('quick-inspector-modal');
+  if (!modal) return;
+
+  // 1. Look up seller and listing
+  const seller = (state.groupedSellers || []).find(s => s.name === sellerName);
+  let listing = null;
+  if (seller && seller.listings) {
+    listing = seller.listings.find(l => (listingId && String(l.listingId) === String(listingId)) || String(l.releaseId) === String(releaseId));
+  }
+  if (!listing && state.allListings) {
+    listing = state.allListings.find(l => (listingId && String(l.listingId) === String(listingId)) || String(l.releaseId) === String(releaseId));
+  }
+
+  // 2. Look up wantlist metadata
+  const wantInfo = (state.wants || []).find(w => String(w.id) === String(releaseId)) || {};
+
+  // Resolve Title, Artist, Image, Year, Label
+  const title = wantInfo.title || listing?.releaseTitle || listing?.title || 'Disco sin título';
+  const artist = wantInfo.artist || listing?.releaseArtist || listing?.artist || 'Artista Desconocido';
+  const rawCover = wantInfo.image || wantInfo.cover || listing?.image || '';
+  const coverUrl = typeof upgradeDiscogsImageUrl === 'function' ? upgradeDiscogsImageUrl(rawCover) : rawCover;
+  const year = wantInfo.year || listing?.year || '—';
+  const formats = wantInfo.formats || 'Vinilo';
+  const labels = wantInfo.labels || [wantInfo.label, wantInfo.catno].filter(Boolean).join(' • ') || 'Marketplace Item';
+
+  // Populate basic header
+  const titleEl = document.getElementById('inspector-release-title');
+  const artistEl = document.getElementById('inspector-release-artist');
+  const coverEl = document.getElementById('inspector-cover-img');
+  const yearEl = document.getElementById('inspector-year-badge');
+  const formatEl = document.getElementById('inspector-format-badge');
+  const labelEl = document.getElementById('inspector-release-label');
+
+  if (titleEl) titleEl.textContent = title;
+  if (artistEl) artistEl.textContent = artist;
+  if (coverEl) {
+    coverEl.src = coverUrl;
+    coverEl.style.display = coverUrl ? 'block' : 'none';
+    if (coverEl.nextElementSibling) coverEl.nextElementSibling.style.display = coverUrl ? 'none' : 'flex';
+  }
+  if (yearEl) yearEl.textContent = year;
+  if (formatEl) formatEl.textContent = formats;
+  if (labelEl) labelEl.textContent = labels;
+
+  // Goldmine condition
+  const mediaCond = (listing?.mediaCondition || 'VG+').toUpperCase();
+  const sleeveCond = (listing?.sleeveCondition || 'Generic').toUpperCase();
+  const mediaGradeEl = document.getElementById('inspector-media-grade');
+  const sleeveGradeEl = document.getElementById('inspector-sleeve-grade');
+  const mediaDescEl = document.getElementById('inspector-media-desc');
+  const sleeveDescEl = document.getElementById('inspector-sleeve-desc');
+
+  if (mediaGradeEl && typeof renderGoldmineTag === 'function') {
+    mediaGradeEl.innerHTML = renderGoldmineTag(mediaCond, false);
+  }
+  if (sleeveGradeEl && typeof renderGoldmineTag === 'function') {
+    sleeveGradeEl.innerHTML = renderGoldmineTag(sleeveCond, true);
+  }
+
+  const findDesc = (cond) => {
+    for (const [k, desc] of Object.entries(GOLDMINE_DESCRIPTIONS)) {
+      if (cond.includes(k)) return desc;
+    }
+    return `Condición reportada: ${cond}`;
+  };
+  if (mediaDescEl) mediaDescEl.textContent = findDesc(mediaCond);
+  if (sleeveDescEl) sleeveDescEl.textContent = findDesc(sleeveCond);
+
+  // Seller comments
+  const commentsBox = document.getElementById('inspector-comments-box');
+  if (commentsBox) {
+    const rawComments = (listing?.comments || '').trim();
+    if (rawComments) {
+      commentsBox.innerHTML = `“${escapeHTML(rawComments)}”`;
+      commentsBox.classList.remove('text-muted-graphite', 'italic');
+      commentsBox.classList.add('text-pitch-black');
+    } else {
+      commentsBox.innerHTML = `<em>El vendedor no incluyó notas específicas para esta copia.</em>`;
+      commentsBox.classList.remove('text-pitch-black');
+      commentsBox.classList.add('text-muted-graphite', 'italic');
+    }
+  }
+
+  // Seller offer & pricing
+  const sellerNameEl = document.getElementById('inspector-seller-name');
+  const sellerMetaEl = document.getElementById('inspector-seller-meta');
+  const itemPriceEl = document.getElementById('inspector-item-price');
+  const btnOffer = document.getElementById('inspector-btn-discogs-offer');
+
+  const sName = sellerName || listing?.sellerName || 'Tienda';
+  const shipsFrom = seller?.shipsFrom || listing?.shipsFrom || 'Internacional';
+  const rating = seller?.rating !== undefined ? seller.rating : (listing?.rating || 100);
+  const ratingCount = seller?.ratingCount || listing?.ratingCount || 0;
+
+  if (sellerNameEl) sellerNameEl.textContent = sName;
+  if (sellerMetaEl) sellerMetaEl.textContent = `Envíos desde ${shipsFrom} • ${rating}% positivo (${ratingCount.toLocaleString()} votos)`;
+  if (itemPriceEl && listing) {
+    itemPriceEl.textContent = formatPrice(listing.priceVal, listing.currency);
+  }
+  if (btnOffer) {
+    const targetUrl = listing?.listingUrl || (listing?.listingId ? `https://www.discogs.com/sell/item/${listing.listingId}` : `https://www.discogs.com/release/${releaseId}`);
+    btnOffer.href = targetUrl;
+  }
+
+  // YouTube search button fallback
+  const ytSearchBtn = document.getElementById('inspector-yt-search-btn');
+  if (ytSearchBtn) {
+    ytSearchBtn.href = `https://www.youtube.com/results?search_query=${encodeURIComponent(`${artist} ${title} vinyl`)}`;
+  }
+
+  // Render initial Genres & Styles from wantInfo if already present
+  renderInspectorGenres(wantInfo.genres, wantInfo.styles);
+
+  // Prepare YouTube Player state
+  const iframe = document.getElementById('inspector-youtube-iframe');
+  const placeholder = document.getElementById('inspector-player-placeholder');
+  const nowPlaying = document.getElementById('inspector-now-playing');
+  const videoCountEl = document.getElementById('inspector-video-count');
+  const videosList = document.getElementById('inspector-videos-list');
+
+  if (iframe) iframe.src = '';
+  if (placeholder) {
+    placeholder.style.display = 'flex';
+    placeholder.innerHTML = `
+      <span class="material-symbols-outlined text-4xl text-prada-red animate-pulse">headphones</span>
+      <span id="inspector-player-status" class="text-xs uppercase font-mono font-bold tracking-wider">Cargando pistas de audio...</span>
+    `;
+  }
+  if (nowPlaying) nowPlaying.textContent = 'Buscando canciones y pistas de audio...';
+  if (videoCountEl) videoCountEl.textContent = '0';
+  if (videosList) videosList.innerHTML = '<p class="text-[10px] text-muted-graphite p-2 font-mono">Buscando en Discogs...</p>';
+
+  // Open modal smoothly
+  modal.style.display = 'flex';
+
+  // Fetch full release details asynchronously (cached)
+  loadReleaseAudioAndGenres(releaseId, artist, title);
+}
+
+function extractYouTubeId(uri) {
+  if (!uri) return '';
+  const match = uri.match(/(?:v=|\/embed\/|youtu\.be\/|\/v\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : '';
+}
+
+function playInspectorVideo(videoId, title) {
+  const iframe = document.getElementById('inspector-youtube-iframe');
+  const placeholder = document.getElementById('inspector-player-placeholder');
+  const nowPlaying = document.getElementById('inspector-now-playing');
+
+  if (nowPlaying) nowPlaying.textContent = title;
+  if (placeholder) placeholder.style.display = 'none';
+
+  if (iframe && videoId) {
+    iframe.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1`;
+  }
+}
+
+function renderInspectorGenres(genres = [], styles = []) {
+  const container = document.getElementById('inspector-genres-container');
+  if (!container) return;
+
+  const allTags = [
+    ...(Array.isArray(genres) ? genres : []),
+    ...(Array.isArray(styles) ? styles : [])
+  ];
+
+  if (allTags.length === 0) {
+    container.innerHTML = `<span class="text-[9px] text-muted-graphite font-mono uppercase px-1">GÉNERO: VINILO / SIN ESPECIFICAR</span>`;
+    return;
+  }
+
+  container.innerHTML = allTags.map(tag => `
+    <span class="px-2 py-0.5 bg-pure-white border border-hairline-dark text-pitch-black text-[9px] font-mono font-bold uppercase tracking-wider shadow-2xs hover:border-prada-red transition-colors cursor-default">
+      ${escapeHTML(tag)}
+    </span>
+  `).join('');
+}
+
+async function loadReleaseAudioAndGenres(releaseId, artist, title) {
+  if (!releaseId) return;
+
+  let releaseData = inspectorReleaseCache.get(String(releaseId));
+
+  if (!releaseData) {
+    try {
+      const url = `https://api.discogs.com/releases/${releaseId}`;
+      let rawJson = '';
+      if (typeof fetchDirect === 'function') {
+        rawJson = await fetchDirect(url);
+      } else if (typeof fetchThroughTab === 'function') {
+        rawJson = await fetchThroughTab(url);
+      } else {
+        const resp = await fetch(url);
+        rawJson = await resp.text();
+      }
+
+      if (rawJson) {
+        releaseData = JSON.parse(rawJson);
+        inspectorReleaseCache.set(String(releaseId), releaseData);
+      }
+    } catch (e) {
+      console.warn(`[Inspector] No se pudieron cargar detalles de release ${releaseId}:`, e.message);
+    }
+  }
+
+  // Update Genres & Styles from release
+  if (releaseData) {
+    renderInspectorGenres(releaseData.genres, releaseData.styles);
+  }
+
+  // Process Videos
+  const iframe = document.getElementById('inspector-youtube-iframe');
+  const placeholder = document.getElementById('inspector-player-placeholder');
+  const nowPlaying = document.getElementById('inspector-now-playing');
+  const videoCountEl = document.getElementById('inspector-video-count');
+  const videosList = document.getElementById('inspector-videos-list');
+
+  const videos = (releaseData && Array.isArray(releaseData.videos)) ? releaseData.videos : [];
+  if (videoCountEl) videoCountEl.textContent = String(videos.length);
+
+  if (videos.length > 0) {
+    // Populate video list
+    if (videosList) {
+      videosList.innerHTML = videos.map((v, i) => {
+        const vId = extractYouTubeId(v.uri);
+        const vTitle = v.title || `Pista #${i + 1}`;
+        const durationStr = v.duration ? `${Math.floor(v.duration / 60)}:${String(v.duration % 60).padStart(2, '0')}` : '';
+        return `
+          <button type="button" class="btn-select-video w-full text-left p-2 border border-hairline-light bg-pure-white hover:border-prada-red hover:bg-red-50/30 flex items-center justify-between gap-2 transition-colors cursor-pointer group" data-video-id="${escapeHTML(vId)}" data-video-title="${escapeHTML(vTitle)}">
+            <div class="flex items-center gap-2 min-w-0">
+              <span class="material-symbols-outlined text-[15px] text-muted-graphite group-hover:text-prada-red shrink-0">play_circle</span>
+              <span class="text-[11px] font-sans text-pitch-black truncate group-hover:text-prada-red font-semibold">${escapeHTML(vTitle)}</span>
+            </div>
+            ${durationStr ? `<span class="text-[9px] font-mono text-muted-graphite shrink-0">${durationStr}</span>` : ''}
+          </button>
+        `;
+      }).join('');
+
+      // Add click listeners to video items
+      videosList.querySelectorAll('.btn-select-video').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const vId = btn.getAttribute('data-video-id');
+          const vTitle = btn.getAttribute('data-video-title');
+          playInspectorVideo(vId, vTitle);
+          videosList.querySelectorAll('.btn-select-video').forEach(b => b.classList.remove('border-prada-red', 'bg-red-50/50'));
+          btn.classList.add('border-prada-red', 'bg-red-50/50');
+        });
+      });
+    }
+
+    // Play first video automatically
+    const firstVid = videos[0];
+    const firstVidId = extractYouTubeId(firstVid.uri);
+    if (firstVidId) {
+      playInspectorVideo(firstVidId, firstVid.title || `${artist} - ${title}`);
+      const firstBtn = videosList?.querySelector('.btn-select-video');
+      if (firstBtn) firstBtn.classList.add('border-prada-red', 'bg-red-50/50');
+    }
+  } else {
+    // No videos found
+    if (placeholder) {
+      placeholder.style.display = 'flex';
+      placeholder.innerHTML = `
+        <span class="material-symbols-outlined text-3xl text-muted-graphite">music_off</span>
+        <span class="text-xs uppercase font-mono font-bold text-pure-white">Sin audio oficial en Discogs</span>
+        <span class="text-[10px] text-muted-graphite font-sans text-center max-w-[280px]">Esta edición no cuenta con pistas de audio cargadas en Discogs.</span>
+        <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(`${artist} ${title} vinyl`)}" target="_blank" class="mt-2 px-3 py-1.5 bg-prada-red hover:bg-prada-red-dark text-pure-white text-[10px] font-bold uppercase tracking-wider inline-flex items-center gap-1.5 shadow-2xs">
+          <span>Buscar en YouTube</span>
+          <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+        </a>
+      `;
+    }
+    if (nowPlaying) nowPlaying.textContent = 'Sin audio oficial en Discogs';
+    if (videosList) videosList.innerHTML = '<p class="text-[10px] text-muted-graphite p-3 font-mono text-center">No hay pistas asociadas a este release.</p>';
+  }
+}
+
+function closeQuickInspector() {
+  const modal = document.getElementById('quick-inspector-modal');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+  // Stop YouTube audio immediately
+  const iframe = document.getElementById('inspector-youtube-iframe');
+  if (iframe) {
+    iframe.src = '';
+  }
+}
+window.closeQuickInspector = closeQuickInspector;
+window.openQuickInspector = openQuickInspector;
+
+// Initialize Inspector Close Handlers
+document.addEventListener('DOMContentLoaded', () => {
+  const btnCloseInspector = document.getElementById('btn-close-inspector-modal');
+  const btnCloseInspectorBottom = document.getElementById('btn-close-inspector-modal-bottom');
+  const inspectorModal = document.getElementById('quick-inspector-modal');
+
+  if (btnCloseInspector) btnCloseInspector.addEventListener('click', closeQuickInspector);
+  if (btnCloseInspectorBottom) btnCloseInspectorBottom.addEventListener('click', closeQuickInspector);
+
+  if (inspectorModal) {
+    inspectorModal.addEventListener('click', (e) => {
+      if (e.target === inspectorModal) {
+        closeQuickInspector();
+      }
+    });
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const inspectorModal = document.getElementById('quick-inspector-modal');
+      if (inspectorModal && inspectorModal.style.display !== 'none') {
+        closeQuickInspector();
+      }
+    }
+  });
+});
+
+// Global capture listener for broken image covers (replaces inline onerror without CSP violation)
+window.addEventListener('error', (e) => {
+  if (e.target && e.target.tagName === 'IMG' && e.target.nextElementSibling) {
+    e.target.style.display = 'none';
+    e.target.nextElementSibling.style.display = 'flex';
+  }
+}, true);
+

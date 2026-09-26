@@ -889,7 +889,6 @@ async function restoreCompletedScanIfAvailable(savedUser) {
 
     // Populate data in state
     state.allListings = data.allListings || [];
-    state.groupedSellers = data.groupedSellers || [];
     if (data.buyerCountry) {
       state.buyerCountry = data.buyerCountry;
       if (buyerCountry) buyerCountry.value = data.buyerCountry;
@@ -897,6 +896,19 @@ async function restoreCompletedScanIfAvailable(savedUser) {
     }
     if (Array.isArray(data.wants) && data.wants.length > 0) {
       state.wants = data.wants;
+    }
+
+    // Re-evaluate sellers dynamically for buyer destination country
+    if (typeof groupListingsBySeller === 'function' && state.allListings.length > 0) {
+      groupListingsBySeller();
+    } else {
+      state.groupedSellers = data.groupedSellers || [];
+    }
+
+
+    // Populate country filter dropdown with all seller countries
+    if (typeof populateCountryFilter === 'function') {
+      populateCountryFilter();
     }
 
     // Animate progress bar step 2
@@ -1728,6 +1740,7 @@ document.addEventListener('DOMContentLoaded', () => {
       filterPriorityOnly.checked = false;
       localStorage.setItem('filter_priority_only', 'false');
       if (filterFreeShipping) filterFreeShipping.checked = false;
+      if (filterHasShipping) filterHasShipping.checked = false;
       if (filterSearchRelease) filterSearchRelease.value = "";
       if (typeof state !== 'undefined' && state) {
         if (state.expandedSellers) state.expandedSellers.clear();

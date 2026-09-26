@@ -64,7 +64,7 @@
             : (condTag.includes('NM') ? 'bg-blue-600' : 'bg-amber-600');
 
           const imgHtml = coverImg
-            ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/cover:scale-105 transition-transform duration-300" src="${escapeHTML(coverImg)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+            ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/cover:scale-105 transition-transform duration-300" src="${escapeHTML(coverImg)}" loading="lazy"/>
                <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`
             : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-lg">album</span></div>`;
 

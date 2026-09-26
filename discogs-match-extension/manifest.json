@@ -25,6 +25,9 @@
       }
     ]
   },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com;"
+  },
   "host_permissions": [
     "https://*.discogs.com/*",
     "https://api.discogs.com/*"

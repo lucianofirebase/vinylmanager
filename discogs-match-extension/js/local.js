@@ -661,7 +661,7 @@ function renderLocalMatches() {
           <div class="flex gap-3.5 mb-4">
             <div class="w-14 h-14 border border-hairline-dark bg-stone-100 shrink-0 overflow-hidden relative shadow-xs">
               ${hasImage ? `
-                <img src="${item.image}" referrerpolicy="no-referrer" class="w-full h-full object-cover" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+                <img src="${item.image}" referrerpolicy="no-referrer" class="w-full h-full object-cover">
                 <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400">
                   <span class="material-symbols-outlined text-lg">album</span>
                 </div>

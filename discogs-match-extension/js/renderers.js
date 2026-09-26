@@ -210,6 +210,18 @@ function renderWantsListInManager(resetPage = false) {
     const starIcon = card.querySelector('.record-star-btn .star-icon');
     const starCheckbox = card.querySelector('.star-checkbox');
     const purchasedBtn = card.querySelector('.record-purchased-btn');
+    const inspectBtn = card.querySelector('.record-inspect-btn');
+
+    // Handle Quick Inspector & audio preview
+    if (inspectBtn) {
+      inspectBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (typeof openQuickInspector === 'function') {
+          openQuickInspector(null, item.id);
+        }
+      });
+    }
 
     // Handle toggle purchased status
     if (purchasedBtn) {
@@ -562,7 +574,7 @@ function buildSellerListingRowsHtml(activeListings, seller, priorityIds, searchQ
     const coverRaw = wantInfo.image || wantInfo.cover || wantInfo.thumb || wantInfo.coverImage || wantInfo.cover_image || list.image || '';
     const coverThumb = typeof upgradeDiscogsImageUrl === 'function' ? upgradeDiscogsImageUrl(coverRaw) : coverRaw;
     const imgHtml = coverThumb
-      ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/img:scale-110 transition-transform duration-300" src="${escapeHTML(coverThumb)}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"/>
+      ? `<img alt="${escapeHTML(wantInfo.title || 'Vinyl')}" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none group-hover/img:scale-110 transition-transform duration-300" src="${escapeHTML(coverThumb)}" loading="lazy"/>
          <div class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`
       : `<div class="w-full h-full flex items-center justify-center bg-stone-100 text-stone-400"><span class="material-symbols-outlined text-sm">album</span></div>`;
 
@@ -591,18 +603,21 @@ function buildSellerListingRowsHtml(activeListings, seller, priorityIds, searchQ
       : escapeHTML(`${artistLabel} — ${titleLabel}`);
 
     listingsHtml += `
-      <div class="seller-listing-row ${rowHighlightClass} grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
+      <div class="seller-listing-row ${rowHighlightClass} grid grid-cols-12 gap-4 items-center px-4 py-3.5 border border-hairline-light hover:border-prada-blue bg-ivory-warm/40 transition-colors cursor-pointer" data-seller="${escapeHTML(seller.name)}" data-page="${pageNumber}" style="${isHiddenStyle}">
         <div class="col-span-5 flex items-center gap-3">
           <input checked="" class="h-4 w-4 border-hairline-dark text-prada-red shrink-0 focus:ring-0 cursor-pointer" type="checkbox"
             data-tooltip="Incluir o excluir este disco del cálculo de subtotal y envío" data-tooltip-pos="top"/>
-          <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img">
+          <div class="w-12 h-12 bg-bone border border-hairline-light shrink-0 overflow-hidden relative group/img cursor-pointer"
+            data-action="inspect" data-seller="${escapeHTML(seller.name)}" data-release-id="${list.releaseId}" data-listing-id="${list.listingId || ''}"
+            data-tooltip="Click para ver estado, comentarios y escuchar audio" data-tooltip-pos="top">
             ${imgHtml}
           </div>
           <div class="flex flex-col min-w-0 font-mono">
-            <a href="https://www.discogs.com/release/${list.releaseId}" target="_blank" class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors ${titleHighlightClass}"
-              data-tooltip="Ver ficha técnica de esta edición en Discogs" data-tooltip-pos="top">
+            <span class="font-sans font-bold text-xs sm:text-sm tracking-tight text-pitch-black uppercase truncate hover:text-prada-red transition-colors cursor-pointer ${titleHighlightClass}"
+              data-action="inspect" data-seller="${escapeHTML(seller.name)}" data-release-id="${list.releaseId}" data-listing-id="${list.listingId || ''}"
+              data-tooltip="Click para ver estado, comentarios y escuchar audio" data-tooltip-pos="top">
               ${starHtml}${formattedTitle}
-            </a>
+            </span>
             <span class="text-[10px] text-muted-graphite uppercase truncate mt-0.5">${escapeHTML(labelText || 'DISCOGS MARKETPLACE ITEM')}</span>
           </div>
         </div>
@@ -790,20 +805,27 @@ function renderResults() {
     if (filterHasShipping && filterHasShipping.checked && seller.isShippingEstimated) {
       return false;
     }
-    // Sync cached ASP banner if available
-    if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
-      const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+    // Sync cached ASP banner if available (handles both positive thresholds and verified negative nulls)
+    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+    if (typeof getCachedAspBanner === 'function') {
       const cached = getCachedAspBanner(seller.name, buyerCountryVal);
-      if (cached) {
+      if (cached !== undefined) {
         seller.aspBannerThreshold = cached;
         seller.freeShippingThreshold = cached;
+        if (!cached) {
+          seller.hasFreeShippingUnlocked = false;
+        }
       }
     }
 
     // 7. Free shipping / threshold filter
     if (filterFreeShipping && filterFreeShipping.checked) {
       const hasThreshold = Boolean(seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0);
-      const isDirectFree = Boolean(seller.displayListings && seller.displayListings.length > 0 && seller.displayListings.every(l => l && l.isDirectFree));
+      const isDirectFree = Boolean(
+        (seller.officialShippingPrice !== null && seller.officialShippingPrice === 0) ||
+        (seller.estimatedShipping === 0 && !hasThreshold) ||
+        (seller.displayListings && seller.displayListings.length > 0 && seller.displayListings.every(l => l && l.isDirectFree))
+      );
       if (!hasThreshold && !isDirectFree && !seller.hasFreeShippingUnlocked) {
         return false;
       }
@@ -964,12 +986,15 @@ function renderResults() {
         });
       }
 
-      if (!seller.freeShippingThreshold && typeof getCachedAspBanner === 'function') {
-        const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
-        const cached = getCachedAspBanner(seller.name, buyerCountryVal);
-        if (cached) {
+      const cardBuyerCountryVal = (buyerCountry ? buyerCountry.value : (state.buyerCountry || 'Uruguay')) || 'Uruguay';
+      if (typeof getCachedAspBanner === 'function') {
+        const cached = getCachedAspBanner(seller.name, cardBuyerCountryVal);
+        if (cached !== undefined) {
           seller.aspBannerThreshold = cached;
           seller.freeShippingThreshold = cached;
+          if (!cached) {
+            seller.hasFreeShippingUnlocked = false;
+          }
         }
       }
 
@@ -1287,13 +1312,27 @@ function renderResults() {
     });
   });
 
-  // Trigger background ASP banner verification ONLY if free shipping filter is active
+  // Handle click on listing row to inspect and listen to audio in modal
+  document.querySelectorAll('.seller-listing-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      // Do nothing if user is clicking on checkbox or the external Discogs arrow link
+      if (e.target.closest('input[type="checkbox"], a')) return;
+
+      const sName = row.getAttribute('data-seller');
+      const inspectEl = row.querySelector('[data-action="inspect"]');
+      const rId = inspectEl ? inspectEl.getAttribute('data-release-id') : null;
+      const lId = inspectEl ? inspectEl.getAttribute('data-listing-id') : null;
+      if (typeof openQuickInspector === 'function' && rId) {
+        openQuickInspector(sName, rId, lId);
+      }
+    });
+  });
+
+  // Trigger background ASP banner verification for visible sellers that don't have it yet
   if (typeof verifyDisplayedSellersAsp === 'function') {
     const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
-    if (isFreeShipFilterActive) {
-      const targetSellers = state.groupedSellers || filtered;
-      verifyDisplayedSellersAsp(targetSellers);
-    }
+    const targetSellers = isFreeShipFilterActive ? (state.groupedSellers || filtered) : filtered;
+    verifyDisplayedSellersAsp(targetSellers);
   }
 }
 
@@ -1310,11 +1349,11 @@ function scheduleAspRenderResults() {
 
 async function verifyDisplayedSellersAsp(displayedSellers) {
   if (isVerifyingAsp || !displayedSellers || displayedSellers.length === 0) return;
-  if (!filterFreeShipping || !filterFreeShipping.checked) return;
+  if (typeof isAspRateLimited === 'function' && isAspRateLimited()) return;
   
   // Find sellers in view that haven't been checked yet, prioritized by match count descending
   const unchecked = displayedSellers
-    .filter(s => s && s.name && !s.aspChecked && !s.aspBannerThreshold)
+    .filter(s => s && s.name && !s.aspChecked)
     .sort((a, b) => ((b.displayListings || b.listings || []).length) - ((a.displayListings || a.listings || []).length));
     
   if (unchecked.length === 0) return;
@@ -1323,18 +1362,31 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
   try {
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
-    // Check up to 15 candidate sellers with highest matches
-    const batch = unchecked.slice(0, 15);
-    const CONCURRENCY = 4;
+    // If free shipping filter is active, check up to 150 candidates. If background prefetch, check up to 50.
+    const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
+    const maxBatch = isFreeShipFilterActive ? 150 : 50;
+    const batch = unchecked.slice(0, maxBatch);
+    const CONCURRENCY = 3;
     let updatedAny = false;
 
     for (let i = 0; i < batch.length; i += CONCURRENCY) {
+      if (typeof isAspRateLimited === 'function' && isAspRateLimited()) {
+        console.warn('[ASP Banner] Deteniendo verificación automática por rate-limit activo (429).');
+        break;
+      }
+
       const chunk = batch.slice(i, i + CONCURRENCY);
+      let chunkUpdated = false;
+      let performedNetworkFetch = false;
+
       await Promise.all(chunk.map(async (seller) => {
         seller.aspChecked = true;
         let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
+        const wasCached = (thresh !== undefined);
+        
         if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
-          thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
+          performedNetworkFetch = true;
+          thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId, seller.shipsFrom);
         }
 
         if (thresh) {
@@ -1346,15 +1398,42 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
           const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
           seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
           seller.totalPrice = activeSubtotal + seller.estimatedShipping;
-          updatedAny = true;
+          
+          if (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {
+            let thresholdInSellerCurrency = seller.freeShippingThreshold.amount;
+            if (seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency) {
+              const threshRate = (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate) || 1.0;
+              const sellerRate = (typeof CURRENCY_MAP !== 'undefined' && CURRENCY_MAP[seller.currency]?.rate) || 1.0;
+              thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
+            }
+            seller.hasFreeShippingUnlocked = activeSubtotal >= thresholdInSellerCurrency;
+          }
 
-          // Re-render with debounce so rapid detections do not cause card flickering
-          scheduleAspRenderResults();
+          updatedAny = true;
+          chunkUpdated = true;
+        } else if (thresh === null) {
+          // Confirmed negative: seller does not offer free shipping to this destination country
+          if (seller.freeShippingThreshold || seller.aspBannerThreshold || seller.hasFreeShippingUnlocked) {
+            seller.aspBannerThreshold = null;
+            seller.freeShippingThreshold = null;
+            seller.hasFreeShippingUnlocked = false;
+            const activeListings = seller.displayListings || seller.listings || [];
+            const activeSubtotal = activeListings.reduce((sum, item) => sum + (item.priceVal || 0), 0);
+            seller.estimatedShipping = calculateSellerShipping(seller, activeListings);
+            seller.totalPrice = activeSubtotal + seller.estimatedShipping;
+            updatedAny = true;
+            chunkUpdated = true;
+          }
         }
       }));
 
-      // Small 80ms breathing space between chunks
-      await new Promise(r => setTimeout(r, 80));
+      if (chunkUpdated) {
+        scheduleAspRenderResults();
+      }
+
+      if (performedNetworkFetch) {
+        await new Promise(r => setTimeout(r, 400));
+      }
     }
 
     if (updatedAny) {

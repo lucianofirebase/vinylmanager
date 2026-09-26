@@ -794,7 +794,21 @@
 
         seller.isDomestic = isDomestic;
         seller.isEUToEU = isEUToEU;
-        seller.freeShippingThreshold = seller.aspBannerThreshold || null;
+        const cachedAspForSeller = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
+        let finalThresh = null;
+        if (cachedAspForSeller !== undefined) {
+          finalThresh = cachedAspForSeller;
+        } else if (seller.aspBannerThreshold) {
+          finalThresh = seller.aspBannerThreshold;
+        } else {
+          const listingThresh = (seller.listings || []).find(l => l && (l.freeShippingThreshold || l.thresholds?.aspBannerThreshold));
+          const detectedThresh = listingThresh?.freeShippingThreshold || listingThresh?.thresholds?.aspBannerThreshold || null;
+          if (detectedThresh && (isDomestic || detectedThresh.region || /(?:worldwide|international)/i.test(detectedThresh.raw || ''))) {
+            finalThresh = detectedThresh;
+          }
+        }
+        seller.aspBannerThreshold = finalThresh;
+        seller.freeShippingThreshold = finalThresh;
 
         let hasFreeShippingUnlocked = false;
         if (seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) {

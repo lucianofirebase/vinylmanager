@@ -23,8 +23,8 @@
       global.ShippingEngine.calculateSellerShipping(seller, listingsList);
     global.parseShippingPoliciesJson = (data, buyerCountryVal) =>
       global.ShippingEngine.parseShippingPoliciesJson(data, buyerCountryVal);
-    global.parseFreeShippingThresholds = (fullRowText, currency) =>
-      global.ShippingEngine.parseFreeShippingThresholds(fullRowText, currency);
+    global.parseFreeShippingThresholds = (fullRowText, currency, buyerCountryVal, sellerShipsFrom) =>
+      global.ShippingEngine.parseFreeShippingThresholds(fullRowText, currency, null, buyerCountryVal, sellerShipsFrom);
     global.isCountryEU = (c) => global.ShippingEngine.isCountryEU(c);
     global.isDomesticSeller = (shipsFrom, buyer) => global.ShippingEngine.isDomesticSeller(shipsFrom, buyer);
   }

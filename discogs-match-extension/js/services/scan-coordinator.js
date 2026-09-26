@@ -68,6 +68,10 @@
               artist: (item.basic_information?.artists || []).map(a => a.name).join(', ') || 'Desconocido',
               year: item.basic_information?.year || '',
               image: this.parser.upgradeDiscogsImageUrl(item.basic_information?.cover_image || item.basic_information?.thumb || ''),
+              genres: item.basic_information?.genres || [],
+              styles: item.basic_information?.styles || [],
+              formats: (item.basic_information?.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
+              labels: (item.basic_information?.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
               wantCount: (item.basic_information?.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
               haveCount: (item.basic_information?.community && item.basic_information.community.have) || 0,
               forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0

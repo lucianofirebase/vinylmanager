@@ -165,7 +165,7 @@
         </div>
 
         <!-- Hidden cache checkbox kept for script compatibility -->
-        <input type="checkbox" id="use-cache-checkbox" checked class="hidden">
+        <input type="checkbox" id="use-cache-checkbox" checked class="hidden" aria-label="Usar datos de caché de escaneo">
       </div>
 
       <!-- User Locale & Profile Meta -->
@@ -176,8 +176,9 @@
           <div
             class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-pitch-black"
             data-tooltip="País del comprador para calcular tarifas de envío y aduanas" data-tooltip-pos="bottom">
+            <label for="buyer-country" class="sr-only">País de envío</label>
             <span class="material-symbols-outlined text-[13px] text-prada-blue shrink-0">location_on</span>
-            <select id="buyer-country"
+            <select id="buyer-country" aria-label="País de envío"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none appearance-none">
               <option value="Uruguay" selected>Uruguay (UY)</option>
               <option value="Argentina">Argentina (AR)</option>
@@ -204,7 +205,8 @@
           <div
             class="px-2.5 py-1 flex items-center gap-1 uppercase text-[10px] tracking-wider text-prada-emerald font-bold bg-prada-emerald-bg"
             data-tooltip="Moneda de visualización para conversión de precios" data-tooltip-pos="bottom">
-            <select id="display-currency"
+            <label for="display-currency" class="sr-only">Moneda de visualización</label>
+            <select id="display-currency" aria-label="Moneda de visualización"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none text-emerald-900 appearance-none">
               <option value="USD" selected>$ USD</option>
               <option value="UYU">UYU ($U)</option>
@@ -275,11 +277,11 @@
 
               <!-- Manual Username Switcher -->
               <div class="space-y-2 mb-3">
-                <label class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold block">CAMBIAR USUARIO (MODO TESTING):</label>
+                <label for="manual-username" class="text-[9px] uppercase tracking-wider text-muted-graphite font-bold block">CAMBIAR USUARIO (MODO TESTING):</label>
                 <div class="flex gap-1.5">
                   <input
                     class="border border-hairline-light px-2.5 py-1.5 text-xs bg-surface-low focus:border-pitch-black focus:outline-none flex-1 font-mono text-pitch-black"
-                    id="manual-username" placeholder="ej. mi_usuario_discogs" type="text"
+                    id="manual-username" placeholder="ej. mi_usuario_discogs" type="text" aria-label="Nombre de usuario de Discogs"
                     data-tooltip="Ingresa el usuario de cualquier cuenta pública de Discogs para analizar sus vinilos" data-tooltip-pos="bottom" />
                   <button id="save-username-btn" type="button"
                     class="bg-pitch-black hover:bg-prada-red text-pure-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer shrink-0"
@@ -308,7 +310,7 @@
                 </button>
               </div>
             </div>
-            <div style="display: none;"><input type="password" id="discogs-token-input"></div>
+            <div style="display: none;"><input type="password" id="discogs-token-input" aria-label="Token personal de Discogs"></div>
           </div>
 
           <!-- Settings Gear Button (Personalización) -->
@@ -400,8 +402,8 @@
         <!-- Dropdown 1: Min Discs -->
         <div class="border border-hairline-dark bg-pure-white px-2 py-1 flex items-center gap-1 shadow-xs"
           data-tooltip="Mostrar solo tiendas que tengan como mínimo esta cantidad de tus vinilos" data-tooltip-pos="bottom">
-          <span class="text-muted-graphite font-semibold text-[11px] shrink-0">LOTE:</span>
-          <select id="filter-min-matches"
+          <label for="filter-min-matches" class="text-muted-graphite font-semibold text-[11px] shrink-0 cursor-pointer">LOTE:</label>
+          <select id="filter-min-matches" aria-label="Cantidad mínima de vinilos coincidentes"
             class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-[11px] appearance-none">
             <option value="1">1+ VINILOS</option>
             <option value="2" selected>2+ VINILOS</option>
@@ -417,8 +419,8 @@
         <div
           class="border border-emerald-600 bg-prada-emerald-bg px-2 py-1 flex items-center gap-1 shadow-xs"
           data-tooltip="Filtrar por estado del vinilo según escala Goldmine (VG+, NM, Mint)" data-tooltip-pos="bottom">
-          <span class="text-emerald-800 font-semibold text-[11px] shrink-0">ESTADO:</span>
-          <select id="filter-min-condition"
+          <label for="filter-min-condition" class="text-emerald-800 font-semibold text-[11px] shrink-0 cursor-pointer">ESTADO:</label>
+          <select id="filter-min-condition" aria-label="Estado mínimo del vinilo según escala Goldmine"
             class="bg-transparent text-emerald-950 font-bold uppercase focus:outline-none cursor-pointer text-[11px] appearance-none">
             <option value="any">CUALQUIER CONDICIÓN</option>
             <option value="VG+" selected>VG+ O SUPERIOR</option>
@@ -431,8 +433,8 @@
         <!-- Dropdown 3: Origin -->
         <div class="border border-blue-600 bg-blue-50 px-2 py-1 flex items-center gap-1 shadow-xs"
           data-tooltip="Filtrar por país de origen del vendedor o región" data-tooltip-pos="bottom">
-          <span class="text-prada-blue font-semibold text-[11px] shrink-0">ORIGEN:</span>
-          <select id="filter-country"
+          <label for="filter-country" class="text-prada-blue font-semibold text-[11px] shrink-0 cursor-pointer">ORIGEN:</label>
+          <select id="filter-country" aria-label="País u origen del vendedor"
             class="bg-transparent text-prada-blue-night font-bold uppercase focus:outline-none cursor-pointer text-[11px] appearance-none">
             <option value="all" selected>GLOBAL ARCHIVE</option>
             <option value="Europe">UNIÓN EUROPEA &amp; UK</option>
@@ -446,8 +448,8 @@
         <!-- Dropdown 4: Merchant Reputation -->
         <div class="border border-amber-600 bg-prada-ochre-bg px-2 py-1 flex items-center gap-1 shadow-xs"
           data-tooltip="Filtrar por reputación y valoraciones positivas del vendedor" data-tooltip-pos="bottom">
-          <span class="text-amber-900 font-semibold text-[11px] shrink-0">REPUTACIÓN:</span>
-          <select id="filter-rating"
+          <label for="filter-rating" class="text-amber-900 font-semibold text-[11px] shrink-0 cursor-pointer">REPUTACIÓN:</label>
+          <select id="filter-rating" aria-label="Reputación mínima del vendedor"
             class="bg-transparent text-amber-950 font-bold uppercase focus:outline-none cursor-pointer text-[11px] appearance-none">
             <option value="0">CUALQUIERA</option>
             <option value="98">≥ 98% POSITIVO</option>
@@ -460,8 +462,8 @@
         <div
           class="border-2 border-hairline-dark bg-pure-white px-2 py-1 flex items-center gap-1 shadow-xs"
           data-tooltip="Criterio de ordenación de los resultados de vendedores" data-tooltip-pos="bottom">
-          <span class="text-prada-blue font-bold text-[11px] shrink-0">ORDEN:</span>
-          <select id="sort-by"
+          <label for="sort-by" class="text-prada-blue font-bold text-[11px] shrink-0 cursor-pointer">ORDEN:</label>
+          <select id="sort-by" aria-label="Criterio de ordenación de resultados"
             class="bg-transparent text-pitch-black font-bold uppercase focus:outline-none cursor-pointer text-[11px] appearance-none">
             <option value="matches-desc" selected>MAYOR COINCIDENCIA</option>
             <option value="price-asc">MENOR PRECIO PROMEDIO</option>
@@ -474,8 +476,9 @@
       <div class="flex items-center ml-auto">
         <div class="relative flex items-center border border-hairline-dark bg-pure-white px-2.5 py-1 shadow-xs"
           data-tooltip="Filtrar en vivo por título de disco o nombre de artista" data-tooltip-pos="bottom">
+          <label for="filter-search-release" class="sr-only">Buscar disco o artista</label>
           <span class="material-symbols-outlined text-[15px] text-prada-red mr-1.5 shrink-0">search</span>
-          <input id="filter-search-release" type="text" placeholder="BUSCAR DISCO O ARTISTA..."
+          <input id="filter-search-release" type="text" placeholder="BUSCAR DISCO O ARTISTA..." aria-label="Buscar disco o artista"
             class="bg-transparent text-[11px] font-mono tracking-wide uppercase placeholder:text-muted-graphite focus:outline-none text-pitch-black w-40 sm:w-52 lg:w-64">
         </div>
       </div>
@@ -789,7 +792,8 @@
                     data-tooltip="Cambiar manualmente de usuario para pruebas" data-tooltip-pos="left">Cambiar</button>
                 </div>
                 <div id="wizard-input-fallback" class="mt-2 flex flex-col gap-1.5" style="display: none;">
-                  <input type="text" id="wizard-manual-username" placeholder="NOMBRE DE USUARIO"
+                  <label for="wizard-manual-username" class="sr-only">Nombre de usuario de Discogs</label>
+                  <input type="text" id="wizard-manual-username" placeholder="NOMBRE DE USUARIO" aria-label="Nombre de usuario de Discogs"
                     class="w-full bg-pure-white border border-hairline-dark p-2 text-xs font-mono font-bold uppercase outline-none text-pitch-black focus:border-prada-red"
                     data-tooltip="Escribe el nombre de usuario de Discogs a conectar" data-tooltip-pos="top">
                   <button id="wizard-save-username-btn" type="button"
@@ -800,12 +804,12 @@
 
               <!-- Shipping destination country -->
               <div>
-                <span class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite block mb-1">PAÍS DE DESTINO (CALCULAR ENVÍO COMBINADO):</span>
+                <label for="wizard-buyer-country" class="text-[9px] font-bold uppercase tracking-wider text-muted-graphite block mb-1 cursor-pointer">PAÍS DE DESTINO (CALCULAR ENVÍO COMBINADO):</label>
                 <div class="relative border border-hairline-dark bg-pure-white px-2.5 py-2 flex items-center justify-between"
                   data-tooltip="Elige el país de destino para calcular envío combinado y aduanas" data-tooltip-pos="top">
                   <div class="flex items-center gap-2 w-full">
                     <span class="material-symbols-outlined text-[15px] text-prada-blue shrink-0 pointer-events-none">location_on</span>
-                    <select id="wizard-buyer-country" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
+                    <select id="wizard-buyer-country" aria-label="País de destino para calcular envío combinado" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
                       <option value="Uruguay" selected>Uruguay (UY)</option>
                       <option value="Argentina">Argentina (AR)</option>
                       <option value="Brazil">Brasil (BR)</option>
@@ -878,8 +882,8 @@
 
             <div class="border-2 border-prada-blue bg-pure-white p-6 shadow-sm mb-6 space-y-4">
               <div>
-                <label class="text-[9px] font-bold uppercase tracking-wider text-pitch-black block mb-1.5">PEGAR FILAS COPIADAS DE GOOGLE SHEETS O EXCEL:</label>
-                <textarea id="onboard-sheet-paste-area"
+                <label for="onboard-sheet-paste-area" class="text-[9px] font-bold uppercase tracking-wider text-pitch-black block mb-1.5 cursor-pointer">PEGAR FILAS COPIADAS DE GOOGLE SHEETS O EXCEL:</label>
+                <textarea id="onboard-sheet-paste-area" aria-label="Pegar filas copiadas de Google Sheets o Excel"
                   placeholder="Copia las filas en tu Sheet o Excel (ej: Artista | Título | Año...) y pégalas aquí..."
                   class="w-full h-32 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite/70 focus:outline-none focus:border-prada-blue"
                   data-tooltip="Pega filas con columnas de Artista y Título copiadas de tu planilla" data-tooltip-pos="top"></textarea>
@@ -973,15 +977,16 @@
           <div class="wantlist-toolbar font-mono text-xs">
             <!-- Left: Search Bar (Taller, spacious padding, focus ring) -->
             <div class="wantlist-search-wrapper" data-tooltip="Filtrar por artista, título o formato" data-tooltip-pos="bottom">
+              <label for="wants-search-input" class="sr-only">Buscar disco o artista en la lista de deseos</label>
               <span class="material-symbols-outlined text-[17px] text-prada-red mr-2.5 shrink-0">search</span>
-              <input type="text" id="wants-search-input" placeholder="BUSCAR DISCO O ARTISTA..." class="bg-transparent font-mono text-xs uppercase text-pitch-black focus:outline-none w-full placeholder:text-muted-graphite tracking-wide leading-normal">
+              <input type="text" id="wants-search-input" placeholder="BUSCAR DISCO O ARTISTA..." aria-label="Buscar disco o artista en la lista de deseos" class="bg-transparent font-mono text-xs uppercase text-pitch-black focus:outline-none w-full placeholder:text-muted-graphite tracking-wide leading-normal">
             </div>
 
             <!-- Right: Action Buttons & Primary CTA -->
             <div class="wantlist-actions-group">
               <!-- Hidden checkboxes kept for code backwards-compatibility -->
-              <input type="checkbox" id="manager-use-cache-checkbox" checked class="hidden" style="display: none !important;">
-              <input type="checkbox" id="bottom-use-cache-checkbox" checked class="hidden" style="display: none !important;">
+              <input type="checkbox" id="manager-use-cache-checkbox" aria-label="Usar caché para catálogo" checked class="hidden" style="display: none !important;">
+              <input type="checkbox" id="bottom-use-cache-checkbox" aria-label="Usar caché inferior" checked class="hidden" style="display: none !important;">
 
               <button id="export-wants-manager-btn"
                 class="flex items-center gap-1.5 px-3.5 py-2 border border-hairline-dark text-pitch-black hover:border-prada-emerald hover:text-emerald-800 font-mono text-xs uppercase font-semibold bg-pure-white cursor-pointer transition-colors shadow-xs"
@@ -1355,10 +1360,10 @@
           <!-- Min Discs for Seller Highlighting -->
           <div class="pt-2 border-t border-hairline-light flex items-center justify-between">
             <div>
-              <span class="font-bold text-pitch-black text-[11px] block">Lote Mínimo para Destacar Vendedor:</span>
+              <label for="settings-min-matches" class="font-bold text-pitch-black text-[11px] block cursor-pointer">Lote Mínimo para Destacar Vendedor:</label>
               <span class="text-[10px] text-muted-graphite">Amortiza el costo de envío agrupando vinilos</span>
             </div>
-            <select id="settings-min-matches" class="border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs cursor-pointer outline-none"
+            <select id="settings-min-matches" aria-label="Lote Mínimo para Destacar Vendedor" class="border border-hairline-dark bg-pure-white px-2 py-1 font-bold text-xs cursor-pointer outline-none"
               data-tooltip="Cantidad mínima de discos para considerar rentable a un vendedor" data-tooltip-pos="left">
               <option value="1">1+ Vinilos (Cualquiera)</option>
               <option value="2" selected>2+ Vinilos (Recomendado)</option>
@@ -1380,8 +1385,8 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Estado Mínimo del Vinilo:</label>
-              <select id="settings-min-condition" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+              <label for="settings-min-condition" class="font-bold text-pitch-black text-[10.5px] block mb-1 cursor-pointer">Estado Mínimo del Vinilo:</label>
+              <select id="settings-min-condition" aria-label="Estado Mínimo del Vinilo" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
                 data-tooltip="Descartar copias por debajo de este estado en la escala Goldmine" data-tooltip-pos="top">
                 <option value="any">Cualquier condición</option>
                 <option value="VG+" selected>VG+ o Superior (Recomendado)</option>
@@ -1391,8 +1396,8 @@
               </select>
             </div>
             <div>
-              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Reputación Mínima del Vendedor:</label>
-              <select id="settings-min-rating" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+              <label for="settings-min-rating" class="font-bold text-pitch-black text-[10.5px] block mb-1 cursor-pointer">Reputación Mínima del Vendedor:</label>
+              <select id="settings-min-rating" aria-label="Reputación Mínima del Vendedor" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
                 data-tooltip="Filtrar por porcentaje histórico de valoraciones positivas del vendedor" data-tooltip-pos="top">
                 <option value="0">Cualquier reputación</option>
                 <option value="95">≥ 95.0% Positivo</option>
@@ -1416,8 +1421,8 @@
 
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">Moneda Principal:</label>
-              <select id="settings-currency" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+              <label for="settings-currency" class="font-bold text-pitch-black text-[10.5px] block mb-1 cursor-pointer">Moneda Principal:</label>
+              <select id="settings-currency" aria-label="Moneda Principal" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
                 data-tooltip="Moneda en la que se calcularán y mostrarán todos los precios de la app" data-tooltip-pos="top">
                 <option value="USD" selected>$ USD (Dólar estadounidense)</option>
                 <option value="UYU">UYU ($U Pesos uruguayos)</option>
@@ -1437,8 +1442,8 @@
               </select>
             </div>
             <div>
-              <label class="font-bold text-pitch-black text-[10.5px] block mb-1">País del Comprador (Envío):</label>
-              <select id="settings-country" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
+              <label for="settings-country" class="font-bold text-pitch-black text-[10.5px] block mb-1 cursor-pointer">País del Comprador (Envío):</label>
+              <select id="settings-country" aria-label="País del Comprador (Envío)" class="w-full border border-hairline-dark bg-pure-white px-2.5 py-1.5 font-bold text-xs cursor-pointer outline-none"
                 data-tooltip="País del comprador para determinar si los envíos son nacionales o internacionales" data-tooltip-pos="top">
                 <option value="Uruguay" selected>Uruguay (UY)</option>
                 <option value="Argentina">Argentina (AR)</option>
@@ -1466,13 +1471,13 @@
           <!-- Dynamic Currency Exchange Rate -->
           <div id="settings-rate-container" class="pt-2 border-t border-hairline-light flex items-center justify-between">
             <div>
-              <span id="settings-rate-title" class="font-bold text-pitch-black text-[11px] block">Cotización Dólar (UYU por 1 USD):</span>
+              <label for="settings-rate-uyu" id="settings-rate-title" class="font-bold text-pitch-black text-[11px] block cursor-pointer">Cotización Dólar (UYU por 1 USD):</label>
               <span id="settings-rate-subtitle" class="text-[10px] text-muted-graphite">Usado para convertir precios en pesos uruguayos</span>
             </div>
             <div class="flex items-center gap-1.5"
               data-tooltip="Introduce cuántas unidades de tu moneda local equivalen a 1 USD" data-tooltip-pos="left">
               <span id="settings-rate-symbol" class="font-bold text-xs text-pitch-black font-mono">$U</span>
-              <input type="number" id="settings-rate-uyu" step="any" min="0.0001" value="40"
+              <input type="number" id="settings-rate-uyu" aria-label="Cotización de cambio respecto al Dólar" step="any" min="0.0001" value="40"
                 class="w-28 border border-hairline-dark bg-pure-white px-2.5 py-1 font-bold text-xs text-right outline-none font-mono">
             </div>
           </div>
@@ -1587,16 +1592,16 @@
 
       <div class="space-y-5 mb-6">
         <div id="local-step-1">
-          <label class="font-mono font-bold text-xs uppercase tracking-wider text-pitch-black block mb-2">1. Pegá aquí las celdas copiadas del Google Sheet / Excel:</label>
-          <textarea id="local-sheet-paste-area"
+          <label for="local-sheet-paste-area" class="font-mono font-bold text-xs uppercase tracking-wider text-pitch-black block mb-2 cursor-pointer">1. Pegá aquí las celdas copiadas del Google Sheet / Excel:</label>
+          <textarea id="local-sheet-paste-area" aria-label="Pegar celdas copiadas de Google Sheet o Excel"
             placeholder="Copiar filas directamente de Google Sheets o Excel (ej: Artista | Título | Precio | Estado...) y pegarlas aquí..."
             class="w-full h-36 bg-ivory-warm border border-hairline-dark p-3 text-xs font-mono text-pitch-black placeholder:text-muted-graphite focus:outline-none focus:border-pitch-black"
             data-tooltip="Pega aquí las filas copiadas desde Google Drive, Excel o LibreOffice" data-tooltip-pos="top"></textarea>
 
           <div class="flex flex-wrap items-center justify-between mt-3 gap-3">
             <div class="flex items-center gap-2 text-xs text-muted-graphite">
-              <span class="font-bold uppercase tracking-wider">O subí archivo:</span>
-              <input type="file" id="local-sheet-file-input" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs font-mono cursor-pointer"
+              <label for="local-sheet-file-input" class="font-bold uppercase tracking-wider cursor-pointer">O subí archivo:</label>
+              <input type="file" id="local-sheet-file-input" aria-label="Subir archivo de planilla (.xlsx, .xls, .csv o .tsv)" accept=".xlsx,.xls,.csv,.tsv,.txt" class="text-xs font-mono cursor-pointer"
                 data-tooltip="Cargar archivo de planilla (.xlsx, .xls, .csv o .tsv)" data-tooltip-pos="top">
             </div>
             <button id="btn-analyze-local-paste"
@@ -1755,26 +1760,26 @@
 
       <form id="form-add-collection" class="space-y-4 text-xs font-mono">
         <div>
-          <label class="block uppercase font-bold text-pitch-black mb-1">Título del Disco *</label>
-          <input id="input-col-title" type="text" required placeholder="Ej. OK Computer"
+          <label for="input-col-title" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Título del Disco *</label>
+          <input id="input-col-title" aria-label="Título del Disco" type="text" required placeholder="Ej. OK Computer"
             class="w-full border border-hairline-dark px-3 py-2 text-xs font-sans tracking-wide uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
         </div>
 
         <div>
-          <label class="block uppercase font-bold text-pitch-black mb-1">Artista o Banda *</label>
-          <input id="input-col-artist" type="text" required placeholder="Ej. Radiohead"
+          <label for="input-col-artist" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Artista o Banda *</label>
+          <input id="input-col-artist" aria-label="Artista o Banda" type="text" required placeholder="Ej. Radiohead"
             class="w-full border border-hairline-dark px-3 py-2 text-xs font-sans tracking-wide uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block uppercase font-bold text-pitch-black mb-1">Año de Edición</label>
-            <input id="input-col-year" type="text" placeholder="Ej. 1997" maxlength="4"
+            <label for="input-col-year" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Año de Edición</label>
+            <input id="input-col-year" aria-label="Año de Edición" type="text" placeholder="Ej. 1997" maxlength="4"
               class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
           </div>
           <div>
-            <label class="block uppercase font-bold text-pitch-black mb-1">Formato</label>
-            <select id="select-col-format"
+            <label for="select-col-format" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Formato</label>
+            <select id="select-col-format" aria-label="Formato de la edición"
               class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono uppercase text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black cursor-pointer">
               <option value="Vinyl, LP">VINILO LP</option>
               <option value="Vinyl, 12&quot;">VINILO 12&quot;</option>
@@ -1789,26 +1794,26 @@
 
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block uppercase font-bold text-pitch-black mb-1">Sello / Catálogo</label>
-            <input id="input-col-label" type="text" placeholder="Ej. Parlophone - 7243 8"
+            <label for="input-col-label" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Sello / Catálogo</label>
+            <input id="input-col-label" aria-label="Sello o número de catálogo" type="text" placeholder="Ej. Parlophone - 7243 8"
               class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
           </div>
           <div>
-            <label class="block uppercase font-bold text-pitch-black mb-1">Precio Pagado / Moneda</label>
-            <input id="input-col-price" type="text" placeholder="Ej. $35 USD o $U 1.400"
+            <label for="input-col-price" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Precio Pagado / Moneda</label>
+            <input id="input-col-price" aria-label="Precio Pagado o Moneda" type="text" placeholder="Ej. $35 USD o $U 1.400"
               class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
           </div>
         </div>
 
         <div>
-          <label class="block uppercase font-bold text-pitch-black mb-1">URL de Carátula (opcional)</label>
-          <input id="input-col-image" type="url" placeholder="https://..."
+          <label for="input-col-image" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">URL de Carátula (opcional)</label>
+          <input id="input-col-image" aria-label="URL de Carátula (opcional)" type="url" placeholder="https://..."
             class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black">
         </div>
 
         <div>
-          <label class="block uppercase font-bold text-pitch-black mb-1">Notas Personales / Disquería</label>
-          <textarea id="input-col-notes" rows="2" placeholder="Comprado en feria Tristán Narvaja, edición original con OBI..."
+          <label for="input-col-notes" class="block uppercase font-bold text-pitch-black mb-1 cursor-pointer">Notas Personales / Disquería</label>
+          <textarea id="input-col-notes" aria-label="Notas Personales o Disquería" rows="2" placeholder="Comprado en feria Tristán Narvaja, edición original con OBI..."
             class="w-full border border-hairline-dark px-3 py-2 text-xs font-mono text-pitch-black bg-pure-white focus:outline-none focus:border-pitch-black resize-none"></textarea>
         </div>
 
@@ -1826,6 +1831,184 @@
           </button>
         </div>
       </form>
+    </div>
+  <!-- QUICK INSPECTOR & AUDIO PREVIEW MODAL (Vinyl condition, seller comments, genres & YouTube player) -->
+  <div class="modal-overlay fixed inset-0 bg-black/75 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-5 overflow-y-auto"
+    id="quick-inspector-modal" style="display: none;">
+    <div class="modal-content border border-hairline-dark bg-pure-white max-w-4xl w-full shadow-2xl relative font-mono my-auto flex flex-col max-h-[92vh] overflow-hidden">
+      <!-- Linea Rossa Accent Stripe -->
+      <div class="absolute top-0 left-0 right-0 h-1 bg-prada-red z-10"></div>
+
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center px-5 py-4 border-b border-hairline-light bg-surface-low shrink-0">
+        <div class="flex items-center gap-2.5">
+          <span class="w-2.5 h-2.5 bg-prada-red"></span>
+          <div>
+            <span class="font-mono text-[9px] font-bold tracking-widest text-prada-red uppercase block leading-none">[ INSPECTOR DE COPIA &amp; AUDIO ]</span>
+            <h3 class="font-sans font-extrabold text-sm sm:text-base uppercase tracking-tight text-pitch-black mt-1">EVALUACIÓN DE VINILO &amp; PREVIEW DE AUDIO</h3>
+          </div>
+        </div>
+        <button id="btn-close-inspector-modal" type="button"
+          class="w-8 h-8 border border-hairline-light hover:border-pitch-black hover:bg-pure-white flex items-center justify-center text-pitch-black transition-colors cursor-pointer text-lg font-mono"
+          data-tooltip="Cerrar inspector (Esc)" data-tooltip-pos="left">&times;</button>
+      </div>
+
+      <!-- Modal Body: Scrollable 2-Column Grid -->
+      <div class="p-5 overflow-y-auto flex-1 space-y-6" style="scrollbar-width: thin;">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+          
+          <!-- LEFT COLUMN (cols 1-7): Album Identity, Seller Copy & Goldmine Status -->
+          <div class="md:col-span-7 space-y-5">
+            
+            <!-- Release Identity Card -->
+            <div class="flex gap-4 items-start p-4 bg-ivory-warm/60 border border-hairline-light">
+              <div class="w-24 h-24 sm:w-28 sm:h-28 bg-bone border border-hairline-dark shrink-0 overflow-hidden relative shadow-xs">
+                <img id="inspector-cover-img" alt="Cover" referrerpolicy="no-referrer" class="w-full h-full object-cover select-none" src=""/>
+                <div id="inspector-cover-placeholder" class="w-full h-full hidden items-center justify-center bg-stone-100 text-stone-400">
+                  <span class="material-symbols-outlined text-3xl">album</span>
+                </div>
+              </div>
+              <div class="flex-1 min-w-0 font-mono">
+                <div class="flex items-center gap-2 mb-1">
+                  <span id="inspector-year-badge" class="px-1.5 py-0.5 bg-pure-white border border-hairline-dark text-[9px] font-bold text-pitch-black">1994</span>
+                  <span id="inspector-format-badge" class="text-[9px] text-muted-graphite uppercase truncate">12" VINYL</span>
+                </div>
+                <h4 id="inspector-release-title" class="font-sans font-extrabold text-base sm:text-lg text-pitch-black uppercase tracking-tight truncate leading-tight">Título</h4>
+                <p id="inspector-release-artist" class="text-xs sm:text-sm text-prada-red font-bold uppercase truncate mt-0.5">Artista</p>
+                <p id="inspector-release-label" class="text-[10px] text-muted-graphite uppercase truncate mt-1">Sello • Catálogo</p>
+
+                <!-- Genres & Styles Pills -->
+                <div id="inspector-genres-container" class="flex flex-wrap gap-1 mt-2.5">
+                  <!-- Dynamically populated genre & style pills -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Goldmine Condition Breakdown -->
+            <div class="border border-hairline-light p-4 bg-pure-white space-y-3">
+              <div class="flex items-center justify-between border-b border-hairline-light pb-2">
+                <span class="text-[10px] font-bold uppercase text-pitch-black tracking-wider flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[15px] text-prada-blue">verified</span>
+                  ESTADO DE ESTA COPIA (GOLDMINE STANDARD)
+                </span>
+                <span class="text-[9px] text-muted-graphite font-mono">VERIFICADO</span>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="p-2.5 bg-surface-low border border-hairline-light">
+                  <span class="text-[9px] text-muted-graphite uppercase font-bold block mb-1">VINILO / DISCO</span>
+                  <div id="inspector-media-grade" class="flex items-center gap-2">
+                    <!-- Media Goldmine Tag -->
+                  </div>
+                  <p id="inspector-media-desc" class="text-[10px] text-muted-graphite mt-1.5 leading-normal">Descripción de la gradación del disco.</p>
+                </div>
+                <div class="p-2.5 bg-surface-low border border-hairline-light">
+                  <span class="text-[9px] text-muted-graphite uppercase font-bold block mb-1">PORTADA / FUNDA</span>
+                  <div id="inspector-sleeve-grade" class="flex items-center gap-2">
+                    <!-- Sleeve Goldmine Tag -->
+                  </div>
+                  <p id="inspector-sleeve-desc" class="text-[10px] text-muted-graphite mt-1.5 leading-normal">Descripción de la gradación de la portada.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Seller Comments Box -->
+            <div class="border border-hairline-light p-4 bg-surface-low space-y-2">
+              <span class="text-[10px] font-bold uppercase text-pitch-black tracking-wider flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-[15px] text-prada-red">format_quote</span>
+                NOTAS / COMENTARIOS DEL VENDEDOR
+              </span>
+              <div id="inspector-comments-box" class="p-3 bg-pure-white border border-hairline-light text-xs text-pitch-black leading-relaxed font-sans italic min-h-[50px]">
+                Sin comentarios adicionales del vendedor.
+              </div>
+            </div>
+
+            <!-- Seller Offer & Purchase Card -->
+            <div class="border border-hairline-dark bg-pure-white p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+              <div>
+                <span class="text-[9px] text-muted-graphite uppercase font-bold block">OFERTA DE LA TIENDA</span>
+                <span id="inspector-seller-name" class="font-bold text-sm text-pitch-black uppercase block">NOMBRE TIENDA</span>
+                <span id="inspector-seller-meta" class="text-[10px] text-muted-graphite font-mono block mt-0.5">Envíos desde España • 100% positivo</span>
+              </div>
+              <div class="flex items-center gap-3 sm:text-right shrink-0">
+                <div>
+                  <span class="text-[9px] text-muted-graphite uppercase font-bold block">PRECIO ÍTEM</span>
+                  <span id="inspector-item-price" class="font-bold text-base text-pitch-black font-mono">$ 0.00</span>
+                </div>
+                <a id="inspector-btn-discogs-offer" href="#" target="_blank"
+                  class="bg-pitch-black hover:bg-prada-red text-pure-white px-4 py-2 text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+                  data-tooltip="Abrir esta oferta en Discogs" data-tooltip-pos="top">
+                  <span>Comprar</span>
+                  <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+                </a>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- RIGHT COLUMN (cols 8-12): YouTube Audio Player & Track Selector -->
+          <div class="md:col-span-5 space-y-4">
+            
+            <div class="border border-hairline-dark bg-pure-white p-4 space-y-3">
+              <div class="flex items-center justify-between border-b border-hairline-light pb-2">
+                <span class="text-[10px] font-bold uppercase text-pitch-black tracking-wider flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-[16px] text-prada-red">play_circle</span>
+                  PREVIEW DE AUDIO (YOUTUBE)
+                </span>
+                <span id="inspector-audio-source" class="text-[9px] bg-red-100 text-red-800 font-bold px-1.5 py-0.5 rounded font-mono">DISCOGS AUDIO</span>
+              </div>
+
+              <!-- YouTube Embedded Player -->
+              <div class="relative w-full aspect-video bg-pitch-black border border-hairline-dark overflow-hidden flex items-center justify-center">
+                <iframe id="inspector-youtube-iframe" class="w-full h-full"
+                  src="" frameborder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowfullscreen></iframe>
+                <div id="inspector-player-placeholder" class="absolute inset-0 bg-pitch-black/90 flex flex-col items-center justify-center text-center p-4 text-pure-white space-y-2">
+                  <span class="material-symbols-outlined text-4xl text-prada-red animate-pulse">headphones</span>
+                  <span id="inspector-player-status" class="text-xs uppercase font-mono font-bold tracking-wider">Cargando pistas de audio...</span>
+                </div>
+              </div>
+
+              <!-- Track Title Currently Playing -->
+              <div class="p-2.5 bg-surface-low border border-hairline-light">
+                <span class="text-[9px] text-muted-graphite font-bold uppercase block">PISTA ACTUAL:</span>
+                <p id="inspector-now-playing" class="text-xs font-bold text-pitch-black truncate mt-0.5 font-sans">Selecciona una pista para escuchar</p>
+              </div>
+
+              <!-- Playlist / Available Videos Selector -->
+              <div class="space-y-1.5">
+                <span class="text-[9px] font-bold uppercase text-muted-graphite block">PISTAS &amp; VIDEOS VINCULADOS (<span id="inspector-video-count">0</span>):</span>
+                <div id="inspector-videos-list" class="max-h-52 overflow-y-auto space-y-1 border border-hairline-light p-1 bg-surface-low/50" style="scrollbar-width: thin;">
+                  <!-- Dynamic video track buttons -->
+                </div>
+              </div>
+
+              <!-- Direct YouTube Fallback Button -->
+              <div class="pt-2 border-t border-hairline-light flex justify-between items-center text-xs">
+                <a id="inspector-yt-search-btn" href="#" target="_blank"
+                  class="text-[10px] text-muted-graphite hover:text-prada-red font-mono uppercase flex items-center gap-1 transition-colors"
+                  data-tooltip="Buscar este álbum completo en YouTube" data-tooltip-pos="top">
+                  <span class="material-symbols-outlined text-[13px]">search</span>
+                  <span>Buscar más en YouTube ↗</span>
+                </a>
+                <span class="text-[9px] text-muted-graphite font-mono">Stream libre</span>
+              </div>
+
+            </div>
+
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex justify-end items-center px-5 py-3 border-t border-hairline-light bg-surface-low shrink-0">
+        <button id="btn-close-inspector-modal-bottom" type="button"
+          class="px-5 py-2 border border-hairline-dark bg-pure-white hover:bg-pitch-black hover:text-pure-white text-pitch-black font-bold uppercase tracking-wider text-xs transition-colors cursor-pointer"
+          data-tooltip="Cerrar ventana (Esc)" data-tooltip-pos="top">
+          CERRAR
+        </button>
+      </div>
     </div>
   </div>
 

@@ -382,6 +382,10 @@ async function loadWantlist() {
             artist: item.basic_information.artists.map(a => a.name).join(', '),
             year: item.basic_information.year,
             image: item.basic_information.cover_image || item.basic_information.thumb || '',
+            genres: item.basic_information.genres || [],
+            styles: item.basic_information.styles || [],
+            formats: (item.basic_information.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
+            labels: (item.basic_information.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
             wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
             haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
             forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
@@ -1001,12 +1005,20 @@ async function startMarketplaceScan(startIndex = 0) {
 
     // Proactively verify official Discogs shipping rates & ASP banners for top matching sellers while the proxy tab is alive
     if (state.groupedSellers && state.groupedSellers.length > 0) {
+      const buyerCountryVal = (buyerCountry ? buyerCountry.value : (state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
       const topCandidates = state.groupedSellers.slice(0, 30);
       const candidatesToVerify = topCandidates.filter(s => s && s.name && (!s.isShippingOfficial || (!s.aspChecked && !s.aspBannerThreshold)));
       if (candidatesToVerify.length > 0) {
-        log(`Verificando tarifas y políticas oficiales en Discogs para las mejores tiendas (${candidatesToVerify.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'action');
-        for (const seller of candidatesToVerify.slice(0, 15)) {
+        log(`Verificando políticas de envío gratis hacia ${buyerCountryVal} para las mejores tiendas (${candidatesToVerify.map(s => s.name).slice(0, 4).join(', ')}...)...`, 'action');
+        for (const seller of candidatesToVerify.slice(0, 25)) {
+          if (typeof isAspRateLimited === 'function' && isAspRateLimited()) {
+            console.warn('[Scanner] Cooldown activo por 429, deteniendo verificación adicional.');
+            break;
+          }
+
           seller.aspChecked = true;
+          let didNetworkFetch = false;
+
           // 1. Query official Discogs Shop API shipping calculation
           if (typeof shopApiClient !== 'undefined' && typeof shopApiClient.fetchSellerShipping === 'function' && !seller.isShippingOfficial) {
             try {
@@ -1019,6 +1031,7 @@ async function startMarketplaceScan(startIndex = 0) {
                 if (!state.verifiedShipping) state.verifiedShipping = {};
                 state.verifiedShipping[seller.name.toLowerCase()] = official;
                 console.log(`[ShopApiClient] ✓ Tarifa oficial confirmada para ${seller.name}: ${official.shippingPrice} ${official.currency}`);
+                didNetworkFetch = true;
               }
             } catch (e) {}
           }
@@ -1026,13 +1039,18 @@ async function startMarketplaceScan(startIndex = 0) {
           // 2. Also check ASP banner if not yet set
           if (!seller.aspBannerThreshold && typeof checkSellerAspBanner === 'function') {
             try {
-              const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId);
+              const thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId, seller.shipsFrom);
+              didNetworkFetch = true;
               if (thresh) {
                 console.log(`[ASP Banner] Official banner detected for ${seller.name}:`, thresh);
                 seller.aspBannerThreshold = thresh;
                 seller.freeShippingThreshold = thresh;
               }
             } catch (e) {}
+          }
+
+          if (didNetworkFetch) {
+            await new Promise(r => setTimeout(r, 450));
           }
         }
         groupListingsBySeller();
@@ -1172,6 +1190,10 @@ async function refreshWantlistIncremental() {
             artist: item.basic_information.artists.map(a => a.name).join(', '),
             year: item.basic_information.year,
             image: item.basic_information.cover_image || item.basic_information.thumb || '',
+            genres: item.basic_information.genres || [],
+            styles: item.basic_information.styles || [],
+            formats: (item.basic_information.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
+            labels: (item.basic_information.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
             wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
             haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
             forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
