@@ -763,24 +763,23 @@ function renderResults() {
     
     // 3. Country filter
     if (countryFilter !== 'all') {
-      const loc = seller.shipsFrom.toLowerCase();
+      const loc = seller.shipsFrom.trim().toLowerCase();
       if (countryFilter === 'Europe') {
-        const euroCountries = ['spain', 'germany', 'france', 'italy', 'united kingdom', 'uk', 'netherlands', 'belgium', 'austria', 'switzerland', 'sweden', 'norway', 'portugal', 'greece', 'poland', 'ireland', 'españa', 'deutschland', 'francia', 'italia'];
-        const matchesEuro = euroCountries.some(c => loc.includes(c));
+        const euroCountries = ['spain', 'germany', 'france', 'italy', 'united kingdom', 'netherlands', 'belgium', 'austria', 'switzerland', 'sweden', 'norway', 'denmark', 'finland', 'portugal', 'greece', 'poland', 'ireland', 'czech republic', 'hungary', 'romania', 'bulgaria', 'croatia', 'slovenia', 'slovakia', 'slovak republic', 'estonia', 'latvia', 'lithuania', 'luxembourg', 'cyprus', 'iceland', 'españa', 'deutschland', 'francia', 'italia'];
+        const matchesEuro = euroCountries.some(c => loc === c);
         if (!matchesEuro) return false;
-      } else if (countryFilter === 'United States') {
-        if (!loc.includes('united states') && !loc.includes('us')) return false;
-      } else if (countryFilter === 'Spain') {
-        if (!loc.includes('spain') && !loc.includes('españa') && !loc.includes('es')) return false;
-      } else if (countryFilter === 'United Kingdom') {
-        if (!loc.includes('united kingdom') && !loc.includes('uk') && !loc.includes('great britain')) return false;
-      } else if (countryFilter === 'Germany') {
-        if (!loc.includes('germany') && !loc.includes('deutschland') && !loc.includes('de')) return false;
-      } else if (countryFilter === 'Brazil') {
-        if (!loc.includes('brazil') && !loc.includes('brasil')) return false;
       } else {
-        const targetVal = countryFilter.toLowerCase();
-        if (!loc.includes(targetVal) && !targetVal.includes(loc)) return false;
+        // Normalize the filter value and build a set of accepted names
+        const target = countryFilter.toLowerCase();
+        const accepted = new Set([target]);
+        if (typeof COUNTRY_CONFIG !== 'undefined' && COUNTRY_CONFIG[countryFilter]) {
+          const cfg = COUNTRY_CONFIG[countryFilter];
+          if (Array.isArray(cfg.aliases)) {
+            cfg.aliases.forEach(a => accepted.add(a.toLowerCase()));
+          }
+        }
+        // Use exact match: loc must be one of the accepted names
+        if (!accepted.has(loc)) return false;
       }
     }
     

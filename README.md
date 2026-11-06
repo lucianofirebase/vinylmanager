@@ -12,3 +12,4 @@ Herramientas para coleccionistas de vinilos en Discogs:
    * Detecta si tienes el álbum completo, tracks sueltos o 0% en tu computadora.
    * Genera un reporte interactivo en HTML y permite copiar listas de búsqueda para Soulseek o descargas.
    * Ejecución: Arrastrar el archivo CSV sobre `iniciar_auditor.bat` o hacer doble clic.
+
