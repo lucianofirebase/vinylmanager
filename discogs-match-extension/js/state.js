@@ -25,23 +25,110 @@ let state = {
 // Detect whether running inside a Chrome extension context or as a plain web page.
 const IS_EXTENSION = (typeof chrome !== 'undefined' && !!chrome.tabs && !!chrome.runtime?.id);
 
-// Official Discogs Client Auth Token for shipping policies & v3 marketplace APIs
-const DEFAULT_DISCOGS_CLIENT_TOKEN = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
+let dynamicDiscogsClientToken = null;
+
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+  try {
+    chrome.storage.local.get(['discogs_client_token', 'discogs_token'], (res) => {
+      if (res && res.discogs_client_token) {
+        dynamicDiscogsClientToken = res.discogs_client_token;
+      } else if (res && res.discogs_token) {
+        dynamicDiscogsClientToken = res.discogs_token;
+      }
+    });
+  } catch (e) {}
+}
 
 function getDiscogsAuthHeader() {
   try {
-    const custom = localStorage.getItem('discogs_client_token');
+    const custom = localStorage.getItem('discogs_client_token') ||
+                  localStorage.getItem('discogs_token') ||
+                  dynamicDiscogsClientToken;
     if (custom && custom.trim()) {
       const val = custom.trim();
       return (val.startsWith('Client token=') || val.startsWith('Discogs token=') || val.startsWith('Bearer '))
         ? val
-        : `Client token=${val}`;
+        : (val.startsWith('Wz') ? `Client token=${val}` : `Discogs token=${val}`);
     }
   } catch (e) {}
-  return DEFAULT_DISCOGS_CLIENT_TOKEN;
+  return null;
 }
-window.DEFAULT_DISCOGS_CLIENT_TOKEN = DEFAULT_DISCOGS_CLIENT_TOKEN;
 window.getDiscogsAuthHeader = getDiscogsAuthHeader;
+
+async function ensureDiscogsClientToken() {
+  const existing = getDiscogsAuthHeader();
+  if (existing) return existing;
+
+  if (IS_EXTENSION && typeof chrome !== 'undefined' && chrome.tabs) {
+    try {
+      const tabs = await new Promise(resolve => {
+        chrome.tabs.query({ url: "*://*.discogs.com/*" }, resolve);
+      });
+
+      if (tabs && tabs.length > 0) {
+        const discogsTab = tabs[0];
+        // 1. Try sending message to content script
+        const response = await new Promise(resolve => {
+          chrome.tabs.sendMessage(discogsTab.id, { action: "getClientToken" }, res => {
+            if (chrome.runtime.lastError || !res) resolve(null);
+            else resolve(res);
+          });
+        });
+
+        if (response && response.token) {
+          dynamicDiscogsClientToken = response.token;
+          try {
+            chrome.storage.local.set({ discogs_client_token: response.token });
+            localStorage.setItem('discogs_client_token', response.token);
+          } catch (e) {}
+          return getDiscogsAuthHeader();
+        }
+
+        // 2. If content script is not yet injected or tab wasn't refreshed, extract directly via scripting API
+        if (chrome.scripting && chrome.scripting.executeScript) {
+          const injectionResults = await new Promise(resolve => {
+            chrome.scripting.executeScript({
+              target: { tabId: discogsTab.id },
+              func: () => {
+                try {
+                  const scripts = document.scripts;
+                  for (let i = 0; i < scripts.length; i++) {
+                    const text = scripts[i].textContent || '';
+                    if (text.includes('client_token') || text.includes('apiToken')) {
+                      const match = text.match(/["'](?:client_token|apiToken)["']\s*[:=]\s*["']([^"']+)["']/i);
+                      if (match && match[1]) return match[1];
+                    }
+                  }
+                  const htmlMatch = document.documentElement.innerHTML.match(/["'](?:client_token|apiToken)["']\s*[:=]\s*["']([^"']+)["']/i);
+                  if (htmlMatch && htmlMatch[1]) return htmlMatch[1];
+                } catch (e) {}
+                return null;
+              }
+            }, res => {
+              if (chrome.runtime.lastError || !res) resolve(null);
+              else resolve(res);
+            });
+          });
+
+          if (injectionResults && injectionResults[0] && injectionResults[0].result) {
+            const token = injectionResults[0].result;
+            dynamicDiscogsClientToken = token;
+            try {
+              chrome.storage.local.set({ discogs_client_token: token });
+              localStorage.setItem('discogs_client_token', token);
+            } catch (e) {}
+            return getDiscogsAuthHeader();
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[DiscogsAuth] Error extracting client token from open tab:', err?.message || err);
+    }
+  }
+
+  return getDiscogsAuthHeader();
+}
+window.ensureDiscogsClientToken = ensureDiscogsClientToken;
 
 const CURRENCY_MAP = {
   'EUR': { symbol: '€', code: 'EUR', rate: 1.087, name: 'Euros' },

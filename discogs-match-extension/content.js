@@ -1,9 +1,44 @@
 // Content script to act as a same-origin fetch proxy within a Discogs tab
 console.log("[Discogs Matcher] Content script proxy ready on Discogs domain.");
 
+// Dynamically extract Discogs client token from host page DOM if available
+function extractPageClientToken() {
+  try {
+    const scripts = document.scripts;
+    for (let i = 0; i < scripts.length; i++) {
+      const text = scripts[i].textContent || '';
+      if (text.includes('client_token') || text.includes('apiToken')) {
+        const match = text.match(/["'](?:client_token|apiToken)["']\s*[:=]\s*["']([^"']+)["']/i);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+    }
+    const htmlMatch = document.documentElement.innerHTML.match(/["'](?:client_token|apiToken)["']\s*[:=]\s*["']([^"']+)["']/i);
+    if (htmlMatch && htmlMatch[1]) {
+      return htmlMatch[1];
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Proactively extract and sync client token to storage on script injection
+try {
+  const initToken = extractPageClientToken();
+  if (initToken && typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    chrome.storage.local.set({ discogs_client_token: initToken });
+  }
+} catch (e) {}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  if (request.action === "getClientToken") {
+    const token = extractPageClientToken();
+    sendResponse({ success: true, token });
+    return true;
+  }
+
   if (request.action === "fetchUrl") {
-    console.log("[Discogs Matcher] Proxy fetching same-origin URL:", request.url);
+    console.log("[Discogs Matcher] Proxy fetching URL:", request.url);
 
     // Perform fetch with credentials inside discogs.com page context (inherits active cookies like __cf_bm & session)
     const headers = {
@@ -15,26 +50,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       Object.assign(headers, request.headers);
     }
 
-    if (request.url && request.url.includes('api.discogs.com') && !headers['Authorization']) {
+    const isApiRequest = Boolean(request.url && request.url.includes('api.discogs.com'));
+
+    if (isApiRequest && !headers['Authorization']) {
       try {
         let token = localStorage.getItem('discogs_client_token') ||
                     localStorage.getItem('token') ||
-                    localStorage.getItem('discogs_user_token');
+                    localStorage.getItem('discogs_user_token') ||
+                    extractPageClientToken();
         if (token) {
           headers['Authorization'] = (token.startsWith('Client token=') || token.startsWith('Bearer ') || token.startsWith('Discogs token='))
             ? token
             : `Client token=${token}`;
-        } else {
-          headers['Authorization'] = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
+          try {
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+              chrome.storage.local.set({ discogs_client_token: token });
+            }
+          } catch (storageErr) {}
         }
-      } catch (e) {
-        headers['Authorization'] = 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA';
-      }
+      } catch (e) {}
     }
 
+    // For api.discogs.com, credentials must be 'omit' to prevent browser CORS error when server returns Access-Control-Allow-Origin: *
     fetch(request.url, {
       method: 'GET',
-      credentials: 'include',
+      credentials: isApiRequest ? 'omit' : 'include',
       headers: headers
     })
     .then(async response => {

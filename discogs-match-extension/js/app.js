@@ -570,7 +570,11 @@ function goToWizardStep(stepNum) {
 
 // Shipping Location destination country update listener
 function onLocationChange() {
-  const selectedCountry = buyerCountry ? buyerCountry.value : 'Uruguay';
+  const selectedCountry = (buyerCountry ? buyerCountry.value : null) ||
+    (typeof wizardBuyerCountry !== 'undefined' && wizardBuyerCountry ? wizardBuyerCountry.value : null) ||
+    (typeof state !== 'undefined' && state?.buyerCountry ? state.buyerCountry : null) ||
+    localStorage.getItem('buyer_country') ||
+    'Uruguay';
   log(`Ubicación de envío de comprador actualizada a: ${selectedCountry}`, 'info');
 
   if (typeof state !== 'undefined' && state) {
@@ -578,6 +582,9 @@ function onLocationChange() {
   }
 
   // Synchronize all country selectors
+  if (buyerCountry && buyerCountry.value !== selectedCountry) {
+    buyerCountry.value = selectedCountry;
+  }
   if (wizardBuyerCountry && wizardBuyerCountry.value !== selectedCountry) {
     wizardBuyerCountry.value = selectedCountry;
   }
@@ -1039,6 +1046,11 @@ async function initApp() {
     }
 
     updateForwardAndBackButtons();
+
+    // Proactively warm up Discogs API token from open Discogs tabs
+    if (typeof ensureDiscogsClientToken === 'function') {
+      ensureDiscogsClientToken().catch(() => {});
+    }
 
     // Check if there is a previous completed scan for this user to restore directly without re-scanning
     const restoredScan = await restoreCompletedScanIfAvailable(savedUser);
@@ -1807,10 +1819,12 @@ document.addEventListener('click', (e) => {
       rows.forEach(row => {
         const cat = row.getAttribute('data-category');
         if (filter === 'all' || filter === cat) {
-          row.style.display = 'flex';
+          row.style.setProperty('display', 'flex', 'important');
+          row.classList.remove('is-hidden');
           visibleCount++;
         } else {
-          row.style.display = 'none';
+          row.style.setProperty('display', 'none', 'important');
+          row.classList.add('is-hidden');
         }
       });
       const emptyTabEl = container.querySelector('#not-for-sale-empty-tab');

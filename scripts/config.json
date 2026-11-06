@@ -1,0 +1,20 @@
+{
+  "consumer_key": "kTXBUunaWzBTXwJZlRga",
+  "consumer_secret": "uZxBlMTEDrEMcPblPAoQChIrhlZivIwz",
+  "music_directories": [
+    "C:\\Users\\PERSONAL\\Music",
+    "C:\\"
+  ],
+  "cache_file": "discogs_cache.json",
+  "audio_extensions": [
+    ".mp3",
+    ".flac",
+    ".wav",
+    ".aiff",
+    ".m4a",
+    ".ogg",
+    ".wma",
+    ".aac"
+  ],
+  "fuzzy_threshold": 0.8
+}

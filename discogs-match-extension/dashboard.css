@@ -2889,7 +2889,7 @@ body.dark .smart-candidate-badge-rec {
 
 .not-for-sale-row {
   flex-shrink: 0 !important;
-  display: flex !important;
+  display: flex;
   align-items: center !important;
   justify-content: space-between !important;
   padding: 10px 12px !important;
@@ -2898,6 +2898,10 @@ body.dark .smart-candidate-badge-rec {
   border: 1px solid #E5E5E5 !important;
   transition: all 0.2s ease !important;
   cursor: default !important;
+}
+
+.not-for-sale-row.is-hidden {
+  display: none !important;
 }
 
 .not-for-sale-row:hover {

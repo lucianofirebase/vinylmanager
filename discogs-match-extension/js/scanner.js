@@ -967,6 +967,9 @@ async function startMarketplaceScan(startIndex = 0) {
         item.unshippableLocations = result.unshippableLocations || [];
         item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
         item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
+        if (result.totalWorldListings === 0) {
+          item.forSaleCount = 0;
+        }
 
         if (result.communityStats) {
           if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
@@ -1304,6 +1307,9 @@ async function refreshWantlistIncremental() {
           item.unshippableLocations = result.unshippableLocations || [];
           item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
           item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
+          if (result.totalWorldListings === 0) {
+            item.forSaleCount = 0;
+          }
           if (result.communityStats) {
             if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
             if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;

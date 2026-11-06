@@ -28,6 +28,10 @@
     global.isCountryEU = (c) => global.ShippingEngine.isCountryEU(c);
     global.isDomesticSeller = (shipsFrom, buyer) => global.ShippingEngine.isDomesticSeller(shipsFrom, buyer);
   }
+  if (global.discogsShippingService) {
+    global.getSellerShippingPolicy = (sellerId, country) =>
+      global.discogsShippingService.getSellerShippingPolicy(sellerId, country);
+  }
 
   // 3. Filter & Ranking APIs
   if (global.FilterEngine) {

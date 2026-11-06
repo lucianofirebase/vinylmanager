@@ -1055,7 +1055,7 @@ function renderResults() {
       const sellerShippingWarning = seller.isShippingOfficial 
         ? `<span class="inline-flex items-center text-[8.5px] font-bold bg-emerald-100 text-emerald-800 px-1 py-0.5 border border-emerald-300 rounded font-mono ml-1 shadow-2xs" data-tooltip="Tarifa oficial verificada por la API de Discogs para tu país" data-tooltip-pos="top">✓ OFICIAL</span>` 
         : (seller.isShippingEstimated 
-            ? `<button type="button" class="shipping-estimate-warning border-none bg-transparent cursor-pointer ml-1 p-0 text-amber-500 hover:scale-125 transition-transform inline-flex items-center" title="Haz clic para ver detalles del envío estimado" onclick="event.stopPropagation(); event.preventDefault(); if (window.checkManualSellerShipping) window.checkManualSellerShipping('${escapeHTML(seller.name)}', ${seller.sellerId || 'null'}, '${escapeHTML(seller.shipsFrom || '')}');">⚠️</button>` 
+            ? `<button type="button" class="shipping-estimate-warning border-none bg-transparent cursor-pointer ml-1 p-0 text-amber-500 hover:scale-125 transition-transform inline-flex items-center" title="Haz clic para ver detalles del envío estimado" data-seller-name="${escapeHTML(seller.name)}" data-seller-id="${seller.sellerId || ''}" data-ships-from="${escapeHTML(seller.shipsFrom || '')}">⚠️</button>` 
             : '');
       
       const hasFreeShippingFeature = Boolean(isThresholdUnlocked || hasThreshold || isDirectFreeShipping);
@@ -1079,6 +1079,9 @@ function renderResults() {
                   data-tooltip="Porcentaje de valoraciones positivas del vendedor en Discogs" data-tooltip-pos="top">${seller.rating}%</span>
                 <span class="font-mono text-[10px] text-prada-blue uppercase font-semibold cursor-help"
                   data-tooltip="País de origen desde donde despacha este vendedor" data-tooltip-pos="top">${getCountryFlag(seller.shipsFrom)} ${escapeHTML(seller.shipsFrom)}</span>
+                <span class="seller-shipping-policy-badge-wrapper inline-flex items-center" id="shipping-policy-badge-${escapeHTML(seller.name)}">
+                  ${typeof buildShippingPolicyBadgeHtml === 'function' ? buildShippingPolicyBadgeHtml(seller.shippingPolicy, cardBuyerCountryVal) : ''}
+                </span>
                 ${isThresholdUnlocked ? `
                   <span class="inline-flex items-center gap-1 border border-emerald-500 bg-emerald-50 text-emerald-900 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold tracking-wide shadow-2xs cursor-help"
                     data-tooltip="¡Envío gratis desbloqueado! Tu compra de ${formatPrice(activeSubtotal, seller.currency)} supera el umbral de ${formatPrice(thresholdAmount, thresholdCurrency)}" data-tooltip-pos="top">
@@ -1334,17 +1337,167 @@ function renderResults() {
     const targetSellers = isFreeShipFilterActive ? (state.groupedSellers || filtered) : filtered;
     verifyDisplayedSellersAsp(targetSellers);
   }
+
+  // Asynchronously resolve official Discogs shipping policies for rendered sellers
+  if (typeof loadSellerShippingPolicies === 'function') {
+    const currentBuyerCountry = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state?.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
+    loadSellerShippingPolicies(filtered, currentBuyerCountry);
+  }
 }
 
-// Background verification for official Discogs ASP banners on visible sellers
+// ==========================================
+// DYNAMIC DISCOGS SHIPPING POLICIES UI
+// ==========================================
+
+function buildShippingPolicyBadgeHtml(policy, buyerCountryVal) {
+  const countryName = escapeHTML(buyerCountryVal || 'tu país');
+  const flag = typeof getCountryFlag === 'function' ? getCountryFlag(buyerCountryVal) : '📦';
+
+  if (!policy || policy.status === 'loading') {
+    return `<span class="inline-flex items-center gap-1 border border-neutral-300 bg-neutral-50 text-neutral-600 px-2 py-0.5 text-[9.5px] font-mono uppercase font-medium shadow-2xs" title="Consultando políticas oficiales de envío en Discogs">
+      <span class="text-[11px]">⏳</span>
+      <span>Consultando envío...</span>
+    </span>`;
+  }
+
+  if (policy.status === 'error') {
+    return `<span class="inline-flex items-center gap-1 border border-neutral-200 bg-neutral-50 text-neutral-500 px-2 py-0.5 text-[9.5px] font-mono uppercase shadow-2xs" title="${escapeHTML(policy.error || 'Información de envío no disponible')}">
+      <span>ℹ️ Información de envío no disponible</span>
+    </span>`;
+  }
+
+  if (policy.shipsToCountry === false || policy.status === 'not_shippable') {
+    return `<span class="inline-flex items-center gap-1 border border-rose-300 bg-rose-50 text-rose-800 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold shadow-2xs">
+      <span>🚫 No realiza envíos a ${countryName}</span>
+    </span>`;
+  }
+
+  // Seller ships to country
+  if (policy.freeShipping && policy.freeShippingMinimum != null) {
+    const formatted = policy.formattedFreeShippingMinimum || `${policy.currency || 'EUR'} ${policy.freeShippingMinimum}`;
+    return `<span class="inline-flex items-center gap-1.5 flex-wrap">
+      <span class="inline-flex items-center gap-1 border border-emerald-400 bg-emerald-50 text-emerald-900 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold shadow-2xs" data-tooltip="Envío gratis garantizado para compras mayores a este importe" data-tooltip-pos="top">
+        <span>🚚 Envío gratis desde ${escapeHTML(formatted)}</span>
+      </span>
+      <span class="inline-flex items-center gap-1 border border-hairline-light bg-surface-low text-pitch-black px-1.5 py-0.5 text-[9px] font-mono uppercase font-semibold">
+        <span>${flag} Envíos a ${countryName}</span>
+      </span>
+    </span>`;
+  }
+
+  return `<span class="inline-flex items-center gap-1 border border-blue-300 bg-blue-50 text-blue-900 px-2 py-0.5 text-[9.5px] font-mono uppercase font-bold shadow-2xs">
+    <span>🚚 Envío disponible a ${countryName}</span>
+  </span>`;
+}
+
+function updateSellerShippingBadgeInDOM(sellerName, policy, country) {
+  const badgeEl = document.getElementById(`shipping-policy-badge-${sellerName}`);
+  if (badgeEl) {
+    badgeEl.innerHTML = buildShippingPolicyBadgeHtml(policy, country);
+  }
+}
+
+let isPolicyBatchLoading = false;
+
+async function loadSellerShippingPolicies(sellers, buyerCountryVal) {
+  if (isPolicyBatchLoading || !sellers || sellers.length === 0) return;
+  const policyService = (typeof discogsShippingService !== 'undefined' && discogsShippingService) || (typeof window !== 'undefined' && window.discogsShippingService);
+  if (!policyService || typeof policyService.getSellerShippingPolicy !== 'function') return;
+
+  const targetCountry = (buyerCountryVal || (typeof state !== 'undefined' && state?.buyerCountry ? state.buyerCountry : 'Uruguay')).trim();
+
+  // Find sellers in current filtered view that haven't loaded policy for targetCountry yet
+  const candidates = sellers.filter(s => s && s.name && (!s.shippingPolicy || s.shippingPolicy.country !== targetCountry));
+  if (candidates.length === 0) return;
+
+  isPolicyBatchLoading = true;
+  try {
+    const batch = candidates.slice(0, 20); // Top 20 sellers in view
+
+    for (const seller of batch) {
+      let sId = seller.sellerId;
+      if (!sId && typeof resolveSellerId === 'function') {
+        try {
+          sId = await resolveSellerId(seller.name);
+          if (sId) seller.sellerId = sId;
+        } catch (e) {}
+      }
+
+      if (!sId) {
+        seller.shippingPolicy = {
+          sellerId: null,
+          country: targetCountry,
+          shipsToCountry: false,
+          freeShipping: false,
+          status: 'error',
+          error: 'ID de vendedor no disponible'
+        };
+        updateSellerShippingBadgeInDOM(seller.name, seller.shippingPolicy, targetCountry);
+        continue;
+      }
+
+      try {
+        const policy = await policyService.getSellerShippingPolicy(sId, targetCountry);
+        seller.shippingPolicy = policy;
+
+        // If free shipping is officially confirmed, link to seller properties for threshold math
+        if (policy && policy.freeShipping && policy.freeShippingMinimum != null) {
+          seller.aspBannerThreshold = {
+            amount: policy.freeShippingMinimum,
+            currency: policy.currency || 'USD',
+            scope: 'asp_banner',
+            raw: `Envío gratis desde ${policy.formattedFreeShippingMinimum || policy.freeShippingMinimum}`
+          };
+          seller.freeShippingThreshold = seller.aspBannerThreshold;
+        } else if (policy && (policy.shipsToCountry === false || policy.freeShipping === false)) {
+          if (!seller.freeShippingThreshold || seller.freeShippingThreshold.scope === 'asp_banner') {
+            seller.aspBannerThreshold = null;
+            seller.freeShippingThreshold = null;
+            seller.hasFreeShippingUnlocked = false;
+          }
+        }
+
+        updateSellerShippingBadgeInDOM(seller.name, policy, targetCountry);
+      } catch (err) {
+        seller.shippingPolicy = {
+          sellerId: sId,
+          country: targetCountry,
+          status: 'error',
+          error: err.message
+        };
+        updateSellerShippingBadgeInDOM(seller.name, seller.shippingPolicy, targetCountry);
+
+        if (err.message && (err.message.includes('401') || err.status === 401)) {
+          console.warn('[DiscogsShippingService] 401 Unauthorized en shipping policies. Deteniendo lote para evitar spam.');
+          break;
+        }
+      }
+
+      // Gentle 200ms spacing
+      await new Promise(r => setTimeout(r, 200));
+    }
+  } finally {
+    isPolicyBatchLoading = false;
+  }
+}
+
 let isVerifyingAsp = false;
-let aspRenderDebounceTimer = null;
-function scheduleAspRenderResults() {
-  if (aspRenderDebounceTimer) clearTimeout(aspRenderDebounceTimer);
-  aspRenderDebounceTimer = setTimeout(() => {
-    aspRenderDebounceTimer = null;
-    renderResults();
-  }, 250);
+
+// Delegated listener for CSP-compliant shipping estimate warning button clicks
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.shipping-estimate-warning');
+    if (btn) {
+      e.stopPropagation();
+      e.preventDefault();
+      const sName = btn.getAttribute('data-seller-name');
+      const sId = btn.getAttribute('data-seller-id');
+      const sFrom = btn.getAttribute('data-ships-from');
+      if (typeof window.checkManualSellerShipping === 'function') {
+        window.checkManualSellerShipping(sName, sId ? Number(sId) : null, sFrom || '');
+      }
+    }
+  });
 }
 
 async function verifyDisplayedSellersAsp(displayedSellers) {
@@ -1362,11 +1515,11 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
   try {
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
     
-    // If free shipping filter is active, check up to 150 candidates. If background prefetch, check up to 50.
+    // Prioritize top sellers with multiple matches or significant subtotal (checking 150 sellers causes 429 blocks)
     const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
-    const maxBatch = isFreeShipFilterActive ? 150 : 50;
+    const maxBatch = isFreeShipFilterActive ? 15 : 8;
     const batch = unchecked.slice(0, maxBatch);
-    const CONCURRENCY = 3;
+    const CONCURRENCY = 1; // Strictly sequential through proxy tab to avoid Discogs 429 rate limit
     let updatedAny = false;
 
     for (let i = 0; i < batch.length; i += CONCURRENCY) {
@@ -1379,14 +1532,17 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
       let chunkUpdated = false;
       let performedNetworkFetch = false;
 
-      await Promise.all(chunk.map(async (seller) => {
+      for (const seller of chunk) {
         seller.aspChecked = true;
         let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
-        const wasCached = (thresh !== undefined);
         
         if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
           performedNetworkFetch = true;
-          thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId, seller.shipsFrom);
+          try {
+            thresh = await checkSellerAspBanner(seller.name, buyerCountryVal, seller.sellerId, seller.shipsFrom);
+          } catch (e) {
+            console.warn(`[ASP Banner] Error verificando ${seller.name}:`, e.message);
+          }
         }
 
         if (thresh) {
@@ -1425,14 +1581,15 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
             chunkUpdated = true;
           }
         }
-      }));
+      }
 
       if (chunkUpdated) {
         scheduleAspRenderResults();
       }
 
       if (performedNetworkFetch) {
-        await new Promise(r => setTimeout(r, 400));
+        // Safe 1000ms delay between storefront page scrapes to keep Discogs happy
+        await new Promise(r => setTimeout(r, 1000));
       }
     }
 
@@ -1693,54 +1850,106 @@ async function enrichWantlistStats() {
   itemsToFetch.forEach(item => { item._statsEnriched = true; });
 }
 
+// Availability classification helper: partitions Wantlist into:
+// 1) wantsForSale (at least 1 copy shipping to destination)
+// 2) wantsBlockedByShipping (copies exist worldwide, but none ship to destination)
+// 3) wantsTrulyUnavailable (0 copies worldwide in all Discogs)
+function classifyWantlistAvailability(allWants = [], allListings = [], buyerCountryVal = 'Uruguay') {
+  const wants = (allWants || []).filter(w => w && w.id != null);
+  const listings = (allListings || []).filter(l => l && l.releaseId != null);
+  
+  // Fast lookup set of release IDs that have at least one valid listing
+  const releasesWithListings = new Set(
+    listings
+      .filter(l => (typeof l.priceVal === 'number' ? l.priceVal : parseFloat(l.priceVal) || 0) > 0)
+      .map(l => String(l.releaseId))
+  );
+  
+  // Find releases that are actually for sale (have at least one match for the buyer)
+  const wantsForSale = wants.filter(w => releasesWithListings.has(String(w.id)));
+  
+  // Find releases not for sale (0 matches for the buyer's destination)
+  const wantsNotForSale = wants.filter(w => !releasesWithListings.has(String(w.id)));
+
+  const isBlocked = (w) => {
+    if (!w) return false;
+    // If the release was scanned and confirmed to have 0 listings worldwide, it cannot be blocked by shipping
+    if (typeof w.totalWorldListings === 'number' && w.totalWorldListings === 0 && !w.hasShippingBlockNotice && (!w.unshippableCount || w.unshippableCount === 0) && !w.isBlockedByShipping) {
+      return false;
+    }
+    if (w.isBlockedByShipping) return true;
+    if (w.hasShippingBlockNotice) return true;
+    if (typeof w.unshippableCount === 'number' && w.unshippableCount > 0) return true;
+    if (typeof w.totalWorldListings === 'number' && w.totalWorldListings > 0) return true;
+    if (Array.isArray(w.unshippableLocations) && w.unshippableLocations.length > 0) return true;
+    if (w.totalWorldListings === undefined && typeof w.forSaleCount === 'number' && w.forSaleCount > 0) return true;
+    if (w.totalWorldListings === undefined && w.communityStats && w.communityStats.totalOffersCount > 0) return true;
+    return false;
+  };
+
+  const getCount = (w) => {
+    if (!w) return 0;
+    if (typeof w.totalWorldListings === 'number') {
+      if (w.totalWorldListings > 0) return w.totalWorldListings;
+      if (!w.isBlockedByShipping && !w.hasShippingBlockNotice && (!w.unshippableCount || w.unshippableCount === 0)) return 0;
+    }
+    if (typeof w.unshippableCount === 'number' && w.unshippableCount > 0) return w.unshippableCount;
+    if (typeof w.forSaleCount === 'number' && w.forSaleCount > 0) return w.forSaleCount;
+    if (w.communityStats && typeof w.communityStats.totalOffersCount === 'number' && w.communityStats.totalOffersCount > 0) {
+      return w.communityStats.totalOffersCount;
+    }
+    return isBlocked(w) ? 1 : 0;
+  };
+
+  const wantsBlockedByShipping = wantsNotForSale.filter(w => isBlocked(w));
+  const wantsTrulyUnavailable = wantsNotForSale.filter(w => !isBlocked(w));
+
+  return {
+    totalWantsCount: wants.length,
+    wantsForSale,
+    wantsNotForSale,
+    wantsBlockedByShipping,
+    wantsTrulyUnavailable,
+    buyerCountryVal,
+    isBlockedByShipping: isBlocked,
+    getWorldCount: getCount
+  };
+}
+
+if (typeof window !== 'undefined') {
+  window.classifyWantlistAvailability = classifyWantlistAvailability;
+}
+
 // Calculate and render all wantlist & marketplace statistics
 function calculateAndRenderStats() {
   const statsView = document.getElementById('stats-view');
   if (!statsView) return;
   
   try {
+    const buyerCountryVal = (typeof state !== 'undefined' && state?.buyerCountry) ||
+      (buyerCountry ? buyerCountry.value : null) ||
+      (typeof wizardBuyerCountry !== 'undefined' && wizardBuyerCountry ? wizardBuyerCountry.value : null) ||
+      localStorage.getItem('buyer_country') ||
+      'Uruguay';
+
     const allWants = (state.wants || []).filter(w => w && w.id != null);
     const allListings = (state.allListings || []).filter(l => l && l.releaseId != null);
-    const totalWantsCount = allWants.length;
-    
-    // Fast lookup set of release IDs that have at least one valid listing
-    const releasesWithListings = new Set(
-      allListings
-        .filter(l => (typeof l.priceVal === 'number' ? l.priceVal : parseFloat(l.priceVal) || 0) > 0)
-        .map(l => String(l.releaseId))
-    );
-    
-    // Find releases that are actually for sale (have at least one match)
-    const wantsForSale = allWants.filter(w => releasesWithListings.has(String(w.id)));
-    
-    // Find releases not for sale (0 matches for the buyer's destination)
-    const wantsNotForSale = allWants.filter(w => !releasesWithListings.has(String(w.id)));
 
-    const buyerCountryVal = (buyerCountry ? buyerCountry.value : 'Uruguay') || 'Uruguay';
+    const classification = classifyWantlistAvailability(allWants, allListings, buyerCountryVal);
+    const {
+      wantsForSale,
+      wantsNotForSale,
+      wantsBlockedByShipping,
+      wantsTrulyUnavailable,
+      totalWantsCount,
+      isBlockedByShipping,
+      getWorldCount
+    } = classification;
 
-    // Helper to determine if a release has copies on Discogs that don't ship to the buyer
-    const isBlockedByShipping = (w) => {
-      if (!w) return false;
-      if (w.isBlockedByShipping) return true;
-      if (w.hasShippingBlockNotice) return true;
-      if (w.unshippableCount && w.unshippableCount > 0) return true;
-      if (w.totalWorldListings && w.totalWorldListings > 0) return true;
-      if (w.forSaleCount && w.forSaleCount > 0) return true;
-      if (w.communityStats && w.communityStats.totalOffersCount > 0) return true;
-      if (w.unshippableLocations && w.unshippableLocations.length > 0) return true;
-      return false;
-    };
-
-    const getWorldCount = (w) => {
-      return (typeof w.totalWorldListings === 'number' && w.totalWorldListings > 0 ? w.totalWorldListings : 0) ||
-             (typeof w.forSaleCount === 'number' && w.forSaleCount > 0 ? w.forSaleCount : 0) ||
-             (w.communityStats && w.communityStats.totalOffersCount > 0 ? w.communityStats.totalOffersCount : 0) ||
-             (w.unshippableCount > 0 ? w.unshippableCount : 0) ||
-             (isBlockedByShipping(w) ? 1 : 0);
-    };
-
-    const wantsBlockedByShipping = wantsNotForSale.filter(w => isBlockedByShipping(w));
-    const wantsTrulyUnavailable = wantsNotForSale.filter(w => !isBlockedByShipping(w));
+    // Sort blocked by shipping by world offers descending (most copies first),
+    // and truly unavailable by wantlist popularity (wantCount)
+    const sortedBlocked = [...wantsBlockedByShipping].sort((a, b) => getWorldCount(b) - getWorldCount(a));
+    const sortedTrulyUnavailable = [...wantsTrulyUnavailable].sort((a, b) => (b.wantCount || 0) - (a.wantCount || 0));
 
     const renderNotForSaleItem = (w, isBlocked) => {
       const worldCount = getWorldCount(w);
@@ -2083,8 +2292,8 @@ function calculateAndRenderStats() {
             
             <div class="not-for-sale-list flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1">
               ${wantsNotForSale.length > 0 ? (
-                [...wantsBlockedByShipping.map(w => renderNotForSaleItem(w, true)),
-                 ...wantsTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
+                [...sortedBlocked.map(w => renderNotForSaleItem(w, true)),
+                 ...sortedTrulyUnavailable.map(w => renderNotForSaleItem(w, false))].join('')
               ) : `
                 <p class="font-mono text-xs text-muted-graphite p-8 text-center bg-ivory-warm border border-hairline-dark">
                   ✓ ¡Excelente! Todos los discos de tu lista tienen al menos una copia disponible para comprar hoy.
@@ -2114,10 +2323,12 @@ function calculateAndRenderStats() {
         let visibleCount = 0;
         statsView.querySelectorAll('.not-for-sale-row').forEach(row => {
           if (filter === 'all' || row.dataset.category === filter) {
-            row.style.display = 'flex';
+            row.style.setProperty('display', 'flex', 'important');
+            row.classList.remove('is-hidden');
             visibleCount++;
           } else {
-            row.style.display = 'none';
+            row.style.setProperty('display', 'none', 'important');
+            row.classList.add('is-hidden');
           }
         });
         const emptyTabEl = statsView.querySelector('#not-for-sale-empty-tab');

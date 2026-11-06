@@ -324,6 +324,9 @@
             item.unshippableLocations = res.unshippableLocations;
             item.isBlockedByShipping = !!res.isBlockedByShipping || (res.unshippableCount > 0 && (!res.listings || res.listings.length === 0)) || (res.totalWorldListings > 0 && (!res.listings || res.listings.length === 0));
             item.hasShippingBlockNotice = !!res.hasShippingBlockNotice;
+            if (res.totalWorldListings === 0) {
+              item.forSaleCount = 0;
+            }
             if (res.communityStats) {
               Object.assign(item, res.communityStats);
             }

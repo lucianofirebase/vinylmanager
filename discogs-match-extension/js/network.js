@@ -18,7 +18,7 @@ async function retryOnRateLimit(fn, retries = 5, initialDelay = 2200) {
       return await fn();
     } catch (error) {
       // 1. Check for session expiration: abort retries immediately to protect progress
-      if (error && (error.isSessionExpired || (error.message && (error.message.includes('401') || error.message.toLowerCase().includes('session expired'))))) {
+      if (error && (error.isSessionExpired || (error.message && error.message.toLowerCase().includes('session expired')))) {
         console.warn('[SessionGuard] Sesión expirada detectada. Abortando reintentos para solicitar reautenticación.');
         throw error;
       }
@@ -64,8 +64,14 @@ async function fetchDirect(url, options = {}) {
         'Accept': 'application/json, text/html, */*'
       };
       if (url.includes('api.discogs.com')) {
-        headers['Authorization'] = (options.headers && options.headers['Authorization']) || 
-          (typeof getDiscogsAuthHeader === 'function' ? getDiscogsAuthHeader() : 'Client token=WzExMTcwNjY2XQ.arLr3Q.Q8GKVcjOuc6yrt_JCbh9vns3CGA');
+        let authHeader = (options.headers && options.headers['Authorization']) || 
+          (typeof getDiscogsAuthHeader === 'function' ? getDiscogsAuthHeader() : null);
+        if (!authHeader && typeof ensureDiscogsClientToken === 'function') {
+          authHeader = await ensureDiscogsClientToken();
+        }
+        if (authHeader) {
+          headers['Authorization'] = authHeader;
+        }
       }
       if (options.headers) {
         Object.assign(headers, options.headers);
@@ -222,13 +228,17 @@ if (typeof window !== 'undefined') {
 
 // Fetch helper using the content script proxy to bypass Cloudflare
 async function fetchThroughTab(url, options = {}) {
-  // If requesting api.discogs.com in an extension context, direct fetch with the Client token works immediately and natively!
+  // If requesting api.discogs.com in an extension context with a valid token, direct fetch works immediately and natively!
   if (url.includes('api.discogs.com')) {
-    try {
-      const res = await fetchDirect(url, options);
-      if (res && res.length > 0) return res;
-    } catch (directErr) {
-      console.warn(`[ProxyFetch] Direct fetch for API failed, attempting proxy tab...`, directErr.message);
+    const authHeader = (options.headers && options.headers['Authorization']) || 
+      (typeof getDiscogsAuthHeader === 'function' ? getDiscogsAuthHeader() : null);
+    if (authHeader) {
+      try {
+        const res = await fetchDirect(url, options);
+        if (res && res.length > 0) return res;
+      } catch (directErr) {
+        console.warn(`[ProxyFetch] Direct fetch for API failed, attempting proxy tab...`, directErr.message);
+      }
     }
   }
 
