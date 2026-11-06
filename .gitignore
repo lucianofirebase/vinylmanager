@@ -7,6 +7,7 @@ migrate.ps1
 migrate_to_firebase.js
 backend.ps1
 .firebase/
+_metadata/
 __pycache__/
 *.pyc
 discogs_cache.json
