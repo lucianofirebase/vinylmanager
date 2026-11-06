@@ -795,7 +795,7 @@ function parseFreeShippingThresholds(fullRowText, currency = 'USD', buyerCountry
   return null;
 }
 
-function parseReleaseHTML(html, releaseId) {
+function parseReleaseHTML(html, releaseId, buyerCountry = 'Uruguay', knownForSaleCount = 0) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
   const listings = [];
@@ -1272,6 +1272,17 @@ function parseReleaseHTML(html, releaseId) {
   const bodyTextLower = bodyText.toLowerCase();
 
   const hasShippingBlockNotice = 
+    /(?:no\s+(?:hay|se\s+encontraron|existen)\s+(?:art[ií]culos?|copias?|ofertas?|items?)\s*(?:disponibles?)?\s*(?:a\s+la\s+venta|para\s+la\s+venta)?\s*(?:que\s+se\s+env[ií]en|para\s+enviar|disponibles?\s+para)\s+a)/i.test(bodyText) ||
+    /(?:no\s+(?:hace|realiza|se\s+realizan?)\s+env[ií]os?\s+a)/i.test(bodyText) ||
+    /(?:env[ií]o\s+no\s+disponible\s+a)/i.test(bodyText) ||
+    /(?:no\s+items?\s+(?:currently\s+)?available\s+(?:for\s+sale\s+)?that\s+ship\s+to)/i.test(bodyText) ||
+    /(?:no\s+(?:items?|copies)\s+found\s+that\s+ship\s+to)/i.test(bodyText) ||
+    /(?:no\s+sellers?\s+currently\s+ship\s+to)/i.test(bodyText) ||
+    /(?:does\s+not\s+ship\s+to\s+(?:your\s+)?(?:location|country))/i.test(bodyText) ||
+    /(?:items?|copias?|ofertas?)\s+(?:disponibles?\s+)?(?:de|from)\s+otros\s+pa[ií]ses/i.test(bodyText) ||
+    bodyTextLower.includes('no disponible en') ||
+    bodyTextLower.includes('no disponible para') ||
+    bodyTextLower.includes('not available in') ||
     bodyTextLower.includes('no hay artículos disponibles a la venta que se envíen a') ||
     bodyTextLower.includes('no hay articulos disponibles a la venta que se envien a') ||
     bodyTextLower.includes('no hay copias disponibles a la venta que se envíen a') ||
@@ -1339,10 +1350,20 @@ function parseReleaseHTML(html, releaseId) {
       const candidateForSale = [
         relData?.num_for_sale,
         relData?.numForSale,
+        relData?.community?.num_for_sale,
+        relData?.community?.for_sale,
         relData?.marketplace?.total,
+        relData?.marketplace?.num_for_sale,
         relData?.total,
         relData?.listingCount,
-        pProps?.totalListings
+        pProps?.num_for_sale,
+        pProps?.numForSale,
+        pProps?.totalListings,
+        pProps?.totalCount,
+        pProps?.marketplace?.num_for_sale,
+        pProps?.marketplace?.total,
+        pProps?.statistics?.for_sale,
+        pProps?.statistics?.total_for_sale
       ];
       for (const cand of candidateForSale) {
         if (cand !== undefined && cand !== null) {
@@ -1355,12 +1376,14 @@ function parseReleaseHTML(html, releaseId) {
     } catch (e) {}
   }
 
+  const initialKnown = typeof knownForSaleCount === 'number' ? knownForSaleCount : 0;
   let totalWorldListings = Math.max(
     rawRowsCount,
     unshippableCount,
     jsonLdOffersCount || 0,
     textOffersCount || 0,
-    nextDataForSaleCount || 0
+    nextDataForSaleCount || 0,
+    initialKnown
   );
 
   // If Discogs explicitly reported that copies exist but don't ship to buyer's country,

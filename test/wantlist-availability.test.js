@@ -151,4 +151,31 @@ describe('Wantlist Availability & Destination Shipping Verification', () => {
     assert.strictEqual(resSpain.wantsForSale.length, 1);
     assert.strictEqual(resSpain.wantsNotForSale.length, 0);
   });
+
+  test('6. Release con copias en Discogs pero sin envíos a Uruguay (caso Star Sounds Orchestra)', () => {
+    const wants = [
+      {
+        id: 219115,
+        title: 'Trommler',
+        artist: 'Star Sounds Orchestra',
+        forSaleCount: 2,
+        totalWorldListings: 2,
+        unshippableCount: 2,
+        isBlockedByShipping: true,
+        hasShippingBlockNotice: true,
+        wantCount: 250
+      }
+    ];
+
+    const listings = []; // 0 listings ship to Uruguay
+
+    const result = classifyWantlistAvailability(wants, listings, 'Uruguay');
+
+    assert.strictEqual(result.totalWantsCount, 1);
+    assert.strictEqual(result.wantsForSale.length, 0);
+    assert.strictEqual(result.wantsNotForSale.length, 1);
+    assert.strictEqual(result.wantsBlockedByShipping.length, 1, 'Debe ir a bloqueados por envío (no a agotados mundialmente)');
+    assert.strictEqual(result.wantsTrulyUnavailable.length, 0, 'No debe considerarse agotado mundialmente');
+    assert.strictEqual(result.getWorldCount(wants[0]), 2);
+  });
 });

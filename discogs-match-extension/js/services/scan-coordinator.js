@@ -319,14 +319,16 @@
             }
             allListings.push(...res.listings);
 
-            item.totalWorldListings = res.totalWorldListings;
-            item.unshippableCount = res.unshippableCount;
-            item.unshippableLocations = res.unshippableLocations;
-            item.isBlockedByShipping = !!res.isBlockedByShipping || (res.unshippableCount > 0 && (!res.listings || res.listings.length === 0)) || (res.totalWorldListings > 0 && (!res.listings || res.listings.length === 0));
+            const initialForSale = typeof item.forSaleCount === 'number' ? item.forSaleCount : 0;
+            const parsedWorld = typeof res.totalWorldListings === 'number' ? res.totalWorldListings : 0;
+            const effectiveWorld = Math.max(parsedWorld, initialForSale, (res.listings ? res.listings.length : 0));
+
+            item.totalWorldListings = effectiveWorld;
+            item.unshippableCount = res.unshippableCount || (effectiveWorld > 0 && (!res.listings || res.listings.length === 0) ? effectiveWorld : 0);
+            item.unshippableLocations = res.unshippableLocations || [];
             item.hasShippingBlockNotice = !!res.hasShippingBlockNotice;
-            if (res.totalWorldListings === 0) {
-              item.forSaleCount = 0;
-            }
+            item.isBlockedByShipping = !!res.isBlockedByShipping || (effectiveWorld > 0 && (!res.listings || res.listings.length === 0));
+            item.forSaleCount = effectiveWorld;
             if (res.communityStats) {
               Object.assign(item, res.communityStats);
             }

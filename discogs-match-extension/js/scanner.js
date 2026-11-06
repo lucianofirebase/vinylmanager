@@ -725,13 +725,15 @@ async function scanSingleRelease(item, index, totalWants, timeEstText = '') {
   try {
     const url = `https://www.discogs.com/sell/release/${item.id}?limit=100`;
     const html = await fetchThroughTab(url);
-    const result = parseReleaseHTML(html, item.id, buyerCountryVal);
+    const result = parseReleaseHTML(html, item.id, buyerCountryVal, item.forSaleCount);
     parsedListings = result.listings;
     communityStats = result.communityStats;
-    totalWorldListings = result.totalWorldListings !== undefined ? result.totalWorldListings : (item.forSaleCount || (parsedListings ? parsedListings.length : 0));
-    unshippableCount = result.unshippableCount || 0;
+    const initialForSale = typeof item.forSaleCount === 'number' ? item.forSaleCount : 0;
+    const parsedWorld = typeof result.totalWorldListings === 'number' ? result.totalWorldListings : 0;
+    totalWorldListings = Math.max(parsedWorld, initialForSale, (parsedListings ? parsedListings.length : 0));
+    unshippableCount = result.unshippableCount || (totalWorldListings > 0 && (!parsedListings || parsedListings.length === 0) ? totalWorldListings : 0);
     unshippableLocations = result.unshippableLocations || [];
-    const isBlocked = !!result.isBlockedByShipping || (unshippableCount > 0 && (!parsedListings || parsedListings.length === 0)) || (totalWorldListings > 0 && (!parsedListings || parsedListings.length === 0));
+    const isBlocked = !!result.isBlockedByShipping || (totalWorldListings > 0 && (!parsedListings || parsedListings.length === 0));
     updateOffersDisplay(parsedListings);
     
     // Save to cache with version 4 tag
@@ -960,16 +962,16 @@ async function startMarketplaceScan(startIndex = 0) {
         }
         state.allListings.push(...result.listings);
         
-        item.totalWorldListings = result.totalWorldListings !== undefined 
-          ? result.totalWorldListings 
-          : (item.forSaleCount || (result.listings ? result.listings.length : 0));
-        item.unshippableCount = result.unshippableCount || 0;
+        const initialForSale = typeof item.forSaleCount === 'number' ? item.forSaleCount : 0;
+        const parsedWorld = typeof result.totalWorldListings === 'number' ? result.totalWorldListings : 0;
+        const effectiveWorld = Math.max(parsedWorld, initialForSale, (result.listings ? result.listings.length : 0));
+
+        item.totalWorldListings = effectiveWorld;
+        item.unshippableCount = result.unshippableCount || (effectiveWorld > 0 && (!result.listings || result.listings.length === 0) ? effectiveWorld : 0);
         item.unshippableLocations = result.unshippableLocations || [];
-        item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
         item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
-        if (result.totalWorldListings === 0) {
-          item.forSaleCount = 0;
-        }
+        item.isBlockedByShipping = !!result.isBlockedByShipping || (effectiveWorld > 0 && (!result.listings || result.listings.length === 0));
+        item.forSaleCount = effectiveWorld;
 
         if (result.communityStats) {
           if (result.communityStats.wantCount !== null && result.communityStats.wantCount !== undefined) item.wantCount = result.communityStats.wantCount;
@@ -1300,16 +1302,16 @@ async function refreshWantlistIncremental() {
           const item = batchItems[bIdx];
           if (!result.isFromCache) hasLiveFetch = true;
           state.allListings.push(...result.listings);
-          item.totalWorldListings = result.totalWorldListings !== undefined 
-            ? result.totalWorldListings 
-            : (item.forSaleCount || (result.listings ? result.listings.length : 0));
-          item.unshippableCount = result.unshippableCount || 0;
+          const initialForSale = typeof item.forSaleCount === 'number' ? item.forSaleCount : 0;
+          const parsedWorld = typeof result.totalWorldListings === 'number' ? result.totalWorldListings : 0;
+          const effectiveWorld = Math.max(parsedWorld, initialForSale, (result.listings ? result.listings.length : 0));
+
+          item.totalWorldListings = effectiveWorld;
+          item.unshippableCount = result.unshippableCount || (effectiveWorld > 0 && (!result.listings || result.listings.length === 0) ? effectiveWorld : 0);
           item.unshippableLocations = result.unshippableLocations || [];
-          item.isBlockedByShipping = !!result.isBlockedByShipping || (item.unshippableCount > 0 && (!result.listings || result.listings.length === 0)) || (item.totalWorldListings > 0 && (!result.listings || result.listings.length === 0));
           item.hasShippingBlockNotice = !!result.hasShippingBlockNotice;
-          if (result.totalWorldListings === 0) {
-            item.forSaleCount = 0;
-          }
+          item.isBlockedByShipping = !!result.isBlockedByShipping || (effectiveWorld > 0 && (!result.listings || result.listings.length === 0));
+          item.forSaleCount = effectiveWorld;
           if (result.communityStats) {
             if (result.communityStats.wantCount !== null) item.wantCount = result.communityStats.wantCount;
             if (result.communityStats.haveCount !== null) item.haveCount = result.communityStats.haveCount;
