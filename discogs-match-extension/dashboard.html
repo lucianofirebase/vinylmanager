@@ -180,7 +180,8 @@
             <span class="material-symbols-outlined text-[13px] text-prada-blue shrink-0">location_on</span>
             <select id="buyer-country" aria-label="País de envío"
               class="bg-transparent text-[10px] font-bold uppercase focus:outline-none cursor-pointer outline-none appearance-none">
-              <option value="Uruguay" selected>Uruguay (UY)</option>
+              <option value="" selected disabled>Selecciona tu país...</option>
+              <option value="Uruguay">Uruguay (UY)</option>
               <option value="Argentina">Argentina (AR)</option>
               <option value="Brazil">Brasil (BR)</option>
               <option value="Chile">Chile (CL)</option>
@@ -810,7 +811,8 @@
                   <div class="flex items-center gap-2 w-full">
                     <span class="material-symbols-outlined text-[15px] text-prada-blue shrink-0 pointer-events-none">location_on</span>
                     <select id="wizard-buyer-country" aria-label="País de destino para calcular envío combinado" class="w-full bg-transparent text-xs font-bold uppercase font-sans text-pitch-black focus:outline-none cursor-pointer appearance-none pr-4">
-                      <option value="Uruguay" selected>Uruguay (UY)</option>
+                      <option value="" selected disabled>Selecciona tu país...</option>
+                      <option value="Uruguay">Uruguay (UY)</option>
                       <option value="Argentina">Argentina (AR)</option>
                       <option value="Brazil">Brasil (BR)</option>
                       <option value="Chile">Chile (CL)</option>
@@ -1319,6 +1321,26 @@
       <!-- Scrollable Settings Body -->
       <div class="flex-1 overflow-y-auto pr-1 space-y-5 text-xs">
         
+        <!-- Setting Group 0: Autenticación & API Oficial -->
+        <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
+          <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">
+            <span class="flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-[16px] text-prada-blue">key</span>
+              CREDENCIALES &amp; API OFICIAL DISCOGS
+            </span>
+            <span class="text-[9px] bg-prada-blue text-pure-white px-1.5 py-0.5 rounded font-mono">AUTENTICACIÓN</span>
+          </div>
+          <div class="space-y-1.5">
+            <label for="settings-discogs-token" class="font-bold text-pitch-black uppercase text-[10.5px] block">Token de Acceso Personal (Discogs Token):</label>
+            <input type="password" id="settings-discogs-token" placeholder="Ej: WzExMTcw... o tu Personal Access Token"
+              class="w-full border border-hairline-dark bg-pure-white px-3 py-2 font-mono text-[11px] text-pitch-black focus:border-pitch-black outline-none shadow-xs">
+            <span class="text-[10px] text-muted-graphite block">
+              Permite consultar tarifas oficiales de envío y sincronizar la Wantlist directamente vía API sin bloqueos 401. 
+              <a href="https://www.discogs.com/settings/developers" target="_blank" rel="noopener noreferrer" class="text-prada-blue underline hover:text-pitch-black">Generar Token en Discogs &rarr;</a>
+            </span>
+          </div>
+        </div>
+
         <!-- Setting Group 1: Motor de Escaneo & Rendimiento -->
         <div class="border border-hairline-light bg-surface-low p-4 space-y-3">
           <div class="flex items-center justify-between text-pitch-black font-bold uppercase text-[11px] border-b border-hairline-light pb-2">

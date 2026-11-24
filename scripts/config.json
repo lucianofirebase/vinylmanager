@@ -1,9 +1,9 @@
 {
-  "consumer_key": "kTXBUunaWzBTXwJZlRga",
-  "consumer_secret": "uZxBlMTEDrEMcPblPAoQChIrhlZivIwz",
+  "consumer_key": "",
+  "consumer_secret": "",
+  "user_token": "",
   "music_directories": [
-    "C:\\Users\\PERSONAL\\Music",
-    "C:\\"
+    "C:\\Users\\PERSONAL\\Music"
   ],
   "cache_file": "discogs_cache.json",
   "audio_extensions": [

@@ -19,8 +19,8 @@ def load_config():
         except Exception:
             pass
     return {
-        "consumer_key": "kTXBUunaWzBTXwJZlRga",
-        "consumer_secret": "uZxBlMTEDrEMcPblPAoQChIrhlZivIwz",
+        "consumer_key": "",
+        "consumer_secret": "",
         "music_directories": [
             os.path.join(os.path.expanduser("~"), "Music")
         ],
@@ -119,7 +119,12 @@ def main():
 
     cfg = load_config()
     cache_path = os.path.join(os.path.dirname(__file__), cfg.get("cache_file", "discogs_cache.json"))
-    client = DiscogsClient(cfg["consumer_key"], cfg["consumer_secret"], cache_path=cache_path)
+    client = DiscogsClient(
+        cfg.get("consumer_key"),
+        cfg.get("consumer_secret"),
+        user_token=cfg.get("user_token"),
+        cache_path=cache_path
+    )
 
     # --- 1. SELECCIÓN DE ARCHIVO CSV ---
     csv_path = None

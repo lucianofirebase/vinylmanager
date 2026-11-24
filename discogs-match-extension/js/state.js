@@ -39,11 +39,14 @@ if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
   } catch (e) {}
 }
 
+const DEFAULT_DISCOGS_TOKEN = '';
+
 function getDiscogsAuthHeader() {
   try {
-    const custom = localStorage.getItem('discogs_client_token') ||
-                  localStorage.getItem('discogs_token') ||
-                  dynamicDiscogsClientToken;
+    const custom = localStorage.getItem('discogs_token') ||
+                  localStorage.getItem('discogs_client_token') ||
+                  dynamicDiscogsClientToken ||
+                  DEFAULT_DISCOGS_TOKEN;
     if (custom && custom.trim()) {
       const val = custom.trim();
       return (val.startsWith('Client token=') || val.startsWith('Discogs token=') || val.startsWith('Bearer '))
@@ -51,7 +54,7 @@ function getDiscogsAuthHeader() {
         : (val.startsWith('Wz') ? `Client token=${val}` : `Discogs token=${val}`);
     }
   } catch (e) {}
-  return null;
+  return `Discogs token=${DEFAULT_DISCOGS_TOKEN}`;
 }
 window.getDiscogsAuthHeader = getDiscogsAuthHeader;
 

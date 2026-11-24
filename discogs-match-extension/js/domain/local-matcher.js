@@ -11,8 +11,10 @@
     if (!str || typeof str !== 'string') return '';
     return str
       .toLowerCase()
+      .replace(/&/g, ' and ')
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\b(?:lp|vinyl|vinilo|ep|12\s*inch|album|reissue|remastered|re-mastered|gatefold|single|maxi)\b/gi, ' ')
       .replace(/[^a-z0-9\s]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();

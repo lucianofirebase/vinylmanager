@@ -449,105 +449,13 @@ function handleRunLocalMatch() {
     return;
   }
   
-  const matches = [];
-  const wants = state.wants;
-  const rows = state.localSheetRows;
-  
-  const startIndex = rows.length > 1 ? 1 : 0;
-  
-  for (let r = startIndex; r < rows.length; r++) {
-    const row = rows[r];
-    
-    let sellerArtist = '';
-    let sellerTitle = '';
-    let sellerPrice = '';
-    let sellerFormat = '';
-    let sellerCondition = '';
-    let sellerDiscogsId = null;
-    
-    Object.keys(mapping).forEach(colIdx => {
-      const idx = parseInt(colIdx, 10);
-      const val = row[idx] || '';
-      const field = mapping[colIdx];
-      
-      if (field === 'artist') sellerArtist = val;
-      else if (field === 'title') sellerTitle = val;
-      else if (field === 'price') sellerPrice = val;
-      else if (field === 'format') sellerFormat = val;
-      else if (field === 'condition') sellerCondition = val;
-      else if (field === 'discogs_id') {
-        const idMatch = val.match(/\d{5,9}/);
-        if (idMatch) sellerDiscogsId = parseInt(idMatch[0], 10);
-      }
-    });
-    
-    const normSellerArtist = normalizeText(sellerArtist);
-    const normSellerTitle = normalizeText(sellerTitle);
-    const normCombined = `${normSellerArtist} ${normSellerTitle}`;
-    
-    if (!normSellerArtist && !normSellerTitle && !sellerDiscogsId) continue;
-    
-    for (const want of wants) {
-      let isMatch = false;
-      let matchScore = 0;
-      let matchReason = '';
-      
-      if (sellerDiscogsId && sellerDiscogsId === want.id) {
-        isMatch = true;
-        matchScore = 100;
-        matchReason = '🆔 Coincidencia por Discogs ID';
-      } else {
-        const normWantArtist = normalizeText(want.artist);
-        const normWantTitle = normalizeText(want.title);
-        
-        if (normSellerArtist && normSellerTitle && normWantArtist === normSellerArtist && normWantTitle === normSellerTitle) {
-          isMatch = true;
-          matchScore = 98;
-          matchReason = '🎯 Coincidencia exacta de Artista y Título';
-        } 
-        else if (normSellerTitle && normWantArtist && normWantTitle && normSellerTitle.includes(normWantArtist) && normSellerTitle.includes(normWantTitle)) {
-          isMatch = true;
-          matchScore = 90;
-          matchReason = '🔍 Coincidencia de Artista y Título en columna';
-        }
-        else if (normWantArtist && normWantTitle) {
-          const normWantCombined = `${normWantArtist} ${normWantTitle}`;
-          if (normCombined && (normCombined.includes(normWantCombined) || normWantCombined.includes(normCombined))) {
-            isMatch = true;
-            matchScore = 85;
-            matchReason = '✨ Coincidencia difusa de nombre';
-          } else {
-            const wantWords = normWantCombined.split(' ').filter(w => w.length > 2);
-            const sellerWords = normCombined.split(' ').filter(w => w.length > 2);
-            if (wantWords.length > 0 && sellerWords.length > 0) {
-              const shared = wantWords.filter(w => sellerWords.includes(w));
-              const ratio = shared.length / wantWords.length;
-              if (ratio >= 0.75 && shared.length >= 2) {
-                isMatch = true;
-                matchScore = Math.round(ratio * 90);
-                matchReason = `💡 Coincidencia parcial (${Math.round(ratio * 100)}% palabras clave)`;
-              }
-            }
-          }
-        }
-      }
-      
-      if (isMatch) {
-        matches.push({
-          wantItem: want,
-          sellerArtist,
-          sellerTitle,
-          sellerPrice,
-          sellerFormat,
-          sellerCondition,
-          matchScore,
-          matchReason,
-          rawRow: row
-        });
-        break;
-      }
-    }
-  }
+  const matcher = (typeof LocalMatcher !== 'undefined' && LocalMatcher.matchLocalCatalog)
+    ? LocalMatcher
+    : (window.LocalMatcher || null);
+
+  const matches = matcher
+    ? matcher.matchLocalCatalog(state.wants, state.localSheetRows, mapping)
+    : [];
   
   state.localMatches = matches;
   try {

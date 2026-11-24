@@ -185,6 +185,7 @@
       } else {
         const url = `https://www.discogs.com/sell/release/${releaseId}?ev=rb`;
         let html = '';
+        let fetchFailed = false;
 
         try {
           if (typeof global.fetchThroughTab === 'function') {
@@ -193,13 +194,27 @@
             html = await global.fetchDirect(url);
           } else {
             const resp = await fetch(url);
-            if (resp.ok) html = await resp.text();
+            if (resp.status === 429) {
+              fetchFailed = true;
+              console.warn(`[ScanCoordinator] 429 Too Many Requests para release ${releaseId}.`);
+            } else if (resp.ok) {
+              html = await resp.text();
+            } else {
+              fetchFailed = true;
+            }
           }
         } catch (fetchErr) {
+          fetchFailed = true;
           console.warn(`[ScanCoordinator] Error cargando release ${releaseId}:`, fetchErr.message);
         }
 
-        if (html) {
+        if (html && (html.includes('HTTP Error 429') || html.includes('Too Many Requests') || html.includes('Rate Limit'))) {
+          fetchFailed = true;
+          html = '';
+          console.warn(`[ScanCoordinator] 429 detectado en contenido para release ${releaseId}. No se persistirá en caché.`);
+        }
+
+        if (html && !fetchFailed) {
           const parsed = this.parser.parseReleaseHTML(html, releaseId, buyerCountry, this.cacheRepo);
           listings = parsed.listings || [];
           totalWorldListings = parsed.totalWorldListings || listings.length;
@@ -208,7 +223,7 @@
           communityStats = parsed.communityStats || {};
           const isBlocked = !!parsed.isBlockedByShipping || (unshippableCount > 0 && listings.length === 0) || (totalWorldListings > 0 && listings.length === 0);
 
-          // Store in cache
+          // Store in cache ONLY when fetch succeeded
           this.cacheRepo.setReleaseListings(releaseId, buyerCountry, {
             listings,
             totalWorldListings,

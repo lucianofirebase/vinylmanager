@@ -23,6 +23,7 @@
       this.fetchFn = options.fetchFn || null; // Injected fetcher for tests / custom network
       this._inMemoryCache = new Map();
       this._inFlightRequests = new Map();
+      this._unauthorized = false;
     }
 
     /**
@@ -273,6 +274,23 @@
         return cached;
       }
 
+      // If user lacks a valid Discogs token, abort immediately without flooding 20+ 401 requests
+      if (this._unauthorized) {
+        return {
+          sellerId: numSellerId,
+          country: cleanCountry,
+          currency: 'USD',
+          shipsToCountry: false,
+          freeShipping: false,
+          freeShippingMinimum: null,
+          formattedFreeShippingMinimum: null,
+          methods: [],
+          status: 'error',
+          httpStatus: 401,
+          error: 'HTTP Error 401: Token de Discogs requerido o expirado'
+        };
+      }
+
       // 2. In-flight request deduplication
       const flightKey = this.getCacheKey(numSellerId, cleanCountry);
       if (this._inFlightRequests.has(flightKey)) {
@@ -293,8 +311,15 @@
           this.saveToCache(numSellerId, cleanCountry, normalized);
           return normalized;
         } catch (err) {
-          const status = err.status || (err.message && err.message.includes('429') ? 429 : 500);
-          console.warn(`[DiscogsShippingService] Error en shipping policies para seller ${numSellerId} (${cleanCountry}):`, err.message);
+          const is401 = err.message && (err.message.includes('401') || err.message.toLowerCase().includes('unauthorized'));
+          const status = err.status || (is401 ? 401 : (err.message && err.message.includes('429') ? 429 : 500));
+          
+          if (is401) {
+            this._unauthorized = true;
+            console.warn(`[DiscogsShippingService] 401 Unauthorized: Para verificar políticas oficiales de envío en vivo, ingresa tu Token Personal de Discogs en Ajustes.`);
+          } else {
+            console.warn(`[DiscogsShippingService] Error en shipping policies para seller ${numSellerId} (${cleanCountry}):`, err.message);
+          }
 
           const errorResult = {
             sellerId: numSellerId,
@@ -310,8 +335,8 @@
             error: err.message
           };
 
-          // Cache 404 or unconfirmed negative briefly to prevent immediate retry storms
-          if (status === 404) {
+          // Cache 404 and 401 briefly to prevent immediate retry storms
+          if (status === 404 || status === 401) {
             this.saveToCache(numSellerId, cleanCountry, errorResult);
           }
 

@@ -75,6 +75,7 @@ class ShopApiClient {
    */
   async fetchSellerShipping(sellerName, sellerId = null) {
     if (!sellerName) return null;
+    if (this._sellItemEndpointUnavailable) return null;
     const cleanName = sellerName.trim();
     if (!this._shippingCache) this._shippingCache = new Map();
     const cacheKey = cleanName.toLowerCase();
@@ -140,7 +141,9 @@ class ShopApiClient {
       this._shippingCache.set(cacheKey, result);
       return result;
     } catch (err) {
-      console.warn(`[ShopApiClient] Error consultando shipping para ${cleanName}:`, err.message);
+      if (err.message && (err.message.includes('422') || err.message.includes('404'))) {
+        this._sellItemEndpointUnavailable = true;
+      }
       return null;
     }
   }

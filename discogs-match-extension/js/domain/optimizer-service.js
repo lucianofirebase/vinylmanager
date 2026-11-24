@@ -17,6 +17,9 @@
       }
 
       const calcShipping = shippingCalculator || global.ShippingEngine?.calculateSellerShipping || global.calculateSellerShipping;
+      const currSvc = global.CurrencyService || {
+        getCurrencyRate: (curr) => (global.CURRENCY_MAP?.[curr]?.rate || 1.0)
+      };
 
       // Take top 12 sellers to keep combination search space fast
       const candidates = [...filteredSellers]
@@ -57,13 +60,19 @@
           targetReleases.forEach(relId => {
             let cheapestSeller = null;
             let cheapestListing = null;
+            let cheapestPriceUSD = Infinity;
 
             combo.forEach(s => {
               const listing = (s.listings || []).find(l => l && String(l.releaseId) === String(relId));
               if (listing) {
-                if (!cheapestListing || (listing.priceVal || 0) < (cheapestListing.priceVal || 0)) {
+                const listingCurrency = listing.currency || s.currency || 'USD';
+                const rate = currSvc.getCurrencyRate(listingCurrency);
+                const priceUSD = (listing.priceVal || 0) * rate;
+
+                if (!cheapestListing || priceUSD < cheapestPriceUSD) {
                   cheapestSeller = s;
                   cheapestListing = listing;
+                  cheapestPriceUSD = priceUSD;
                 }
               }
             });
@@ -75,23 +84,29 @@
           });
 
           const numCovered = coveredReleases.size;
-          let totalComboCost = 0;
+          let totalComboCostUSD = 0;
           combo.forEach(s => {
             const assignedListings = assignments[s.name];
             if (assignedListings && assignedListings.length > 0) {
-              const subtotal = assignedListings.reduce((sum, l) => sum + (l.priceVal || 0), 0);
+              const sellerRate = currSvc.getCurrencyRate(s.currency);
+              const subtotalUSD = assignedListings.reduce((sum, l) => {
+                const lCurrency = l.currency || s.currency || 'USD';
+                const lRate = currSvc.getCurrencyRate(lCurrency);
+                return sum + ((l.priceVal || 0) * lRate);
+              }, 0);
               const estimatedShipping = calcShipping ? calcShipping(s, assignedListings) : 0;
-              totalComboCost += subtotal + estimatedShipping;
+              const shippingUSD = estimatedShipping * sellerRate;
+              totalComboCostUSD += subtotalUSD + shippingUSD;
             }
           });
 
           if (numCovered > maxCovered) {
             maxCovered = numCovered;
-            minCost = totalComboCost;
+            minCost = totalComboCostUSD;
             bestCombo = combo;
             bestAssignments = assignments;
-          } else if (numCovered === maxCovered && totalComboCost < minCost) {
-            minCost = totalComboCost;
+          } else if (numCovered === maxCovered && totalComboCostUSD < minCost) {
+            minCost = totalComboCostUSD;
             bestCombo = combo;
             bestAssignments = assignments;
           }

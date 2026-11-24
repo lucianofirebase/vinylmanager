@@ -90,6 +90,12 @@ function openSettingsModal() {
   const modal = document.getElementById('settings-modal');
   if (!modal) return;
 
+  // Populate Discogs Token
+  const settingsTokenInput = document.getElementById('settings-discogs-token');
+  if (settingsTokenInput) {
+    settingsTokenInput.value = localStorage.getItem('discogs_token') || localStorage.getItem('discogs_client_token') || '';
+  }
+
   // Populate fields from current state or localStorage
   const useCacheSaved = localStorage.getItem('use_scan_cache') !== 'false';
   const turboRadio = document.getElementById('settings-cache-turbo');
@@ -232,6 +238,23 @@ function updateSettingsDensityUI(density) {
 }
 
 function applySettingsFromModal() {
+  // Discogs API Token
+  const settingsTokenInput = document.getElementById('settings-discogs-token');
+  if (settingsTokenInput) {
+    const val = settingsTokenInput.value.trim();
+    if (val) {
+      localStorage.setItem('discogs_token', val);
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        chrome.storage.local.set({ discogs_token: val });
+      }
+      if (typeof discogsShippingService !== 'undefined') {
+        discogsShippingService._unauthorized = false;
+      }
+    } else {
+      localStorage.removeItem('discogs_token');
+    }
+  }
+
   // Cache mode
   const turboRadio = document.getElementById('settings-cache-turbo');
   const isTurbo = turboRadio ? turboRadio.checked : true;

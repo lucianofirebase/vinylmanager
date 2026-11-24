@@ -1925,7 +1925,12 @@ function calculateAndRenderStats() {
   if (!statsView) return;
   
   try {
-    const buyerCountryVal = (typeof state !== 'undefined' && state?.buyerCountry) ||
+    const activeFilterCountry = (typeof filterCountry !== 'undefined' && filterCountry && filterCountry.value && filterCountry.value !== 'all')
+      ? filterCountry.value
+      : null;
+
+    const buyerCountryVal = activeFilterCountry ||
+      (typeof state !== 'undefined' && state?.buyerCountry) ||
       (buyerCountry ? buyerCountry.value : null) ||
       (typeof wizardBuyerCountry !== 'undefined' && wizardBuyerCountry ? wizardBuyerCountry.value : null) ||
       localStorage.getItem('buyer_country') ||

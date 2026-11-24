@@ -70,7 +70,45 @@ class CacheRepository {
     } catch (e) {}
   }
 
+  getReleaseListings(releaseId, buyerCountry = 'Uruguay', maxAgeHours = 12) {
+    try {
+      const countryKey = encodeURIComponent(String(buyerCountry || '').trim().toLowerCase());
+      const keyWithCountry = `${this.LISTINGS_CACHE_PREFIX}${releaseId}_${countryKey}`;
+      const raw = localStorage.getItem(keyWithCountry) || localStorage.getItem(`${this.LISTINGS_CACHE_PREFIX}${releaseId}`);
+      if (!raw) return null;
+      const cached = JSON.parse(raw);
+      if (!cached || !cached.timestamp || !cached.data) return null;
+      const ageHours = (Date.now() - cached.timestamp) / (1000 * 60 * 60);
+      if (ageHours > maxAgeHours) {
+        localStorage.removeItem(keyWithCountry);
+        return null;
+      }
+      return { ...cached.data, ageHours };
+    } catch (e) {
+      return null;
+    }
+  }
+
+  setReleaseListings(releaseId, buyerCountry = 'Uruguay', data = {}) {
+    try {
+      const countryKey = encodeURIComponent(String(buyerCountry || '').trim().toLowerCase());
+      const keyWithCountry = `${this.LISTINGS_CACHE_PREFIX}${releaseId}_${countryKey}`;
+      localStorage.setItem(keyWithCountry, JSON.stringify({
+        timestamp: Date.now(),
+        data
+      }));
+      // Backward-compatible mirror for legacy getListings callers
+      if (Array.isArray(data.listings)) {
+        this.setListings(releaseId, data.listings);
+      }
+    } catch (e) {}
+  }
+
   // --- Wantlist Cache ---
+  cacheWants(username, wants) {
+    return this.setWantlist(username, wants);
+  }
+
   getWantlist(username) {
     try {
       const key = `${this.WANTS_CACHE_PREFIX}${encodeURIComponent(username)}`;

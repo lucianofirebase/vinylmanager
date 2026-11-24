@@ -2,6 +2,11 @@ import difflib
 from collections import defaultdict
 from audio_scanner import normalize_text
 
+STOP_WORDS = {
+    "the", "and", "for", "with", "from", "mix", "remix", "edit",
+    "version", "original", "dub", "part", "vol", "volume", "track"
+}
+
 class LibraryMatcher:
     def __init__(self, audio_files, fuzzy_threshold=0.80):
         self.audio_files = audio_files
@@ -10,15 +15,17 @@ class LibraryMatcher:
         self._build_index()
 
     def _build_index(self):
-        # Index audio files by individual words for sub-millisecond candidate lookup
+        # Index audio files by individual informative words for sub-millisecond candidate lookup
         for idx, af in enumerate(self.audio_files):
-            words = set(af.norm_raw_filename.split() + af.norm_title.split())
+            words = set(w for w in (af.norm_raw_filename.split() + af.norm_title.split()) if len(w) >= 3 and w not in STOP_WORDS)
             for w in words:
-                if len(w) >= 3:
-                    self.index[w].add(idx)
+                self.index[w].add(idx)
 
     def _find_candidate_indices(self, track_norm):
-        words = [w for w in track_norm.split() if len(w) >= 3]
+        words = [w for w in track_norm.split() if len(w) >= 3 and w not in STOP_WORDS]
+        if not words:
+            # Fallback to all 3+ letter words if all were stopwords
+            words = [w for w in track_norm.split() if len(w) >= 3]
         if not words:
             # Short title (e.g. "Go", "DJ", "12") -> search all files
             return range(len(self.audio_files))
@@ -58,8 +65,9 @@ class LibraryMatcher:
             
             title_score = max(sim_tag, sim_fn)
             if is_substring and title_score < 0.85:
-                # Give a boost if the exact track title is inside the filename
-                title_score = max(title_score, 0.88)
+                # Only boost if track title has significant length to prevent "Intro", "Run", "One" from matching everything
+                if len(norm_track) >= 5:
+                    title_score = max(title_score, 0.88)
 
             if title_score < self.fuzzy_threshold:
                 continue

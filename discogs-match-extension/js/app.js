@@ -574,7 +574,8 @@ function onLocationChange() {
     (typeof wizardBuyerCountry !== 'undefined' && wizardBuyerCountry ? wizardBuyerCountry.value : null) ||
     (typeof state !== 'undefined' && state?.buyerCountry ? state.buyerCountry : null) ||
     localStorage.getItem('buyer_country') ||
-    'Uruguay';
+    '';
+  if (!selectedCountry) return;
   log(`Ubicación de envío de comprador actualizada a: ${selectedCountry}`, 'info');
 
   if (typeof state !== 'undefined' && state) {
@@ -1001,10 +1002,18 @@ async function initApp() {
   if (emptyState) emptyState.style.display = 'flex';
   if (typeof goToWizardStep === 'function') goToWizardStep(1);
   
-  // Load saved shipping destination country
-  const savedCountry = localStorage.getItem('buyer_country') || 'Uruguay';
-  buyerCountry.value = savedCountry;
-  wizardBuyerCountry.value = savedCountry;
+  // Load saved shipping destination country (force selection if none saved)
+  const savedCountry = localStorage.getItem('buyer_country') || '';
+  if (buyerCountry) buyerCountry.value = savedCountry;
+  if (wizardBuyerCountry) {
+    wizardBuyerCountry.value = savedCountry;
+    if (!savedCountry) {
+      wizardBuyerCountry.closest('.border')?.classList.add('border-prada-red', 'ring-2', 'ring-prada-red/30');
+    }
+  }
+  if (typeof state !== 'undefined' && state) {
+    state.buyerCountry = savedCountry || null;
+  }
   
   // Check for interrupted scan session
   checkScanSession();
@@ -1602,7 +1611,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setGridDensity(localStorage.getItem('wants_grid_density') || 'compact');
 
   if (wantsSearchInput) {
-    wantsSearchInput.addEventListener('input', filterWantsInManager);
+    const debouncedFilterWants = typeof debounce === 'function' ? debounce(filterWantsInManager, 180) : filterWantsInManager;
+    wantsSearchInput.addEventListener('input', debouncedFilterWants);
     wantsSearchInput.addEventListener('keyup', (e) => {
       if (e.key === 'Escape') {
         wantsSearchInput.value = '';
@@ -1681,7 +1691,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   if (filterSearchRelease) {
-    filterSearchRelease.addEventListener('input', renderResults);
+    const debouncedRenderResults = typeof debounce === 'function' ? debounce(renderResults, 180) : renderResults;
+    filterSearchRelease.addEventListener('input', debouncedRenderResults);
     filterSearchRelease.addEventListener('keyup', (e) => {
       if (e.key === 'Escape') {
         filterSearchRelease.value = '';

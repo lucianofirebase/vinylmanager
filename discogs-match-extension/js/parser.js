@@ -1280,9 +1280,6 @@ function parseReleaseHTML(html, releaseId, buyerCountry = 'Uruguay', knownForSal
     /(?:no\s+sellers?\s+currently\s+ship\s+to)/i.test(bodyText) ||
     /(?:does\s+not\s+ship\s+to\s+(?:your\s+)?(?:location|country))/i.test(bodyText) ||
     /(?:items?|copias?|ofertas?)\s+(?:disponibles?\s+)?(?:de|from)\s+otros\s+pa[ií]ses/i.test(bodyText) ||
-    bodyTextLower.includes('no disponible en') ||
-    bodyTextLower.includes('no disponible para') ||
-    bodyTextLower.includes('not available in') ||
     bodyTextLower.includes('no hay artículos disponibles a la venta que se envíen a') ||
     bodyTextLower.includes('no hay articulos disponibles a la venta que se envien a') ||
     bodyTextLower.includes('no hay copias disponibles a la venta que se envíen a') ||
@@ -1311,13 +1308,13 @@ function parseReleaseHTML(html, releaseId, buyerCountry = 'Uruguay', knownForSal
     // "En venta: 15", "For sale: 15", "En venta (15)"
     bodyText.match(/(?:en venta|for sale|a la venta|disponibles?)\s*[:(]\s*(\d[\d.,]*)/i),
     // "15 en venta", "15 for sale", "15 a la venta", "15 copias disponibles"
-    bodyText.match(/(\d[\d.,]*)\s*(?:copias?|artículos?|items?|ofertas?)?\s*(?:en venta|for sale|a la venta|disponibles?)\b/i),
+    bodyText.match(/(\d[\d.,]*)\s*(?:copias?|art[ií]culos?|items?|ofertas?|listings?)\s*(?:en venta|for sale|a la venta|disponibles?)\b/i),
     // "Mostrando 0 de 15 artículos", "Showing 0 of 15 items"
     bodyText.match(/(?:mostrando|showing)\s+\d+\s*(?:–|-|a|to)?\s*\d*\s*(?:de|of)\s*(\d[\d.,]*)/i),
     // "0 de 15 artículos", "0 of 15 items"
     bodyText.match(/\b0\s+(?:de|of)\s+(\d[\d.,]*)\s*(?:artículos|items|copias|ofertas|resultados|results|listings)/i),
     // "15 de otros países", "15 from other countries"
-    bodyText.match(/(\d[\d.,]*)\s*(?:items?|copias?|artículos?)?\s*(?:de otros países|de otros paises|from other countries)/i)
+    bodyText.match(/(\d[\d.,]*)\s*(?:items?|copias?|art[ií]culos?)\s*(?:de otros pa[ií]ses|from other countries)/i)
   ];
 
   for (const tm of textMatches) {
@@ -1333,8 +1330,14 @@ function parseReleaseHTML(html, releaseId, buyerCountry = 'Uruguay', knownForSal
   const sellAnchors = doc.querySelectorAll('a[href*="/sell/release/"], a[href*="ships_from="], a[href*="#marketplace"], .release_stats_for_sale, [data-testid*="for-sale"]');
   sellAnchors.forEach(a => {
     const aText = a.textContent.trim();
-    const aMatch = aText.match(/(\d[\d.,]*)/);
-    if (aMatch) {
+    const isExplicitStat = a.matches('.release_stats_for_sale, [data-testid*="for-sale"]');
+    const aMatch = isExplicitStat
+      ? aText.match(/(\d[\d.,]*)/)
+      : (
+          aText.match(/(\d[\d.,]*)\s*(?:copias?|art[ií]culos?|items?|ofertas?|listings?)?\s*(?:en venta|for sale|a la venta|disponibles?)\b/i) ||
+          aText.match(/(?:en venta|for sale|a la venta|disponibles?)\s*[:(]?\s*(\d[\d.,]*)/i)
+        );
+    if (aMatch && aMatch[1]) {
       const aCount = parseInt(aMatch[1].replace(/[^\d]/g, ''), 10) || 0;
       if (aCount > textOffersCount) textOffersCount = aCount;
     }
@@ -1377,14 +1380,15 @@ function parseReleaseHTML(html, releaseId, buyerCountry = 'Uruguay', knownForSal
   }
 
   const initialKnown = typeof knownForSaleCount === 'number' ? knownForSaleCount : 0;
-  let totalWorldListings = Math.max(
+  const pageCount = Math.max(
     rawRowsCount,
     unshippableCount,
     jsonLdOffersCount || 0,
     textOffersCount || 0,
-    nextDataForSaleCount || 0,
-    initialKnown
+    nextDataForSaleCount || 0
   );
+  // Only fall back to stale knownForSaleCount if the page itself didn't parse as 0
+  let totalWorldListings = pageCount > 0 ? pageCount : (hasShippingBlockNotice ? initialKnown : 0);
 
   // If Discogs explicitly reported that copies exist but don't ship to buyer's country,
   // or if we detected unshippable rows/locations while having 0 valid listings:

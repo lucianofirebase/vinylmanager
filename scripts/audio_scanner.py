@@ -30,8 +30,8 @@ def normalize_text(text):
     s = strip_accents(text).lower()
     for pattern in NOISE_PATTERNS:
         s = re.sub(pattern, " ", s, flags=re.IGNORECASE)
-    # Remove track positions like A1, A2, B1, 01, 12 at beginning
-    s = re.sub(r"^[a-d]?[0-9]{1,2}[\s\.\-_]+", " ", s)
+    # Remove track positions like A1, A2, B1, 01, 12 at beginning only if followed by letters
+    s = re.sub(r"^(?:[a-d][0-9]{1,2}|[0-9]{1,2})[\s\.\-_]+(?=[a-zA-Z])", " ", s)
     # Remove special characters
     s = re.sub(r"[^a-z0-9\s]", " ", s)
     # Collapse multiple whitespaces
@@ -96,6 +96,12 @@ class AudioScanner:
 
         for directory in self.directories:
             if not os.path.exists(directory):
+                continue
+            
+            # Security guard against scanning entire drive root
+            norm_dir = os.path.abspath(directory)
+            if norm_dir.rstrip("\\/").endswith(":") or norm_dir == os.path.abspath(os.sep):
+                print(f"      [Seguridad] Se omitió escanear la unidad raíz del sistema: '{directory}'")
                 continue
             
             for root, _, filenames in os.walk(directory):

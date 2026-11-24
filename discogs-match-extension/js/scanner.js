@@ -377,17 +377,17 @@ async function loadWantlist() {
         if (data && data.wants && data.wants.length > 0) {
           console.log(`[WantlistAPI] Página ${page} parseada con éxito. Encontrados ${data.wants.length} vinilos deseados.`);
           const pageWants = data.wants.map(item => ({
-            id: item.id,
-            title: item.basic_information.title,
-            artist: item.basic_information.artists.map(a => a.name).join(', '),
-            year: item.basic_information.year,
-            image: item.basic_information.cover_image || item.basic_information.thumb || '',
-            genres: item.basic_information.genres || [],
-            styles: item.basic_information.styles || [],
-            formats: (item.basic_information.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
-            labels: (item.basic_information.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
-            wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
-            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
+            id: item.id || (item.basic_information && item.basic_information.id),
+            title: item.basic_information?.title || `Disco #${item.id}`,
+            artist: (item.basic_information?.artists || []).map(a => a.name).join(', ') || 'Desconocido',
+            year: item.basic_information?.year || '',
+            image: item.basic_information?.cover_image || item.basic_information?.thumb || '',
+            genres: item.basic_information?.genres || [],
+            styles: item.basic_information?.styles || [],
+            formats: (item.basic_information?.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
+            labels: (item.basic_information?.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
+            wantCount: (item.basic_information?.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
+            haveCount: (item.basic_information?.community && item.basic_information.community.have) || 0,
             forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
           }));
           
@@ -795,6 +795,23 @@ async function startMarketplaceScan(startIndex = 0) {
     startIndex = 0;
   }
   if (state.wants.length === 0) return;
+
+  // Require buyer country and Discogs token before scanning
+  const activeCountry = (typeof buyerCountry !== 'undefined' && buyerCountry && buyerCountry.value) ||
+    localStorage.getItem('buyer_country') || '';
+  if (!activeCountry) {
+    alert('Por favor selecciona tu país de destino antes de escanear.');
+    if (typeof wizardBuyerCountry !== 'undefined' && wizardBuyerCountry) wizardBuyerCountry.focus();
+    else if (typeof buyerCountry !== 'undefined' && buyerCountry) buyerCountry.focus();
+    return;
+  }
+
+  if (typeof getDiscogsAuthHeader === 'function' && !getDiscogsAuthHeader()) {
+    log('Falta configurar tu Personal Access Token de Discogs en Configuración.', 'error');
+    alert('Configura tu Personal Access Token de Discogs antes de escanear.');
+    if (typeof openSettingsModal === 'function') openSettingsModal();
+    return;
+  }
   
   state.isScanning = true;
   state.cancelRequested = false;
@@ -1190,17 +1207,17 @@ async function refreshWantlistIncremental() {
         
         if (data && data.wants && data.wants.length > 0) {
           const pageWants = data.wants.map(item => ({
-            id: item.id,
-            title: item.basic_information.title,
-            artist: item.basic_information.artists.map(a => a.name).join(', '),
-            year: item.basic_information.year,
-            image: item.basic_information.cover_image || item.basic_information.thumb || '',
-            genres: item.basic_information.genres || [],
-            styles: item.basic_information.styles || [],
-            formats: (item.basic_information.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
-            labels: (item.basic_information.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
-            wantCount: (item.basic_information.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
-            haveCount: (item.basic_information.community && item.basic_information.community.have) || 0,
+            id: item.id || (item.basic_information && item.basic_information.id),
+            title: item.basic_information?.title || `Disco #${item.id}`,
+            artist: (item.basic_information?.artists || []).map(a => a.name).join(', ') || 'Desconocido',
+            year: item.basic_information?.year || '',
+            image: item.basic_information?.cover_image || item.basic_information?.thumb || '',
+            genres: item.basic_information?.genres || [],
+            styles: item.basic_information?.styles || [],
+            formats: (item.basic_information?.formats || []).map(f => f.name + (f.descriptions ? ` (${f.descriptions.join(', ')})` : '')).join(' • '),
+            labels: (item.basic_information?.labels || []).map(l => `${l.name}${l.catno ? ` - ${l.catno}` : ''}`).join(' • '),
+            wantCount: (item.basic_information?.community && (item.basic_information.community.want || item.basic_information.community.in_wantlist)) || 0,
+            haveCount: (item.basic_information?.community && item.basic_information.community.have) || 0,
             forSaleCount: (item.basic_information && (item.basic_information.num_for_sale || item.basic_information.numForSale)) || item.num_for_sale || 0
           }));
           newWants.push(...pageWants);

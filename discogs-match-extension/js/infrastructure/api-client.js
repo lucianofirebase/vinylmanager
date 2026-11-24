@@ -72,6 +72,12 @@ class DiscogsApiClient {
     const url = `${this.BASE_API_URL}/v3/marketplace/shipping/policies?seller_id=${sellerId}&country=${encodeURIComponent(country)}`;
     return await this.fetchDirect(url);
   }
+
+  async fetchWantlistPage(username, page = 1, perPage = 100) {
+    const cleanUser = encodeURIComponent(String(username || '').trim());
+    const url = `${this.BASE_API_URL}/users/${cleanUser}/wants?page=${page}&per_page=${perPage}`;
+    return await this.fetchDirect(url);
+  }
 }
 
 const discogsApiClient = new DiscogsApiClient();
