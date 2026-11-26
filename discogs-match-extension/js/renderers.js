@@ -804,9 +804,10 @@ function renderResults() {
     if (filterHasShipping && filterHasShipping.checked && seller.isShippingEstimated) {
       return false;
     }
-    // Sync cached ASP banner if available (handles both positive thresholds and verified negative nulls)
+    // Sync cached ASP banner if available, but never overwrite a confirmed official v3 shippingPolicy
+    const hasOfficialFreeShipping = Boolean(seller.shippingPolicy && seller.shippingPolicy.freeShipping && seller.shippingPolicy.freeShippingMinimum != null);
     const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
-    if (typeof getCachedAspBanner === 'function') {
+    if (!hasOfficialFreeShipping && typeof getCachedAspBanner === 'function') {
       const cached = getCachedAspBanner(seller.name, buyerCountryVal);
       if (cached !== undefined) {
         seller.aspBannerThreshold = cached;
@@ -819,7 +820,7 @@ function renderResults() {
 
     // 7. Free shipping / threshold filter
     if (filterFreeShipping && filterFreeShipping.checked) {
-      const hasThreshold = Boolean(seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0);
+      const hasThreshold = Boolean((seller.freeShippingThreshold && seller.freeShippingThreshold.amount > 0) || hasOfficialFreeShipping);
       const isDirectFree = Boolean(
         (seller.officialShippingPrice !== null && seller.officialShippingPrice === 0) ||
         (seller.estimatedShipping === 0 && !hasThreshold) ||
