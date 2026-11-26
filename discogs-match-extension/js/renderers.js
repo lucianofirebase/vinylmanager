@@ -1410,6 +1410,7 @@ async function loadSellerShippingPolicies(sellers, buyerCountryVal) {
   if (candidates.length === 0) return;
 
   isPolicyBatchLoading = true;
+  let updatedFreeShipping = false;
   try {
     const batch = candidates.slice(0, 20); // Top 20 sellers in view
 
@@ -1448,6 +1449,14 @@ async function loadSellerShippingPolicies(sellers, buyerCountryVal) {
             raw: `Envío gratis desde ${policy.formattedFreeShippingMinimum || policy.freeShippingMinimum}`
           };
           seller.freeShippingThreshold = seller.aspBannerThreshold;
+          let thresholdInSellerCurrency = seller.freeShippingThreshold.amount;
+          if (seller.freeShippingThreshold.currency && seller.currency && seller.freeShippingThreshold.currency !== seller.currency && typeof CURRENCY_MAP !== 'undefined') {
+            const threshRate = CURRENCY_MAP[seller.freeShippingThreshold.currency]?.rate || 1.0;
+            const sellerRate = CURRENCY_MAP[seller.currency]?.rate || 1.0;
+            thresholdInSellerCurrency = (thresholdInSellerCurrency / threshRate) * sellerRate;
+          }
+          seller.hasFreeShippingUnlocked = (seller.subtotal || 0) >= thresholdInSellerCurrency;
+          updatedFreeShipping = true;
         } else if (policy && (policy.shipsToCountry === false || policy.freeShipping === false)) {
           if (!seller.freeShippingThreshold || seller.freeShippingThreshold.scope === 'asp_banner') {
             seller.aspBannerThreshold = null;
@@ -1477,6 +1486,9 @@ async function loadSellerShippingPolicies(sellers, buyerCountryVal) {
     }
   } finally {
     isPolicyBatchLoading = false;
+    if (updatedFreeShipping && typeof filterFreeShipping !== 'undefined' && filterFreeShipping && filterFreeShipping.checked && typeof renderResults === 'function') {
+      renderResults();
+    }
   }
 }
 
@@ -1512,8 +1524,13 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
 
   isVerifyingAsp = true;
   try {
-    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : 'Uruguay')) || 'Uruguay';
-    
+    const buyerCountryVal = (buyerCountry ? buyerCountry.value : (typeof state !== 'undefined' && state && state.buyerCountry ? state.buyerCountry : '')) || '';
+
+    // Prioritize official Discogs v3 shipping policies API over legacy ASP banner scraping
+    if (typeof loadSellerShippingPolicies === 'function' && buyerCountryVal) {
+      await loadSellerShippingPolicies(displayedSellers, buyerCountryVal);
+    }
+
     // Prioritize top sellers with multiple matches or significant subtotal (checking 150 sellers causes 429 blocks)
     const isFreeShipFilterActive = filterFreeShipping && filterFreeShipping.checked;
     const maxBatch = isFreeShipFilterActive ? 15 : 8;
@@ -1533,6 +1550,9 @@ async function verifyDisplayedSellersAsp(displayedSellers) {
 
       for (const seller of chunk) {
         seller.aspChecked = true;
+        if (seller.shippingPolicy && seller.shippingPolicy.country === buyerCountryVal && seller.shippingPolicy.status !== 'error') {
+          continue;
+        }
         let thresh = typeof getCachedAspBanner === 'function' ? getCachedAspBanner(seller.name, buyerCountryVal) : undefined;
         
         if (thresh === undefined && typeof checkSellerAspBanner === 'function') {
